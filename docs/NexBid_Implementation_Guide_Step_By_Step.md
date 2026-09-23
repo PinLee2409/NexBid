@@ -133,6 +133,10 @@ Actuator
 
 Các dependency Redis/Kafka có thể thêm sau.
 
+Bản triển khai thực tế: Spring Boot 4.1.1 trên Java 21, Maven. Lưu ý Boot 4 khác
+Boot 3 ở vài chỗ: starter web là `spring-boot-starter-webmvc`, các starter test
+tách theo từng module, và Jackson 3 (`tools.jackson`) thay cho Jackson 2.
+
 Package:
 
 ```text
@@ -171,6 +175,11 @@ Tạo database:
 ```text
 nexbid
 ```
+
+Chạy bằng `docker/compose.yaml`. Postgres publish ở cổng **55432** chứ không phải
+5432 — trên máy dev cả 5432 và 5433 đều đã bị chiếm, và khi cổng bị tranh chấp
+Docker có thể chỉ bind được phía IPv6, khiến `localhost` trỏ nhầm sang server
+khác. Lỗi lúc đó trông y hệt sai mật khẩu, rất mất thời gian truy.
 
 ## Tiêu chí hoàn thành
 
@@ -319,9 +328,33 @@ ACTIVE
 BLOCKED
 ```
 
+## Migration
+
+Schema do **Flyway** sở hữu, không để Hibernate tự sinh: `ddl-auto` đặt
+`validate` ngay từ bước 01. Lý do là SQL nằm trong repo thì review được và chạy
+lại ở máy khác cho ra kết quả y hệt; `ddl-auto: update` đổi schema ngầm và không
+bao giờ xoá được cột thừa. Thứ tự file migration theo đúng §44.
+
+File đầu tiên: `V1__create_users_and_roles.sql` — tạo `roles`, `users`,
+`user_roles`, và chèn sẵn ba vai trò.
+
+Email là định danh đăng nhập nên ràng buộc duy nhất phải bỏ qua hoa thường
+(`CREATE UNIQUE INDEX ... ON users (LOWER(email))`), nếu không `A@x.com` và
+`a@x.com` sẽ cùng đăng ký được.
+
+Khoá chính của `users` dùng **UUID** chứ không phải số tăng dần: hợp đồng với
+frontend khai mọi id là chuỗi, và id không để lộ số lượng người dùng.
+
+## Test
+
+Test chạy trên Postgres thật qua Testcontainers, không dùng H2 — schema có
+`LOWER()` index, `UUID` và `TIMESTAMPTZ` nên H2 sẽ kiểm chứng sai sự thật.
+Nhờ vậy `./mvnw test` cũng không cần database dev phải đang bật.
+
 ## Tiêu chí hoàn thành
 
-Application chạy và Hibernate tạo / migrate bảng thành công.
+Application chạy, Flyway apply migration thành công, và Hibernate validate được
+entity khớp với schema.
 
 ## Commit
 

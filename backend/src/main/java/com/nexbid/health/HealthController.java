@@ -7,15 +7,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Liveness probe.
+ * EN: Liveness probe — is the process serving? Flat body, outside the ApiResponse envelope, for load balancers.
+ * VI: Probe sống — tiến trình còn phục vụ không? Body phẳng, nằm ngoài khung ApiResponse, dành cho load balancer.
  *
- * <p>This answers "is the process serving requests", nothing more. It stays
- * outside the {@code ApiResponse} envelope that every business endpoint uses,
- * because its readers are load balancers and uptime monitors rather than the
- * application — they expect a flat body and a status code, not a wrapper.
- *
- * <p>Whether dependencies are healthy is a different question, and Actuator
- * already answers it at {@code /actuator/health}.
+ * <p>EN: Whether the database is healthy is a different question, answered at /actuator/health.
+ * <p>VI: Database c    òn khoẻ hay không là câu hỏi khác, /actuator/health trả lời.
  */
 @RestController
 @RequestMapping("/api")
