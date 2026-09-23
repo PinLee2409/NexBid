@@ -1,0 +1,62 @@
+# Local development configuration.
+#
+# Credentials here are the throwaway ones from docker/compose.yaml. Anything
+# real belongs in the environment, which is why every value below can be
+# overridden by one — see the ${VAR:default} form.
+spring:
+  application:
+    name: nexbid
+
+  datasource:
+    # 127.0.0.1 rather than localhost, and port 55432: see docker/compose.yaml.
+    # The literal address keeps the driver off whatever else the host resolves
+    # localhost to.
+    url: ${NEXBID_DB_URL:jdbc:postgresql://127.0.0.1:55432/nexbid}
+    username: ${NEXBID_DB_USER:nexbid}
+    password: ${NEXBID_DB_PASSWORD:nexbid}
+
+  jpa:
+    hibernate:
+      # `validate` from the first commit: the schema is owned by migrations,
+      # never by Hibernate guessing. There are no entities yet, so this is a
+      # no-op today and a guardrail from the moment the first one lands.
+      ddl-auto: ${NEXBID_DDL_AUTO:validate}
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  jackson:
+    # The frontend parses every timestamp with `new Date(...)`, so the wire
+    # format is ISO-8601 in UTC, not epoch millis. Boot 4 ships Jackson 3,
+    # where this moved off SerializationFeature onto DateTimeFeature — it is
+    # stated explicitly rather than left to the default, because the whole
+    # client contract depends on it.
+    datatype:
+      datetime:
+        write-dates-as-timestamps: false
+    time-zone: UTC
+
+server:
+  port: ${NEXBID_PORT:8080}
+  error:
+    # Error bodies are the contract in spec §28; the servlet container's own
+    # error page must never leak through instead.
+    include-message: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      # Component detail (database, disk) is operational information and stays
+      # off the public probe.
+      show-details: never
+
+logging:
+  level:
+    com.nexbid: ${NEXBID_LOG_LEVEL:DEBUG}

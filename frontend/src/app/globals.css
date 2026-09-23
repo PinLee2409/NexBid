@@ -1,26 +1,406 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:where(.dark, .dark *, .on-media, .on-media *));
+
+/* =============================================================================
+   NEXBID — cinematic auction house
+   -----------------------------------------------------------------------------
+   Dark is the identity; light is the same system re-lit, not a different one.
+   Hairlines and scale do the structural work — there are no decorative cards.
+
+   The signal colour is split in two, because acid lime behaves differently on
+   each surface:
+     --signal       a FILL. Lime in both themes, always with near-black on top.
+     --signal-text  a TEXT colour. Lime on dark; a darkened lime on light,
+                    where pure lime would sit at roughly 1.1:1 and vanish.
+   ========================================================================== */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-anton);
+
+  /* Surfaces */
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  /* Ink */
+  --color-muted-foreground: var(--muted-foreground);
+  --color-dim: var(--dim);
+
+  /* The single signature colour */
+  --color-signal: var(--signal);
+  --color-signal-ink: var(--signal-ink);
+  --color-signal-text: var(--signal-text);
+  --color-signal-dim: var(--signal-dim);
+
+  /* Loss / urgency only */
+  --color-danger: var(--danger);
+  --color-danger-ink: var(--danger-ink);
+  --color-danger-text: var(--danger-text);
+  --color-danger-dim: var(--danger-dim);
+
+  /* Status ink for the workspace tables — never used for brand emphasis. */
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-foreground: var(--warning);
+
+  /* shadcn primitives map onto the system so overridden components inherit it */
+  --color-card: var(--surface);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--surface-2);
+  --color-popover-foreground: var(--foreground);
+  --color-primary: var(--signal);
+  --color-primary-foreground: var(--signal-ink);
+  --color-secondary: var(--surface-2);
+  --color-secondary-foreground: var(--foreground);
+  --color-muted: var(--surface-2);
+  /* shadcn treats `accent` as a subtle hover surface, not the brand colour. */
+  --color-accent: var(--surface-2);
+  --color-accent-foreground: var(--foreground);
+  --color-destructive: var(--danger);
+  --color-destructive-foreground: var(--danger-ink);
+  --color-border: var(--line);
+  --color-input: var(--line-strong);
+  --color-ring: var(--signal-text);
+
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 3px;
+  --radius-xl: 4px;
+  --radius-2xl: 4px;
+  --radius-3xl: 6px;
+  --radius-4xl: 8px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* --- Light ---------------------------------------------------------------- */
+
+:root {
+  --background: #f7f7f4;
+  --surface: #efefea;
+  --surface-2: #e7e7e1;
+
+  --foreground: #111110;
+  --muted-foreground: #5c5c57;
+  /* Darker than the dark theme's equivalent: the same apparent quietness on a
+     pale page would leave the micro-caps under 3:1. */
+  --dim: #74746e;
+
+  --line: rgba(17, 17, 16, 0.12);
+  --line-strong: rgba(17, 17, 16, 0.26);
+
+  --signal: #bcfc04;
+  --signal-ink: #0a0a0a;
+  /* Darkened to clear 4.5:1 on the light page; same hue family. */
+  --signal-text: #4f6900;
+  --signal-dim: rgba(188, 252, 4, 0.5);
+
+  --danger: #cc2a1c;
+  --danger-ink: #ffffff;
+  --danger-text: #b52415;
+  --danger-dim: rgba(204, 42, 28, 0.12);
+
+  --success: #2f7a3e;
+  --success-soft: rgba(47, 122, 62, 0.12);
+  --warning: #8a5a05;
+  --warning-soft: rgba(138, 90, 5, 0.12);
+
+  /* Scrims and haloes over photography follow the page, not a fixed colour. */
+  --scrim-rgb: 247, 247, 244;
+  --over-image-shadow: 0 2px 30px rgba(247, 247, 244, 0.95),
+    0 1px 3px rgba(247, 247, 244, 0.9);
+
+  --radius: 2px;
+
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--signal);
+  --sidebar-primary-foreground: var(--signal-ink);
+  --sidebar-accent: var(--surface-2);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--signal-text);
+
+  color-scheme: light;
+}
+
+/* --- Dark (the default register) ------------------------------------------ */
+
+/*
+ * `.on-media` is the same register applied to a subtree rather than the page.
+ * Photography is unpredictable — a black watch on black velvet, a bleached
+ * studio shot — so type sitting on an image always keeps the dark treatment,
+ * ivory ink over a dark scrim, whichever theme the page is in. That is how a
+ * caption on a photograph has always worked, and it is the only way to promise
+ * contrast over an image the seller chose.
+ */
+.dark,
+.on-media {
+  --background: #0a0a0a;
+  --surface: #111111;
+  --surface-2: #161616;
+
+  --foreground: #f2f0ea;
+  --muted-foreground: #8a8a85;
+  --dim: #5a5a56;
+
+  --line: rgba(242, 240, 234, 0.1);
+  --line-strong: rgba(242, 240, 234, 0.2);
+
+  /* Sampled from the NexBid mark. */
+  --signal: #bcfc04;
+  --signal-ink: #0a0a0a;
+  --signal-text: #bcfc04;
+  --signal-dim: rgba(188, 252, 4, 0.16);
+
+  --danger: #ff3b2f;
+  --danger-ink: #f2f0ea;
+  --danger-text: #ff3b2f;
+  --danger-dim: rgba(255, 59, 47, 0.14);
+
+  --success: #5ec26e;
+  --success-soft: rgba(94, 194, 110, 0.14);
+  --warning: #e0a53a;
+  --warning-soft: rgba(224, 165, 58, 0.14);
+
+  --scrim-rgb: 10, 10, 10;
+  --over-image-shadow: 0 2px 40px rgba(0, 0, 0, 0.85), 0 1px 3px rgba(0, 0, 0, 0.6);
+
+  --sidebar: #0d0d0d;
+
+  color-scheme: dark;
+}
+
+/*
+ * Redefining the tokens is not enough on its own: `color` was already resolved
+ * on <body> and is inherited as a literal value, so the subtree has to re-read
+ * it. The page-level `.dark` does not need this — <body> sets its own colour.
+ */
+.on-media {
+  color: var(--foreground);
+}
+
+@layer base {
+  * {
+    @apply border-line;
+  }
+
+  html {
+    @apply font-sans;
+    background: var(--background);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+  }
+
+  /* One focus treatment everywhere: the signal colour, never a glow. */
+  :focus-visible {
+    outline: 2px solid var(--signal-text);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--signal);
+    color: var(--signal-ink);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--background);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  /* --- Typography ------------------------------------------------------ */
+
+  /**
+   * Editorial display. Anton is already heavy and condensed, so it is used
+   * flat — no extra weight, tight tracking, uppercase.
+   */
+  .display {
+    font-family: var(--font-anton), var(--font-geist-sans), sans-serif;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: -0.015em;
+    line-height: 0.86;
+  }
+
+  /* Label/eyebrow: small, wide, quiet. */
+  .label {
+    font-size: 11px;
+    line-height: 1.1;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  .label-sm {
+    font-size: 10px;
+    line-height: 1.1;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  /* Money and clocks must never reflow as digits change. */
+  .figure {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+    letter-spacing: -0.02em;
+  }
+
+  .mono-figure {
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  /* Kept for the workspace tables, which set their own size and weight. */
+  .tabular-figures {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  /* --- Structure ------------------------------------------------------- */
+
+  .rule {
+    height: 1px;
+    background: var(--line);
+  }
+
+  /* Vignette that lets a full-bleed product sit on the page without a card. */
+  .stage-fade {
+    background: radial-gradient(
+      120% 90% at 50% 40%,
+      transparent 0%,
+      transparent 45%,
+      rgb(var(--scrim-rgb)) 100%
+    );
+  }
+
+  .scrim-bottom {
+    background: linear-gradient(
+      to top,
+      rgb(var(--scrim-rgb)) 0%,
+      rgba(var(--scrim-rgb), 0.88) 28%,
+      rgba(var(--scrim-rgb), 0.4) 58%,
+      transparent 100%
+    );
+  }
+
+  .scrim-top {
+    background: linear-gradient(
+      to bottom,
+      rgba(var(--scrim-rgb), 0.9) 0%,
+      rgba(var(--scrim-rgb), 0.4) 50%,
+      transparent 100%
+    );
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Text that reads over photography without a box behind it. */
+  .over-image {
+    text-shadow: var(--over-image-shadow);
+  }
+}
+
+/* =============================================================================
+   Motion — every animation reports state: time, price, competition.
+   ========================================================================== */
+
+@keyframes nexbid-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+}
+
+.live-dot {
+  animation: nexbid-pulse 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* The final minute: the same pulse, twice as urgent. */
+.live-dot-critical {
+  animation: nexbid-pulse 0.7s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* A bid landed — the surface acknowledges it for a beat, then lets go. */
+@keyframes nexbid-flash {
+  0% {
+    background-color: var(--signal-dim);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.flash-signal {
+  animation: nexbid-flash 900ms ease-out;
+}
+
+/* Market ticker: a slow, continuous crawl. */
+@keyframes nexbid-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.marquee-track {
+  animation: nexbid-marquee var(--marquee-duration, 60s) linear infinite;
+  will-change: transform;
+}
+
+.marquee-host:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot,
+  .live-dot-critical,
+  .marquee-track,
+  .flash-accent {
+    animation: none !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -1,0 +1,36 @@
+# Local infrastructure for NexBid.
+#
+# Postgres is published on 55432. Both 5432 and 5433 are already taken on this
+# machine — 5432 by another project's container, 5433 by a native PostgreSQL 18
+# service — and Docker will happily bind only the IPv6 half of a contested port,
+# leaving `localhost` to resolve to the wrong server with no error anywhere.
+#
+#   docker compose -f docker/compose.yaml up -d
+#   docker compose -f docker/compose.yaml down        # keeps the data
+#   docker compose -f docker/compose.yaml down -v     # drops the volume too
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: nexbid-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nexbid
+      POSTGRES_USER: nexbid
+      POSTGRES_PASSWORD: nexbid
+      # Deterministic collation, so ORDER BY does not depend on the host locale.
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+    ports:
+      - "55432:5432"
+    volumes:
+      - nexbid-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # The application waits on this, so it has to mean "accepting queries",
+      # not merely "process started".
+      test: ["CMD-SHELL", "pg_isready -U nexbid -d nexbid"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  nexbid-postgres-data:
