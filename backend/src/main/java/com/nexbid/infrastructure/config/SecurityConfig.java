@@ -43,7 +43,12 @@ public class SecurityConfig {
      */
     // EN: Registration and login must be reachable without a token — that is what they are for.
     // VI: Đăng ký và đăng nhập phải gọi được khi chưa có token — vốn dĩ chúng sinh ra để làm thế.
-    static final String[] PUBLIC_PATHS = { "/api/health", "/actuator/health", "/api/auth/**" };
+    static final String[] PUBLIC_PATHS = {
+            "/api/health", "/actuator/health", "/api/auth/**",
+            // EN: Browsing is public — someone deciding whether to join must see what is on offer.
+            // VI: Duyệt hàng là công khai — người đang cân nhắc tham gia phải xem được có gì.
+            "/api/categories", "/api/categories/**"
+    };
 
     @Bean
     public SecurityFilterChain securityFilterChain(

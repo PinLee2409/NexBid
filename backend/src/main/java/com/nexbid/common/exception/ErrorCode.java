@@ -16,6 +16,10 @@ public enum ErrorCode {
 
     /* --- Catalogue / Sản phẩm ---------------------------------------- */
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND),
+    // EN: Not in §29, which never mentions categories — they arrive with guide §10.
+    // VI: Không có trong §29 vì đặc tả không nhắc tới danh mục — chúng xuất hiện ở guide §10.
+    CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND),
+    CATEGORY_ALREADY_EXISTS(HttpStatus.CONFLICT),
 
     /* --- Auction lifecycle / Vòng đời phiên -------------------------- */
     AUCTION_NOT_FOUND(HttpStatus.NOT_FOUND),
