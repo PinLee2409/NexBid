@@ -6,11 +6,28 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.nexbid.auction.AuctionStatus;
 import com.nexbid.auction.entity.Auction;
 
-public interface AuctionRepository extends JpaRepository<Auction, UUID> {
+import jakarta.persistence.LockModeType;
+
+public interface AuctionRepository
+        extends JpaRepository<Auction, UUID>, JpaSpecificationExecutor<Auction> {
+
+    /**
+     * EN: Reads the lot with a database row lock (guide §21). Everyone else bidding on this lot waits at
+     *     this line, so each one reads a price that already includes the bid before it.
+     * VI: Đọc lô kèm khoá dòng ở database (guide §21). Những người khác cùng trả giá lô này phải đợi ngay
+     *     tại dòng này, nên mỗi người đọc được mức giá đã tính cả lượt trước đó.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM Auction a WHERE a.id = :id")
+    Optional<Auction> findByIdForUpdate(@Param("id") UUID id);
 
     List<Auction> findBySellerIdOrderByCreatedAtDesc(UUID sellerId);
 

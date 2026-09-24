@@ -11,7 +11,7 @@ anti-sniping extensions, one winner per lot.
 | | |
 | --- | --- |
 | Frontend | Complete, running on mock data |
-| Backend | Function 07 of 40 — accounts, authentication and roles. No auction logic yet |
+| Backend | Function 19 of 40 — accounts, products, auctions and bidding, safe under concurrent load. No WebSocket or scheduler yet |
 
 The frontend does not call the backend yet. The mock services mirror the REST
 contract, so switching to the real API changes service bodies and nothing else.

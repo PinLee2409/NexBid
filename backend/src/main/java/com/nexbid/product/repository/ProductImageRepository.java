@@ -29,4 +29,11 @@ public interface ProductImageRepository extends JpaRepository<ProductImage, UUID
 
     @Modifying
     void deleteByProductId(UUID productId);
+
+    /**
+     * EN: Cover first for each product, so the caller can take the first row per id.
+     * VI: Ảnh bìa lên trước cho từng sản phẩm, để bên gọi lấy dòng đầu tiên theo id.
+     */
+    @Query("select i.product.id, i.imageUrl from ProductImage i where i.product.id in ?1 order by i.sortOrder asc")
+    List<Object[]> findCoverUrls(java.util.Collection<UUID> productIds);
 }

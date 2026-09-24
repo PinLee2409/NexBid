@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -48,6 +49,7 @@ public class SecurityConfig {
             // EN: Browsing is public — someone deciding whether to join must see what is on offer.
             // VI: Duyệt hàng là công khai — người đang cân nhắc tham gia phải xem được có gì.
             "/api/categories", "/api/categories/**",
+            "/api/auctions", "/api/auctions/**",
             // EN: A browser loading <img> sends no Authorization header, so product photos must be open.
             // VI: Trình duyệt nạp thẻ <img> không gửi header Authorization, nên ảnh sản phẩm phải mở.
             "/media/**"
@@ -65,6 +67,11 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // EN: Carved out before the public rule below: reading a lot is open to anyone,
+                        //     offering money for it is not.
+                        // VI: Khoét ra trước luật công khai bên dưới: xem một lô thì ai cũng được, còn bỏ
+                        //     tiền ra mua thì không.
+                        .requestMatchers(HttpMethod.POST, "/api/auctions/*/bids").authenticated()
                         .requestMatchers(PUBLIC_PATHS).permitAll()
                         // EN: The frontend also hides these menus, but that is decoration —
                         //     this is the line that actually stops someone typing the URL.

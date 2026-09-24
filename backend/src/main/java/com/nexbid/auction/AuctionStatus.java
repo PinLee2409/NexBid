@@ -11,7 +11,7 @@ public enum AuctionStatus {
     PENDING_APPROVAL,
     /** EN: Approved, waiting for its start time. / VI: Đã duyệt, chờ tới giờ mở. */
     SCHEDULED,
-    /** EN: Open for bidding. / VI: Đang nhận trả giá. */
+    /** EN: Open for bidding. / VI: Đang nhận trả giá. */ 
     ACTIVE,
     /** EN: The clock ran out. / VI: Đã hết giờ. */
     ENDED,

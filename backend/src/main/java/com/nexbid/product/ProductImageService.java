@@ -47,6 +47,22 @@ public class ProductImageService {
      * EN: Images of any product, with no ownership check — for the admin review and the public lot page.
      * VI: Ảnh của bất kỳ sản phẩm nào, không kiểm quyền sở hữu — dành cho màn admin duyệt và trang lô công khai.
      */
+    /**
+     * EN: Cover image url per product, in one query — a grid of cards would otherwise ask per card.
+     * VI: Ảnh bìa của từng sản phẩm trong một truy vấn — nếu không, lưới thẻ sẽ hỏi từng thẻ một.
+     */
+    public java.util.Map<UUID, String> coversOf(java.util.Collection<UUID> productIds) {
+        if (productIds.isEmpty()) {
+            return java.util.Map.of();
+        }
+
+        java.util.Map<UUID, String> covers = new java.util.HashMap<>();
+        for (Object[] row : images.findCoverUrls(productIds)) {
+            covers.putIfAbsent((UUID) row[0], (String) row[1]);
+        }
+        return covers;
+    }
+
     public List<ProductImageView> listPublic(UUID productId) {
         return toViews(productId);
     }

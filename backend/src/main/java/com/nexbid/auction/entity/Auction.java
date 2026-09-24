@@ -145,6 +145,17 @@ public class Auction {
         this.updatedAt = Instant.now();
     }
 
+    /**
+     * EN: Records an accepted bid. Called only after every rule has passed, so it does not check anything
+     *     itself — an entity that re-validates is an entity two places can disagree about.
+     * VI: Ghi nhận một lượt trả giá đã được chấp nhận. Chỉ gọi sau khi mọi luật đã qua, nên bản thân nó
+     *     không kiểm gì — entity mà tự kiểm lại là entity có hai nơi có thể bất đồng.
+     */
+    public void applyBid(BigDecimal amount) {
+        this.currentPrice = amount;
+        this.bidCount += 1;
+    }
+
     public boolean isOwnedBy(UUID userId) {
         return this.sellerId.equals(userId);
     }

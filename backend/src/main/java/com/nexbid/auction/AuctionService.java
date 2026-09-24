@@ -1,16 +1,22 @@
 package com.nexbid.auction;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.nexbid.auction.dto.AuctionQuery;
 import com.nexbid.auction.dto.CreateAuctionRequest;
 import com.nexbid.auction.entity.Auction;
 import com.nexbid.auction.repository.AuctionRepository;
+import com.nexbid.auction.repository.AuctionSpecifications;
 import com.nexbid.common.exception.BusinessException;
 import com.nexbid.common.exception.ErrorCode;
 import com.nexbid.common.exception.ResourceNotFoundException;
@@ -34,6 +40,19 @@ public class AuctionService {
             AuctionStatus.SCHEDULED,
             AuctionStatus.ACTIVE,
             AuctionStatus.ENDED);
+
+    /** EN: "Ending soon" means within the hour. / VI: "Sắp đóng" nghĩa là trong vòng một giờ. */
+    private static final long ENDING_SOON_SECONDS = 3600;
+
+    /**
+     * EN: What a visitor may see, whether they browse or arrive on a direct link.
+     * VI: Những gì khách được xem, dù họ duyệt danh sách hay vào thẳng bằng đường dẫn.
+     */
+    private static final List<AuctionStatus> PUBLIC_STATUSES = List.of(
+            AuctionStatus.SCHEDULED,
+            AuctionStatus.ACTIVE,
+            AuctionStatus.ENDED,
+            AuctionStatus.COMPLETED);
 
     private final AuctionRepository auctions;
     private final ProductService products;
@@ -155,6 +174,170 @@ public class AuctionService {
         }
 
         auctions.delete(auction);
+    }
+
+    /**
+     * EN: The public browse list (guide §18, spec §7.6). Nothing that has not been approved appears here.
+     * VI: Danh sách duyệt hàng công khai (guide §18, spec §7.6). Thứ gì chưa được duyệt thì không xuất hiện.
+     */
+    public PageView<AuctionSummaryView> browse(AuctionQuery query) {
+        boolean filterByCategory = query.category() != null && !query.category().isEmpty();
+
+        Specification<Auction> spec = AuctionSpecifications.allOf(
+                AuctionSpecifications.publiclyVisible(),
+                AuctionSpecifications.statusIn(query.status()),
+                AuctionSpecifications.priceAtLeast(query.minPrice()),
+                AuctionSpecifications.priceAtMost(query.maxPrice()),
+                AuctionSpecifications.endingSoon(
+                        Boolean.TRUE.equals(query.endingSoon()), Instant.now(), ENDING_SOON_SECONDS),
+                filterByCategory
+                        ? AuctionSpecifications.productIn(products.idsInCategorySlugs(query.category()))
+                        : null);
+
+        var page = auctions.findAll(
+                spec, PageRequest.of(query.zeroBasedPage(), query.size(), sortOf(query.sort())));
+
+        // EN: Products, covers and seller names are fetched once for the whole page rather than per row.
+        // VI: Sản phẩm, ảnh bìa và tên người bán lấy một lần cho cả trang thay vì từng dòng một.
+        List<UUID> productIds = page.getContent().stream().map(Auction::getProductId).toList();
+        var productsById = products.findAllById(productIds);
+        var coversByProduct = images.coversOf(productIds);
+        var sellerNames = users.namesOf(page.getContent().stream().map(Auction::getSellerId).toList());
+
+        return PageView.of(page, auction -> {
+            ProductView product = productsById.get(auction.getProductId());
+
+            return new AuctionSummaryView(
+                    toView(auction),
+                    new AuctionSummaryView.Product(
+                            auction.getProductId(),
+                            product == null ? "Unknown item" : product.name(),
+                            coversByProduct.get(auction.getProductId())),
+                    product == null ? null : product.category(),
+                    new AuctionSummaryView.Seller(
+                            auction.getSellerId(),
+                            sellerNames.getOrDefault(auction.getSellerId(), "Unknown seller")));
+        });
+    }
+
+    /**
+     * EN: Applies a bid to a lot (guide §20). Every rule the guide lists is checked here, in its order,
+     *     and the auction is the only thing that moves — the bid record itself belongs to the bid module.
+     * VI: Áp một lượt trả giá vào lô (guide §20). Mọi luật guide liệt kê đều kiểm ở đây theo đúng thứ tự,
+     *     và chỉ phiên đấu giá thay đổi — bản ghi lượt trả giá thuộc về module bid.
+     */
+    @Transactional
+    public AcceptedBid acceptBid(UUID auctionId, UUID bidderId, BigDecimal amount) {
+        // EN: Locked, not merely read (guide §21). Reading the price and writing the new one must be one
+        //     indivisible step, or two bidders both read 10m and both think they won at 10.5m.
+        // VI: Đọc kèm khoá chứ không chỉ đọc (guide §21). Đọc giá rồi ghi giá mới phải là một bước không
+        //     thể tách, nếu không hai người cùng đọc 10 triệu và cùng tưởng mình thắng ở 10,5 triệu.
+        Auction auction = auctions.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+
+        Instant now = Instant.now();
+
+        // EN: Ended first, so a lot whose clock ran out says so rather than "not active".
+        // VI: Kiểm hết giờ trước, để lô đã hết thời gian nói đúng điều đó thay vì "chưa mở".
+        if (auction.getStatus() == AuctionStatus.ENDED
+                || auction.getStatus() == AuctionStatus.COMPLETED
+                || !now.isBefore(auction.getEndTime())) {
+
+            throw new BusinessException(
+                    ErrorCode.AUCTION_ALREADY_ENDED, "This auction has already ended");
+        }
+
+        if (!AuctionRules.isOpenForBidding(auction, now)) {
+            throw new BusinessException(
+                    ErrorCode.AUCTION_NOT_ACTIVE, "This auction is not open for bidding");
+        }
+
+        // EN: A seller bidding on their own lot is how a price gets pushed up with nobody paying it.
+        // VI: Người bán tự trả giá lô của mình chính là cách đẩy giá lên mà không ai phải trả.
+        if (auction.isOwnedBy(bidderId)) {
+            throw new BusinessException(
+                    ErrorCode.SELLER_CANNOT_BID, "You cannot bid on your own auction");
+        }
+
+        BigDecimal minimum = AuctionRules.minimumNextBid(auction);
+        if (amount.compareTo(minimum) < 0) {
+            throw new BusinessException(
+                    ErrorCode.BID_TOO_LOW,
+                    "The bid must be at least " + minimum.toPlainString());
+        }
+
+        auction.applyBid(amount);
+        auctions.save(auction);
+
+        return new AcceptedBid(
+                auction.getId(),
+                auction.getCurrentPrice(),
+                auction.getBidCount(),
+                AuctionRules.minimumNextBid(auction),
+                auction.getEndTime());
+    }
+
+    /** EN: What the caller learns once a bid is in. / VI: Những gì bên gọi biết được sau khi lượt trả giá vào. */
+    public record AcceptedBid(
+            UUID auctionId,
+            BigDecimal currentPrice,
+            int bidCount,
+            BigDecimal minimumNextBid,
+            Instant endTime) {
+    }
+
+    /**
+     * EN: One lot for the public page (guide §19, spec §7.7). A lot that has not been approved answers the
+     *     same as one that does not exist — the browse list hides it, so the direct URL must too.
+     * VI: Một lô cho trang công khai (guide §19, spec §7.7). Lô chưa được duyệt trả lời y như lô không tồn
+     *     tại — danh sách duyệt hàng đã giấu nó, nên gọi thẳng URL cũng phải giấu.
+     */
+    public AuctionDetailPublicView getPublic(UUID auctionId) {
+        Auction auction = auctions.findById(auctionId)
+                .filter(candidate -> PUBLIC_STATUSES.contains(candidate.getStatus()))
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+
+        ProductView product = products.findById(auction.getProductId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.PRODUCT_NOT_FOUND, "The product behind this auction is gone"));
+
+        String sellerName = users.findById(auction.getSellerId())
+                .map(account -> account.fullName())
+                .orElse("Unknown seller");
+
+        Instant now = Instant.now();
+
+        return new AuctionDetailPublicView(
+                toView(auction),
+                new AuctionDetailPublicView.Product(
+                        product.id(),
+                        product.name(),
+                        product.description(),
+                        product.condition().name()),
+                product.category(),
+                images.listPublic(product.id()),
+                new AuctionDetailPublicView.Seller(auction.getSellerId(), sellerName),
+                AuctionRules.minimumNextBid(auction),
+                AuctionRules.isOpenForBidding(auction, now),
+                now);
+    }
+
+    /**
+     * EN: Newest and ending-soon both need a tiebreak, or two lots with the same timestamp can swap places
+     *     between pages and one of them is never seen.
+     * VI: Sắp theo mới nhất và sắp đóng đều cần tiêu chí phụ, nếu không hai lô cùng mốc thời gian có thể đổi
+     *     chỗ giữa các trang và một trong hai không bao giờ được nhìn thấy.
+     */
+    private static Sort sortOf(AuctionSort sort) {
+        return switch (sort) {
+            case NEWEST -> Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id"));
+            case ENDING_SOON -> Sort.by(Sort.Order.asc("endTime"), Sort.Order.asc("id"));
+            case PRICE_ASC -> Sort.by(Sort.Order.asc("currentPrice"), Sort.Order.asc("id"));
+            case PRICE_DESC -> Sort.by(Sort.Order.desc("currentPrice"), Sort.Order.asc("id"));
+            case MOST_BIDS -> Sort.by(Sort.Order.desc("bidCount"), Sort.Order.asc("id"));
+        };
     }
 
     /**

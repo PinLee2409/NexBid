@@ -83,6 +83,34 @@ public class ProductService {
     }
 
     /**
+     * EN: Product ids in the given categories, for the browse filter. Ids only — the auction module joins
+     *     them itself rather than pulling whole products it does not need.
+     * VI: Id sản phẩm thuộc các danh mục đã cho, phục vụ bộ lọc duyệt hàng. Chỉ trả id — module auction tự
+     *     ghép lấy, thay vì kéo về cả sản phẩm mà nó không cần.
+     */
+    public List<UUID> idsInCategorySlugs(java.util.Collection<String> slugs) {
+        List<UUID> categoryIds = categories.findAll().stream()
+                .filter(category -> slugs.contains(category.getSlug()))
+                .map(Category::getId)
+                .toList();
+
+        return categoryIds.isEmpty() ? List.of() : products.findIdsByCategoryIdIn(categoryIds);
+    }
+
+    /**
+     * EN: Several products at once, keyed by id — so a list of auctions resolves its items in one query.
+     * VI: Lấy nhiều sản phẩm một lần, đánh theo id — để một danh sách phiên phân giải món hàng trong một truy vấn.
+     */
+    public java.util.Map<UUID, ProductView> findAllById(java.util.Collection<UUID> ids) {
+        if (ids.isEmpty()) {
+            return java.util.Map.of();
+        }
+
+        return products.findAllById(ids).stream()
+                .collect(java.util.stream.Collectors.toMap(Product::getId, ProductService::toView));
+    }
+
+    /**
      * EN: Reads a product without an ownership check. For an admin reviewing a lot, and later for the
      *     public auction page — both need to see a product they do not own.
      * VI: Đọc sản phẩm mà không kiểm quyền sở hữu. Dành cho admin duyệt lô, và sau này cho trang đấu giá

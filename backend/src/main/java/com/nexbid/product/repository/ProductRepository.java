@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import com.nexbid.product.entity.Product;
 
@@ -15,4 +16,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
     Optional<Product> findByIdAndSellerId(UUID id, UUID sellerId);
 
     long countByCategoryId(UUID categoryId);
+
+    @Query("select p.id from Product p where p.category.id in ?1")
+    List<UUID> findIdsByCategoryIdIn(java.util.Collection<UUID> categoryIds);
 }
