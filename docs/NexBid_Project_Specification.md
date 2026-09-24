@@ -1379,6 +1379,11 @@ Auction
 
 Đề xuất sử dụng Modular Monolith.
 
+Triển khai dùng **Spring Modulith** để cưỡng chế ranh giới: mỗi package con của
+`com.nexbid` là một module, và build sẽ đỏ nếu một module thò tay vào ruột
+module khác. `common` và `infrastructure` khai báo là module mở (shared) vì
+mọi module đều dùng chúng.
+
 ```text
 src/main/java/com/nexbid
 
@@ -1636,6 +1641,16 @@ PAYMENT_EXPIRED
 
 ACCESS_DENIED
 ```
+
+Ba mã bổ sung khi triển khai, vì chính ví dụ trong tài liệu cần tới:
+
+```text
+NOT_AUTHENTICATED   401 — danh sách trên có ACCESS_DENIED cho 403 nhưng bỏ trống 401
+VALIDATION_ERROR    400 — ví dụ ở Hướng dẫn §4 gọi đích danh mã này
+INTERNAL_ERROR      500 — catch-all vẫn phải trả đúng shape §28
+```
+
+Mỗi mã tự mang HTTP status của nó, nên thêm luật mới không đẻ ra status mới.
 
 ---
 
@@ -2172,6 +2187,11 @@ Lý do:
 - Vẫn thể hiện được kiến trúc tốt.
 
 Nếu project phát triển lớn hơn, Notification hoặc Analytics có thể được tách ra sau.
+
+Ranh giới module được Spring Modulith kiểm tra lúc build, nên việc tách sau này
+là cơ học chứ không phải viết lại. Event giữa các module dùng
+`@ApplicationModuleListener`; khi Kafka vào ở bước 34, chỉ cần thêm
+`@Externalized` lên event, phần code lắng nghe không đổi.
 
 ---
 

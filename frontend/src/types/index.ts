@@ -30,7 +30,15 @@ export interface ApiError {
   timestamp: IsoDateString;
 }
 
-/** Error codes the backend is expected to return (spec §29). */
+/**
+ * Error codes the backend returns (spec §29).
+ *
+ * The last three are not in §29's list but the specification's own examples
+ * require them, and the server defines them for that reason: §29 names
+ * ACCESS_DENIED for 403 but nothing for 401, the guide's §4 error example uses
+ * VALIDATION_ERROR by name, and a catch-all still has to answer in the
+ * documented shape.
+ */
 export type ErrorCode =
   | "USER_NOT_FOUND"
   | "EMAIL_ALREADY_EXISTS"
@@ -49,7 +57,12 @@ export type ErrorCode =
   | "PAYMENT_NOT_FOUND"
   | "PAYMENT_EXPIRED"
   | "ACCESS_DENIED"
-  | "NOT_AUTHENTICATED";
+  | "NOT_AUTHENTICATED"
+  | "VALIDATION_ERROR"
+  | "NOT_FOUND"
+  | "METHOD_NOT_ALLOWED"
+  | "UNSUPPORTED_MEDIA_TYPE"
+  | "INTERNAL_ERROR";
 
 export interface Page<T> {
   items: T[];

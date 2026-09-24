@@ -12,16 +12,14 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.nexbid.config.SecurityConfig;
+import com.nexbid.support.WebSliceSecurity;
 
 /**
- * A web slice, not a full context: the probe must be provably reachable
- * <em>through</em> the security filter chain, which is the part that is easy to
- * break later. {@link SecurityConfig} is imported for that reason — without it
- * the slice would test a version of the app that has no security at all.
+ * EN: A web slice with SecurityConfig imported, so the probe is proven reachable through the filter chain.
+ * VI: Test lát web có import SecurityConfig, để chứng minh probe đi lọt qua filter chain.
  */
 @WebMvcTest(HealthController.class)
-@Import(SecurityConfig.class)
+@Import(WebSliceSecurity.class)
 class HealthControllerTest {
 
     @Autowired
@@ -37,8 +35,9 @@ class HealthControllerTest {
 
     @Test
     void everythingElseStaysClosed() throws Exception {
-        // The probe is an exception to the rule, not the start of a pattern.
+        // EN: 401 not 403 — an anonymous caller is told to sign in, not that it would be pointless.
+        // VI: 401 chứ không phải 403 — người chưa đăng nhập được bảo hãy đăng nhập, không phải bị cấm.
         mockMvc.perform(get("/api/auctions"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 }

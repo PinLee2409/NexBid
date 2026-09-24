@@ -94,7 +94,7 @@ export function LotInFocus({ auction, serverTime }: LotInFocusProps) {
 
           {/* The image breaks the container and bleeds to the right edge. */}
           <div className="lg:col-span-7">
-            <div className="bg-surface relative aspect-[4/3] lg:mr-[calc(50%-50vw)] lg:aspect-[5/6] lg:h-full lg:w-[calc(100%+50vw-50%)]">
+            <div className="bg-surface relative aspect-[4/3] lg:bleed-right lg:aspect-[5/6] lg:h-full">
               {image ? (
                 <Image
                   unoptimized={isLocalImage(image.url)}

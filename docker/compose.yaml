@@ -1,13 +1,12 @@
-# Local infrastructure for NexBid.
+# EN: Local infrastructure. Postgres is on 55432 because 5432 and 5433 are both taken on this machine.
+# VI: Hạ tầng chạy local. Postgres ở cổng 55432 vì 5432 và 5433 trên máy này đều đã bị chiếm.
 #
-# Postgres is published on 55432. Both 5432 and 5433 are already taken on this
-# machine — 5432 by another project's container, 5433 by a native PostgreSQL 18
-# service — and Docker will happily bind only the IPv6 half of a contested port,
-# leaving `localhost` to resolve to the wrong server with no error anywhere.
+# EN: On a contested port Docker may bind only the IPv6 half, and localhost then reaches the wrong server.
+# VI: Khi cổng bị tranh chấp, Docker có thể chỉ bind được phía IPv6, và localhost sẽ trỏ nhầm server khác.
 #
 #   docker compose -f docker/compose.yaml up -d
-#   docker compose -f docker/compose.yaml down        # keeps the data
-#   docker compose -f docker/compose.yaml down -v     # drops the volume too
+#   docker compose -f docker/compose.yaml down        # keeps data / giữ dữ liệu
+#   docker compose -f docker/compose.yaml down -v     # drops data / xoá luôn dữ liệu
 services:
   postgres:
     image: postgres:17-alpine
@@ -17,15 +16,16 @@ services:
       POSTGRES_DB: nexbid
       POSTGRES_USER: nexbid
       POSTGRES_PASSWORD: nexbid
-      # Deterministic collation, so ORDER BY does not depend on the host locale.
+      # EN: Fixed collation, so ORDER BY does not depend on the host locale.
+      # VI: Cố định collation, để ORDER BY không phụ thuộc locale của máy.
       POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
     ports:
       - "55432:5432"
     volumes:
       - nexbid-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      # The application waits on this, so it has to mean "accepting queries",
-      # not merely "process started".
+      # EN: Must mean "accepting queries", not merely "process started".
+      # VI: Phải có nghĩa là "nhận được truy vấn", không chỉ là "tiến trình đã chạy".
       test: ["CMD-SHELL", "pg_isready -U nexbid -d nexbid"]
       interval: 5s
       timeout: 3s
