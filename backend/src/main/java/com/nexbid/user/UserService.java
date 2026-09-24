@@ -71,6 +71,19 @@ public class UserService {
     }
 
     /**
+     * EN: Names for a list of ids, in one query. Screens that show many rows would otherwise ask per row.
+     * VI: Lấy tên cho một loạt id trong một truy vấn. Nếu không, màn hình nhiều dòng sẽ hỏi từng dòng một.
+     */
+    public java.util.Map<java.util.UUID, String> namesOf(java.util.Collection<java.util.UUID> ids) {
+        if (ids.isEmpty()) {
+            return java.util.Map.of();
+        }
+
+        return users.findAllById(ids).stream()
+                .collect(Collectors.toMap(User::getId, User::getFullName));
+    }
+
+    /**
      * EN: Renames an account. The id comes from the token, never from the request body.
      * VI: Đổi tên tài khoản. Id lấy từ token, không bao giờ lấy từ body của request.
      */

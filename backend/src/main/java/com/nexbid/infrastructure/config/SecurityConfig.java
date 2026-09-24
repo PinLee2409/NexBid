@@ -47,7 +47,10 @@ public class SecurityConfig {
             "/api/health", "/actuator/health", "/api/auth/**",
             // EN: Browsing is public — someone deciding whether to join must see what is on offer.
             // VI: Duyệt hàng là công khai — người đang cân nhắc tham gia phải xem được có gì.
-            "/api/categories", "/api/categories/**"
+            "/api/categories", "/api/categories/**",
+            // EN: A browser loading <img> sends no Authorization header, so product photos must be open.
+            // VI: Trình duyệt nạp thẻ <img> không gửi header Authorization, nên ảnh sản phẩm phải mở.
+            "/media/**"
     };
 
     @Bean
