@@ -50,6 +50,12 @@ management:
       show-details: never
 
 nexbid:
+  bootstrap:
+    # EN: Accounts to be granted these roles at startup. Empty by default; set NEXBID_ADMIN_EMAILS for a dev admin.
+    # VI: Các tài khoản được cấp vai trò này lúc khởi động. Mặc định trống; đặt NEXBID_ADMIN_EMAILS để có admin cho dev.
+    admin-emails: ${NEXBID_ADMIN_EMAILS:}
+    seller-emails: ${NEXBID_SELLER_EMAILS:}
+
   jwt:
     # EN: Development default only. Any real deployment must pass NEXBID_JWT_SECRET; HMAC-SHA256 needs 32+ bytes.
     # VI: Chỉ là giá trị mặc định cho dev. Môi trường thật bắt buộc truyền NEXBID_JWT_SECRET; HMAC-SHA256 cần từ 32 byte.

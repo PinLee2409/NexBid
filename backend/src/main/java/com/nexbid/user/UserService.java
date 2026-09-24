@@ -4,6 +4,9 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+
+import com.nexbid.common.exception.ErrorCode;
+import com.nexbid.common.exception.ResourceNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.nexbid.user.entity.Role;
@@ -60,6 +63,23 @@ public class UserService {
         User user = new User(fullName, email, passwordHash);
         user.addRole(role);
 
+        return toAccount(users.save(user));
+    }
+
+    /**
+     * EN: Adds a role to an existing account. Idempotent, so running it twice is harmless.
+     * VI: Thêm vai trò cho tài khoản đã có. Gọi nhiều lần vẫn an toàn vì không nhân đôi.
+     */
+    @Transactional
+    public UserAccount grantRole(String email, RoleName roleName) {
+        User user = users.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.USER_NOT_FOUND, "No account for " + email));
+
+        Role role = roles.findByName(roleName)
+                .orElseThrow(() -> new IllegalStateException("Role missing from database: " + roleName));
+
+        user.addRole(role);
         return toAccount(users.save(user));
     }
 

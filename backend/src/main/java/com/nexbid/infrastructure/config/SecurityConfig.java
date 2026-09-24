@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -20,6 +21,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import com.nexbid.auth.JwtAuthenticationFilter;
 import com.nexbid.common.exception.ErrorCode;
 import com.nexbid.common.response.ErrorResponse;
+import com.nexbid.user.RoleName;
 
 import jakarta.servlet.http.HttpServletResponse;
 import tools.jackson.databind.ObjectMapper;
@@ -30,6 +32,9 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Configuration
 @EnableWebSecurity
+// EN: Turns on @PreAuthorize, for rules a URL pattern cannot express — "only the seller who owns this lot".
+// VI: Bật @PreAuthorize, cho những luật mà mẫu URL không diễn tả được — "chỉ người bán sở hữu lô này".
+@EnableMethodSecurity
 public class SecurityConfig {
 
     /**
@@ -53,6 +58,12 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_PATHS).permitAll()
+                        // EN: The frontend also hides these menus, but that is decoration —
+                        //     this is the line that actually stops someone typing the URL.
+                        // VI: Frontend cũng ẩn các menu này, nhưng đó chỉ là trang trí —
+                        //     đây mới là chỗ thật sự chặn người gõ thẳng URL.
+                        .requestMatchers("/api/admin/**").hasRole(RoleName.ADMIN.name())
+                        .requestMatchers("/api/seller/**").hasRole(RoleName.SELLER.name())
                         .anyRequest().authenticated())
                 // EN: No form login, no Basic prompt — failures must be JSON, not a login page.
                 // VI: Không form login, không Basic — lỗi phải trả JSON, không phải trang đăng nhập.
