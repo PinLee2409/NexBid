@@ -57,6 +57,34 @@ management:
       show-details: never
 
 nexbid:
+  web:
+    # EN: Origins allowed to open the realtime socket. The handshake checks this even though WebSocket
+    #     itself ignores CORS, so a stray page cannot quietly attach to the feed.
+    # VI: Các origin được phép mở socket realtime. Bước bắt tay vẫn kiểm dù bản thân WebSocket bỏ qua CORS,
+    #     nên một trang lạ không thể lặng lẽ bám vào luồng tin.
+    allowed-origins: ${NEXBID_ALLOWED_ORIGINS:http://localhost:3000}
+
+  scheduler:
+    # EN: Off switch for background work, e.g. when a second instance must not run the clock twice.
+    # VI: Công tắc tắt tác vụ nền, ví dụ khi instance thứ hai không được chạy đồng hồ lần nữa.
+    enabled: ${NEXBID_SCHEDULER_ENABLED:true}
+    # EN: How long a lot can sit past its start or end time before the scheduler acts, at worst.
+    # VI: Thời gian tối đa một lô có thể nằm quá giờ mở hoặc giờ đóng trước khi scheduler xử lý.
+    interval: ${NEXBID_SCHEDULER_INTERVAL_MS:5000}
+    batch-size: 200
+
+  notification:
+    # EN: How far ahead watchers hear "opens soon" / "closes soon" — the catalogue's own "ending soon".
+    # VI: Người theo dõi được báo "sắp mở" / "sắp đóng" trước bao lâu — đúng như "sắp đóng" của danh mục.
+    heads-up: ${NEXBID_HEADS_UP:1h}
+    heads-up-interval: ${NEXBID_HEADS_UP_INTERVAL_MS:60000}
+
+  payment:
+    # EN: How long a winner has to pay, counted from the close. Matches the frontend's demo data.
+    # VI: Người thắng có bao lâu để trả, tính từ lúc đóng phiên. Khớp với dữ liệu demo của frontend.
+    window: ${NEXBID_PAYMENT_WINDOW:48h}
+    expiry-interval: ${NEXBID_PAYMENT_EXPIRY_INTERVAL_MS:60000}
+
   storage:
     # EN: Outside the source tree — uploads are data, not code, and must never reach a commit.
     # VI: Nằm ngoài cây mã nguồn — ảnh tải lên là dữ liệu chứ không phải mã, không được lọt vào commit.

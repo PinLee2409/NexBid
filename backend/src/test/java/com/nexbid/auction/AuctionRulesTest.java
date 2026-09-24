@@ -101,6 +101,54 @@ class AuctionRulesTest {
         assertThat(AuctionRules.isOpenForBidding(auction, Instant.now())).isFalse();
     }
 
+    /** EN: A lot closing {@code remaining} after a fixed "now". / VI: Một lô đóng sau "bây giờ" cố định một khoảng {@code remaining}. */
+    private static final Instant NOW = Instant.parse("2026-10-01T20:59:45Z");
+
+    private static Auction closingIn(Duration remaining, boolean antiSniping) {
+        Auction auction = new Auction(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                new BigDecimal("1000"),
+                new BigDecimal("50"),
+                NOW.minus(Duration.ofHours(1)),
+                NOW.plus(remaining),
+                antiSniping, 30, 120);
+        auction.setStatus(AuctionStatus.ACTIVE);
+        return auction;
+    }
+
+    @Test
+    void theSpecsOwnExampleExtendsTheLot() {
+        // EN: Spec §13: ends 21:00:00, bid at 20:59:45, 15 seconds left, inside the 30-second window.
+        // VI: Spec §13: đóng lúc 21:00:00, trả giá lúc 20:59:45, còn 15 giây, nằm trong khung 30 giây.
+        assertThat(AuctionRules.isLastMinuteBid(closingIn(Duration.ofSeconds(15), true), NOW)).isTrue();
+    }
+
+    @Test
+    void theWindowEdgeCounts() {
+        assertThat(AuctionRules.isLastMinuteBid(closingIn(Duration.ofSeconds(30), true), NOW)).isTrue();
+        assertThat(AuctionRules.isLastMinuteBid(closingIn(Duration.ofSeconds(31), true), NOW)).isFalse();
+        assertThat(AuctionRules.isLastMinuteBid(
+                closingIn(Duration.ofSeconds(30).plusMillis(1), true), NOW)).isFalse();
+    }
+
+    @Test
+    void aLotWithAntiSnipingOffIsNeverExtended() {
+        assertThat(AuctionRules.isLastMinuteBid(closingIn(Duration.ofSeconds(1), false), NOW)).isFalse();
+    }
+
+    @Test
+    void theExtensionCountsFromTheOldCloseNotFromTheBid() {
+        Auction auction = closingIn(Duration.ofSeconds(15), true);
+
+        auction.extendForLastMinuteBid();
+
+        // EN: 21:00:00 + 120 s = 21:02:00, exactly as spec §13 writes it — not 20:59:45 + 120 s.
+        // VI: 21:00:00 + 120 giây = 21:02:00, đúng như spec §13 viết — không phải 20:59:45 + 120 giây.
+        assertThat(auction.getEndTime()).isEqualTo(Instant.parse("2026-10-01T21:02:00Z"));
+        assertThat(auction.getExtensionCount()).isEqualTo(1);
+    }
+
     @Test
     void anEndedLotIsNotOpen() {
         Auction auction = lot("1000", "1000", "50", 0);

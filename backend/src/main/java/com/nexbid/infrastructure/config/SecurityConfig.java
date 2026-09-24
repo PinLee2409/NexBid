@@ -46,13 +46,19 @@ public class SecurityConfig {
     // VI: Đăng ký và đăng nhập phải gọi được khi chưa có token — vốn dĩ chúng sinh ra để làm thế.
     static final String[] PUBLIC_PATHS = {
             "/api/health", "/actuator/health", "/api/auth/**",
+            // EN: Every countdown on the site measures against this, so it must answer before sign-in.
+            // VI: Mọi đồng hồ đếm ngược trên site đo theo mốc này, nên nó phải trả lời từ trước khi đăng nhập.
+            "/api/server-time",
             // EN: Browsing is public — someone deciding whether to join must see what is on offer.
             // VI: Duyệt hàng là công khai — người đang cân nhắc tham gia phải xem được có gì.
             "/api/categories", "/api/categories/**",
             "/api/auctions", "/api/auctions/**",
             // EN: A browser loading <img> sends no Authorization header, so product photos must be open.
             // VI: Trình duyệt nạp thẻ <img> không gửi header Authorization, nên ảnh sản phẩm phải mở.
-            "/media/**"
+            "/media/**",
+            // EN: The realtime channel carries only what the public page already shows.
+            // VI: Kênh realtime chỉ chở những thứ trang công khai vốn đã hiển thị.
+            "/ws", "/ws/**"
     };
 
     @Bean
@@ -68,10 +74,12 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // EN: Carved out before the public rule below: reading a lot is open to anyone,
-                        //     offering money for it is not.
+                        //     offering money for it, watching it or setting an auto bid on it is not.
                         // VI: Khoét ra trước luật công khai bên dưới: xem một lô thì ai cũng được, còn bỏ
-                        //     tiền ra mua thì không.
+                        //     tiền ra mua, theo dõi hay đặt auto bid thì không.
                         .requestMatchers(HttpMethod.POST, "/api/auctions/*/bids").authenticated()
+                        .requestMatchers("/api/auctions/*/watch").authenticated()
+                        .requestMatchers("/api/auctions/*/auto-bid").authenticated()
                         .requestMatchers(PUBLIC_PATHS).permitAll()
                         // EN: The frontend also hides these menus, but that is decoration —
                         //     this is the line that actually stops someone typing the URL.

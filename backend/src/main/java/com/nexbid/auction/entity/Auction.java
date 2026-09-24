@@ -85,6 +85,15 @@ public class Auction {
     @Column(name = "bid_count", nullable = false)
     private int bidCount;
 
+    /**
+     * EN: Who holds the highest bid right now. Written in the same locked update as the price, so the two
+     *     can never disagree — and never shown to anyone while the lot is running.
+     * VI: Ai đang giữ lượt trả giá cao nhất lúc này. Ghi trong cùng lệnh cập nhật có khoá với giá, nên hai
+     *     thứ không bao giờ lệch nhau — và không hiển thị cho ai khi lô còn đang chạy.
+     */
+    @Column(name = "leading_bidder_id")
+    private UUID leadingBidderId;
+
     @Column(name = "winner_id")
     private UUID winnerId;
 
@@ -151,9 +160,32 @@ public class Auction {
      * VI: Ghi nhận một lượt trả giá đã được chấp nhận. Chỉ gọi sau khi mọi luật đã qua, nên bản thân nó
      *     không kiểm gì — entity mà tự kiểm lại là entity có hai nơi có thể bất đồng.
      */
-    public void applyBid(BigDecimal amount) {
+    public void applyBid(UUID bidderId, BigDecimal amount) {
         this.currentPrice = amount;
         this.bidCount += 1;
+        this.leadingBidderId = bidderId;
+    }
+
+    /**
+     * EN: Ends the bidding (spec §16). Whoever led when it stopped wins; with no bids there is no winner.
+     *     This is the only place a winner is ever set.
+     * VI: Kết thúc trả giá (spec §16). Ai đang dẫn lúc dừng thì thắng; không có lượt nào thì không có
+     *     người thắng. Đây là nơi duy nhất người thắng được gán.
+     */
+    public void close() {
+        this.status = AuctionStatus.ENDED;
+        this.winnerId = this.leadingBidderId;
+    }
+
+    /**
+     * EN: Pushes the close back after a last-minute bid (spec §13). From the old end, not from the bid:
+     *     21:00:00 becomes 21:02:00 whether the bid came at 20:59:45 or 20:59:59.
+     * VI: Lùi giờ đóng sau một lượt trả giá phút chót (spec §13). Cộng từ giờ đóng cũ chứ không từ lúc trả
+     *     giá: 21:00:00 thành 21:02:00 dù lượt trả giá tới lúc 20:59:45 hay 20:59:59.
+     */
+    public void extendForLastMinuteBid() {
+        this.endTime = this.endTime.plusSeconds(this.extensionSeconds);
+        this.extensionCount += 1;
     }
 
     public boolean isOwnedBy(UUID userId) {
@@ -255,6 +287,10 @@ public class Auction {
 
     public UUID getWinnerId() {
         return winnerId;
+    }
+
+    public UUID getLeadingBidderId() {
+        return leadingBidderId;
     }
 
     public String getRejectionReason() {

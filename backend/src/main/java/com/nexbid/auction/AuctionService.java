@@ -3,8 +3,14 @@ package com.nexbid.auction;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -33,14 +39,6 @@ import com.nexbid.user.UserService;
 @Service
 public class AuctionService {
 
-    /** EN: Statuses that still tie up the product. / VI: Các trạng thái vẫn còn giữ chỗ sản phẩm. */
-    private static final List<AuctionStatus> LIVE = List.of(
-            AuctionStatus.DRAFT,
-            AuctionStatus.PENDING_APPROVAL,
-            AuctionStatus.SCHEDULED,
-            AuctionStatus.ACTIVE,
-            AuctionStatus.ENDED);
-
     /** EN: "Ending soon" means within the hour. / VI: "Sắp đóng" nghĩa là trong vòng một giờ. */
     private static final long ENDING_SOON_SECONDS = 3600;
 
@@ -58,16 +56,87 @@ public class AuctionService {
     private final ProductService products;
     private final ProductImageService images;
     private final UserService users;
+    private final ApplicationEventPublisher events;
 
     public AuctionService(
             AuctionRepository auctions,
             ProductService products,
             ProductImageService images,
-            UserService users) {
+            UserService users,
+            ApplicationEventPublisher events) {
         this.auctions = auctions;
         this.products = products;
         this.images = images;
         this.users = users;
+        this.events = events;
+    }
+
+    /**
+     * EN: Opens every lot whose start time has arrived (guide §25). Capped per run so one large backlog
+     *     cannot hold thousands of row locks inside a single transaction; the next run takes the rest.
+     * VI: Mở mọi lô đã tới giờ (guide §25). Giới hạn mỗi lượt chạy để một đống tồn đọng không giữ hàng
+     *     nghìn khoá dòng trong một transaction; lượt chạy sau sẽ xử lý phần còn lại.
+     */
+    @Transactional
+    public int startDueAuctions(Instant now, int batchSize) {
+        List<Auction> due = auctions.findDueToStart(now, PageRequest.of(0, batchSize));
+
+        for (Auction auction : due) {
+            auction.setStatus(AuctionStatus.ACTIVE);
+            events.publishEvent(AuctionLifecycleEvent.started(auction));
+        }
+
+        auctions.saveAll(due);
+        return due.size();
+    }
+
+    /**
+     * EN: Closes every lot whose end time has arrived (guide §26) and names its winner (guide §27). The
+     *     price and bid count stay exactly as the last accepted bid set them — that price is the final one.
+     * VI: Đóng mọi lô đã tới giờ kết thúc (guide §26) và chỉ định người thắng (guide §27). Giá và số lượt
+     *     giữ nguyên như lượt trả giá cuối cùng đã đặt — mức giá đó chính là giá chốt.
+     */
+    @Transactional
+    public int endDueAuctions(Instant now, int batchSize) {
+        List<Auction> due = auctions.findDueToEnd(now, PageRequest.of(0, batchSize));
+
+        for (Auction auction : due) {
+            // EN: Winner chosen inside the same lock that closed the bidding (guide §27, spec §12).
+            // VI: Người thắng được chọn trong cùng khoá đã đóng việc trả giá (guide §27, spec §12).
+            auction.close();
+
+            if (auction.getWinnerId() == null) {
+                // EN: Nothing was sold, so the product is the seller's to list again.
+                // VI: Chưa bán được gì, nên sản phẩm trở lại tay người bán để đăng lại.
+                products.markAuctionState(auction.getProductId(), ProductStatus.AVAILABLE);
+            }
+
+            events.publishEvent(AuctionLifecycleEvent.ended(auction));
+        }
+
+        auctions.saveAll(due);
+        return due.size();
+    }
+
+    /**
+     * EN: The winner let the payment deadline pass (spec §17). No sale happened, so the lot is cancelled and
+     *     the product goes back to the seller — otherwise it would stay locked to a buyer who never paid.
+     * VI: Người thắng để quá hạn thanh toán (spec §17). Giao dịch không thành, nên lô bị huỷ và sản phẩm trở
+     *     về tay người bán — nếu không nó sẽ bị khoá mãi cho một người mua không bao giờ trả tiền.
+     */
+    @Transactional
+    public void cancelUnpaid(UUID auctionId) {
+        Auction auction = auctions.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+
+        if (auction.getStatus() != AuctionStatus.ENDED) {
+            return;
+        }
+
+        auction.setStatus(AuctionStatus.CANCELLED);
+        products.markAuctionState(auction.getProductId(), ProductStatus.AVAILABLE);
+        auctions.save(auction);
     }
 
     @Transactional
@@ -81,7 +150,7 @@ public class AuctionService {
         requireSellableProduct(product);
         requireSaneSchedule(request.startTime(), request.endTime());
 
-        if (auctions.existsByProductIdAndStatusIn(product.id(), LIVE)) {
+        if (auctions.holdsProduct(product.id())) {
             throw new BusinessException(
                     ErrorCode.PRODUCT_ALREADY_IN_AUCTION,
                     "This product already has an auction that has not finished");
@@ -197,18 +266,143 @@ public class AuctionService {
         var page = auctions.findAll(
                 spec, PageRequest.of(query.zeroBasedPage(), query.size(), sortOf(query.sort())));
 
-        // EN: Products, covers and seller names are fetched once for the whole page rather than per row.
-        // VI: Sản phẩm, ảnh bìa và tên người bán lấy một lần cho cả trang thay vì từng dòng một.
-        List<UUID> productIds = page.getContent().stream().map(Auction::getProductId).toList();
+        return PageView.of(page, summarize(page.getContent(), AuctionService::toPublicView));
+    }
+
+    /**
+     * EN: Lots the caller won (guide §27), most recent first. Paid ones stay on the list — winning did
+     *     not stop being true because the bill was settled.
+     * VI: Các lô người gọi đã thắng (guide §27), mới nhất trước. Lô đã thanh toán vẫn nằm trong danh sách —
+     *     đã thắng thì vẫn là đã thắng, dù hoá đơn đã trả xong.
+     */
+    public List<AuctionSummaryView> winsOf(UUID userId) {
+        List<Auction> won = auctions.findByWinnerIdAndStatusInOrderByEndTimeDesc(
+                userId, List.of(AuctionStatus.ENDED, AuctionStatus.COMPLETED));
+
+        return won.stream().map(summarize(won, AuctionService::toView)).toList();
+    }
+
+    /**
+     * EN: Takes the bidding lock and reports where the lot stands (guide §31). Auto bidding holds this
+     *     lock for its whole decision, so no manual bid can slip in between reading and answering.
+     * VI: Giữ khoá trả giá và cho biết lô đang ở đâu (guide §31). Việc trả giá tự động giữ khoá này suốt
+     *     lúc quyết định, nên không lượt trả giá thủ công nào chen vào giữa lúc đọc và lúc đáp trả.
+     */
+    @Transactional
+    public BiddingState lockBiddingState(UUID auctionId, Instant at) {
+        return stateOf(auctions.findByIdForUpdate(auctionId), auctionId, at);
+    }
+
+    /** EN: The same, without the lock, for reads that decide nothing. / VI: Như trên nhưng không khoá, cho các lần đọc không quyết định gì. */
+    public BiddingState biddingState(UUID auctionId, Instant at) {
+        return stateOf(auctions.findById(auctionId), auctionId, at);
+    }
+
+    private static BiddingState stateOf(Optional<Auction> found, UUID auctionId, Instant at) {
+        Auction auction = found.orElseThrow(() -> new ResourceNotFoundException(
+                ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+
+        return new BiddingState(
+                auction.getId(),
+                auction.getSellerId(),
+                AuctionRules.isOpenForBidding(auction, at),
+                hasEnded(auction, at),
+                auction.getCurrentPrice(),
+                auction.getMinimumIncrement(),
+                AuctionRules.minimumNextBid(auction),
+                auction.getBidCount(),
+                auction.getLeadingBidderId(),
+                auction.getEndTime());
+    }
+
+    private static boolean hasEnded(Auction auction, Instant at) {
+        return auction.getStatus() == AuctionStatus.ENDED
+                || auction.getStatus() == AuctionStatus.COMPLETED
+                || !at.isBefore(auction.getEndTime());
+    }
+
+    /**
+     * EN: What a lot is called, for text written about it elsewhere — a notification, later an email.
+     * VI: Tên gọi của một lô, cho những đoạn chữ viết về nó ở nơi khác — thông báo, sau này là email.
+     */
+    public String lotTitleOf(UUID auctionId) {
+        return auctions.findById(auctionId)
+                .flatMap(auction -> products.findById(auction.getProductId()))
+                .map(ProductView::name)
+                .orElse("an auction");
+    }
+
+    /**
+     * EN: Scheduled lots opening in (from, to]. For heads-up notices; the window's lower bound is open so
+     *     a lot is never counted as "about to open" once it has.
+     * VI: Các lô đã lên lịch sẽ mở trong khoảng (from, to]. Dùng cho thông báo nhắc trước; cận dưới mở để
+     *     một lô đã mở rồi không bao giờ bị tính là "sắp mở".
+     */
+    public List<UUID> openingBetween(Instant from, Instant to) {
+        return auctions.findIdsOpeningBetween(from, to);
+    }
+
+    /** EN: Running lots closing in (from, to]. / VI: Các lô đang chạy sẽ đóng trong khoảng (from, to]. */
+    public List<UUID> closingBetween(Instant from, Instant to) {
+        return auctions.findIdsClosingBetween(from, to);
+    }
+
+    /**
+     * EN: Catalogue cards for the given lots, in the order given, skipping any that are not on public
+     *     view. For other modules that keep their own lists of lots, such as the watchlist.
+     * VI: Thẻ danh mục cho các lô được đưa vào, giữ đúng thứ tự, bỏ qua lô nào không công khai. Dành cho
+     *     các module tự giữ danh sách lô của riêng mình, như danh sách theo dõi.
+     */
+    public List<AuctionSummaryView> publicSummariesOf(List<UUID> auctionIds) {
+        if (auctionIds.isEmpty()) {
+            return List.of();
+        }
+
+        var byId = auctions.findAllById(auctionIds).stream()
+                .filter(auction -> PUBLIC_STATUSES.contains(auction.getStatus()))
+                .collect(Collectors.toMap(Auction::getId, auction -> auction));
+
+        List<Auction> visible = auctionIds.stream().map(byId::get).filter(Objects::nonNull).toList();
+
+        return visible.stream().map(summarize(visible, AuctionService::toPublicView)).toList();
+    }
+
+    /**
+     * EN: Cards for lots the caller took part in, whatever their status now — a winner still needs to see
+     *     the lot behind a payment after it was cancelled. Only ever call it with such lots.
+     * VI: Thẻ cho các lô mà người gọi có tham gia, bất kể trạng thái hiện tại — người thắng vẫn cần thấy lô
+     *     đứng sau một khoản thanh toán kể cả khi lô đã bị huỷ. Chỉ gọi với những lô như vậy.
+     */
+    public Map<UUID, AuctionSummaryView> participantSummariesOf(List<UUID> auctionIds) {
+        if (auctionIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Auction> lots = auctions.findAllById(auctionIds);
+        return lots.stream()
+                .map(summarize(lots, AuctionService::toPublicView))
+                .collect(Collectors.toMap(card -> card.auction().id(), card -> card));
+    }
+
+    /**
+     * EN: Builds catalogue cards. Products, covers and seller names are fetched once for all the lots
+     *     rather than per row.
+     * VI: Dựng các thẻ danh mục. Sản phẩm, ảnh bìa và tên người bán lấy một lần cho tất cả các lô thay vì
+     *     từng dòng một.
+     */
+    private Function<Auction, AuctionSummaryView> summarize(
+            List<Auction> lots, Function<Auction, AuctionView> view) {
+
+        List<UUID> productIds = lots.stream().map(Auction::getProductId).toList();
         var productsById = products.findAllById(productIds);
         var coversByProduct = images.coversOf(productIds);
-        var sellerNames = users.namesOf(page.getContent().stream().map(Auction::getSellerId).toList());
+        var sellerNames = users.namesOf(lots.stream().map(Auction::getSellerId).toList());
 
-        return PageView.of(page, auction -> {
+        return auction -> {
             ProductView product = productsById.get(auction.getProductId());
 
             return new AuctionSummaryView(
-                    toView(auction),
+                    view.apply(auction),
                     new AuctionSummaryView.Product(
                             auction.getProductId(),
                             product == null ? "Unknown item" : product.name(),
@@ -217,7 +411,7 @@ public class AuctionService {
                     new AuctionSummaryView.Seller(
                             auction.getSellerId(),
                             sellerNames.getOrDefault(auction.getSellerId(), "Unknown seller")));
-        });
+        };
     }
 
     /**
@@ -226,8 +420,18 @@ public class AuctionService {
      * VI: Áp một lượt trả giá vào lô (guide §20). Mọi luật guide liệt kê đều kiểm ở đây theo đúng thứ tự,
      *     và chỉ phiên đấu giá thay đổi — bản ghi lượt trả giá thuộc về module bid.
      */
-    @Transactional
     public AcceptedBid acceptBid(UUID auctionId, UUID bidderId, BigDecimal amount) {
+        return acceptBid(auctionId, bidderId, amount, Instant.now());
+    }
+
+    /**
+     * EN: The same, judged at a given instant. An auto bid answering a bid is judged at that bid's instant,
+     *     so it can never fail on a deadline the bid it answers had already beaten.
+     * VI: Như trên, nhưng xét tại một thời điểm cho trước. Auto bid đáp trả một lượt được xét tại đúng thời
+     *     điểm của lượt đó, nên không bao giờ hỏng vì một hạn chót mà lượt nó đáp trả đã kịp vượt qua.
+     */
+    @Transactional
+    public AcceptedBid acceptBid(UUID auctionId, UUID bidderId, BigDecimal amount, Instant at) {
         // EN: Locked, not merely read (guide §21). Reading the price and writing the new one must be one
         //     indivisible step, or two bidders both read 10m and both think they won at 10.5m.
         // VI: Đọc kèm khoá chứ không chỉ đọc (guide §21). Đọc giá rồi ghi giá mới phải là một bước không
@@ -236,7 +440,7 @@ public class AuctionService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
 
-        Instant now = Instant.now();
+        Instant now = at;
 
         // EN: Ended first, so a lot whose clock ran out says so rather than "not active".
         // VI: Kiểm hết giờ trước, để lô đã hết thời gian nói đúng điều đó thay vì "chưa mở".
@@ -267,7 +471,19 @@ public class AuctionService {
                     "The bid must be at least " + minimum.toPlainString());
         }
 
-        auction.applyBid(amount);
+        // EN: Read before it is overwritten — whoever led until now is the one who has just been outbid.
+        // VI: Đọc trước khi bị ghi đè — ai dẫn tới lúc này chính là người vừa bị vượt giá.
+        UUID previousLeader = auction.getLeadingBidderId();
+
+        auction.applyBid(bidderId, amount);
+
+        // EN: Judged at the same instant the bid was accepted, so "15 seconds left" means exactly that.
+        // VI: Xét tại đúng thời điểm lượt trả giá được nhận, nên "còn 15 giây" nghĩa là đúng 15 giây.
+        if (AuctionRules.isLastMinuteBid(auction, now)) {
+            auction.extendForLastMinuteBid();
+            events.publishEvent(AuctionLifecycleEvent.extended(auction));
+        }
+
         auctions.save(auction);
 
         return new AcceptedBid(
@@ -275,7 +491,9 @@ public class AuctionService {
                 auction.getCurrentPrice(),
                 auction.getBidCount(),
                 AuctionRules.minimumNextBid(auction),
-                auction.getEndTime());
+                auction.getEndTime(),
+                now,
+                previousLeader);
     }
 
     /** EN: What the caller learns once a bid is in. / VI: Những gì bên gọi biết được sau khi lượt trả giá vào. */
@@ -284,7 +502,13 @@ public class AuctionService {
             BigDecimal currentPrice,
             int bidCount,
             BigDecimal minimumNextBid,
-            Instant endTime) {
+            Instant endTime,
+            // EN: The instant the bid was checked against the clock; the bid record carries exactly this.
+            // VI: Thời điểm lượt trả giá được so với đồng hồ; bản ghi lượt trả giá mang đúng mốc này.
+            Instant acceptedAt,
+            // EN: Who led before this bid; null for the first bid. May be the bidder themselves.
+            // VI: Ai dẫn trước lượt này; null nếu là lượt đầu. Có thể chính là người vừa trả giá.
+            UUID previousLeaderId) {
     }
 
     /**
@@ -293,6 +517,19 @@ public class AuctionService {
      * VI: Một lô cho trang công khai (guide §19, spec §7.7). Lô chưa được duyệt trả lời y như lô không tồn
      *     tại — danh sách duyệt hàng đã giấu nó, nên gọi thẳng URL cũng phải giấu.
      */
+    /**
+     * EN: Fails exactly as the public page does when a lot is not on show. Anything hanging off a lot —
+     *     its bid history, later its watchers — has to hide behind the same door, or the door is decoration.
+     * VI: Báo lỗi y hệt trang công khai khi lô không được trưng ra. Mọi thứ gắn theo một lô — lịch sử trả
+     *     giá, sau này là người theo dõi — đều phải nấp sau cùng một cánh cửa, nếu không cửa chỉ để trang trí.
+     */
+    public void requirePubliclyVisible(UUID auctionId) {
+        auctions.findById(auctionId)
+                .filter(candidate -> PUBLIC_STATUSES.contains(candidate.getStatus()))
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+    }
+
     public AuctionDetailPublicView getPublic(UUID auctionId) {
         Auction auction = auctions.findById(auctionId)
                 .filter(candidate -> PUBLIC_STATUSES.contains(candidate.getStatus()))
@@ -310,7 +547,7 @@ public class AuctionService {
         Instant now = Instant.now();
 
         return new AuctionDetailPublicView(
-                toView(auction),
+                toPublicView(auction),
                 new AuctionDetailPublicView.Product(
                         product.id(),
                         product.name(),
@@ -494,6 +731,20 @@ public class AuctionService {
     }
 
     private static AuctionView toView(Auction auction) {
+        return toView(auction, auction.getWinnerId());
+    }
+
+    /**
+     * EN: The same lot for strangers, minus the winner's account id. The bid history masks every name;
+     *     a raw id published beside the result would undo that with one lookup.
+     * VI: Cùng lô đó cho người lạ xem, bỏ id tài khoản của người thắng. Lịch sử trả giá che mọi cái tên;
+     *     một id gốc công bố cạnh kết quả sẽ phá bỏ điều đó chỉ bằng một lần tra.
+     */
+    private static AuctionView toPublicView(Auction auction) {
+        return toView(auction, null);
+    }
+
+    private static AuctionView toView(Auction auction, UUID winnerShown) {
         return new AuctionView(
                 auction.getId(),
                 auction.getProductId(),
@@ -510,7 +761,7 @@ public class AuctionService {
                         auction.getExtensionSeconds()),
                 auction.getExtensionCount(),
                 auction.getBidCount(),
-                auction.getWinnerId(),
+                winnerShown,
                 auction.getRejectionReason(),
                 auction.getCreatedAt(),
                 auction.getUpdatedAt());

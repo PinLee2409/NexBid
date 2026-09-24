@@ -56,10 +56,19 @@ public enum ErrorCode {
     BID_CONFLICT(HttpStatus.CONFLICT),
     BID_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS),
     AUTO_BID_INVALID(HttpStatus.UNPROCESSABLE_ENTITY),
+    // EN: Spec §14 allows one active auto bid per person per lot; change it with PUT instead.
+    // VI: Spec §14 chỉ cho mỗi người một auto bid đang bật trên mỗi lô; muốn đổi thì dùng PUT.
+    AUTO_BID_EXISTS(HttpStatus.CONFLICT),
+    AUTO_BID_NOT_FOUND(HttpStatus.NOT_FOUND),
 
     /* --- Settlement / Thanh toán -------------------------------------- */
     PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND),
     PAYMENT_EXPIRED(HttpStatus.CONFLICT),
+    // EN: Already settled — paying twice would charge twice. / VI: Đã thanh toán rồi — trả lần nữa là trừ tiền hai lần.
+    PAYMENT_ALREADY_PAID(HttpStatus.CONFLICT),
+
+    /* --- Notifications / Thông báo ------------------------------------ */
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND),
 
     /* --- Access / Quyền truy cập -------------------------------------- */
     ACCESS_DENIED(HttpStatus.FORBIDDEN),

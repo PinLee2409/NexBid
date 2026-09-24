@@ -29,10 +29,4 @@ public enum AuctionStatus {
     public boolean isEditableBySeller() {
         return this == DRAFT;
     }
-
-    /** EN: Still occupying its product. / VI: Vẫn đang chiếm giữ sản phẩm của nó. */
-    public boolean holdsTheProduct() {
-        return this == DRAFT || this == PENDING_APPROVAL || this == SCHEDULED
-                || this == ACTIVE || this == ENDED;
-    }
 }

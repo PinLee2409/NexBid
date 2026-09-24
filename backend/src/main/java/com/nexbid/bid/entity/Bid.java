@@ -8,7 +8,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 /**
@@ -41,15 +40,17 @@ public class Bid {
         // EN: Required by JPA. / VI: JPA bắt buộc phải có.
     }
 
-    public Bid(UUID auctionId, UUID bidderId, BigDecimal amount) {
+    /**
+     * EN: The time is passed in, not read here: it must be the same instant the bid was checked against
+     *     the closing time, or a bid accepted just before the close could be stamped just after it.
+     * VI: Thời điểm được truyền vào chứ không đọc ở đây: nó phải đúng là lúc lượt trả giá được so với giờ
+     *     đóng, nếu không một lượt được nhận ngay trước giờ đóng có thể bị đóng dấu ngay sau giờ đóng.
+     */
+    public Bid(UUID auctionId, UUID bidderId, BigDecimal amount, Instant createdAt) {
         this.auctionId = auctionId;
         this.bidderId = bidderId;
         this.amount = amount;
-    }
-
-    @PrePersist
-    void onCreate() {
-        this.createdAt = Instant.now();
+        this.createdAt = createdAt;
     }
 
     public UUID getId() {

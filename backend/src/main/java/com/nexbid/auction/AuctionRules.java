@@ -1,6 +1,7 @@
 package com.nexbid.auction;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 
 import com.nexbid.auction.entity.Auction;
@@ -38,5 +39,20 @@ public final class AuctionRules {
         return auction.getStatus() == AuctionStatus.ACTIVE
                 && !now.isBefore(auction.getStartTime())
                 && now.isBefore(auction.getEndTime());
+    }
+
+    /**
+     * EN: Does a bid accepted at {@code now} land inside the anti-sniping window (spec §13)? Inclusive:
+     *     with a 30-second window, a bid 30 seconds before the close counts.
+     * VI: Lượt trả giá được nhận lúc {@code now} có rơi vào khung chống bid phút chót không (spec §13)?
+     *     Tính cả biên: khung 30 giây thì lượt trả giá đúng 30 giây trước giờ đóng vẫn được tính.
+     */
+    public static boolean isLastMinuteBid(Auction auction, Instant now) {
+        if (!auction.isAntiSnipingEnabled()) {
+            return false;
+        }
+
+        Duration remaining = Duration.between(now, auction.getEndTime());
+        return remaining.compareTo(Duration.ofSeconds(auction.getAntiSnipingWindowSeconds())) <= 0;
     }
 }
