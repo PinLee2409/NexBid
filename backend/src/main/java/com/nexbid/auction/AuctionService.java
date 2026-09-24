@@ -57,18 +57,21 @@ public class AuctionService {
     private final ProductImageService images;
     private final UserService users;
     private final ApplicationEventPublisher events;
+    private final LotCache cards;
 
-    public AuctionService(
+    AuctionService(
             AuctionRepository auctions,
             ProductService products,
             ProductImageService images,
             UserService users,
-            ApplicationEventPublisher events) {
+            ApplicationEventPublisher events,
+            LotCache cards) {
         this.auctions = auctions;
         this.products = products;
         this.images = images;
         this.users = users;
         this.events = events;
+        this.cards = cards;
     }
 
     /**
@@ -137,6 +140,34 @@ public class AuctionService {
         auction.setStatus(AuctionStatus.CANCELLED);
         products.markAuctionState(auction.getProductId(), ProductStatus.AVAILABLE);
         auctions.save(auction);
+    }
+
+    /**
+     * EN: The winner paid (guide §33): the lot is COMPLETED and the product SOLD. Called inside the payment's
+     *     own transaction, so "paid" and "completed" can never disagree.
+     * VI: Người thắng đã trả (guide §33): lô chuyển COMPLETED và sản phẩm SOLD. Được gọi trong chính transaction
+     *     thanh toán, nên "đã trả" và "đã hoàn tất" không bao giờ lệch nhau.
+     */
+    @Transactional
+    public void completeSale(UUID auctionId) {
+        Auction auction = auctions.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+
+        if (auction.getStatus() != AuctionStatus.ENDED) {
+            return;
+        }
+
+        auction.setStatus(AuctionStatus.COMPLETED);
+        products.markAuctionState(auction.getProductId(), ProductStatus.SOLD);
+        auctions.save(auction);
+    }
+
+    public UUID sellerOf(UUID auctionId) {
+        return auctions.findById(auctionId)
+                .map(Auction::getSellerId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
     }
 
     @Transactional
@@ -393,24 +424,23 @@ public class AuctionService {
     private Function<Auction, AuctionSummaryView> summarize(
             List<Auction> lots, Function<Auction, AuctionView> view) {
 
-        List<UUID> productIds = lots.stream().map(Auction::getProductId).toList();
-        var productsById = products.findAllById(productIds);
-        var coversByProduct = images.coversOf(productIds);
-        var sellerNames = users.namesOf(lots.stream().map(Auction::getSellerId).toList());
+        // EN: The card is cached; the auction itself (price, bids, status, clock) is always read fresh.
+        // VI: Thẻ được cache; bản thân phiên (giá, lượt, trạng thái, đồng hồ) luôn đọc mới.
+        Map<UUID, LotCard> cardsById = cards.cardsFor(lots);
 
         return auction -> {
-            ProductView product = productsById.get(auction.getProductId());
+            LotCard card = cardsById.get(auction.getId());
 
             return new AuctionSummaryView(
                     view.apply(auction),
                     new AuctionSummaryView.Product(
                             auction.getProductId(),
-                            product == null ? "Unknown item" : product.name(),
-                            coversByProduct.get(auction.getProductId())),
-                    product == null ? null : product.category(),
+                            card == null ? "Unknown item" : card.name(),
+                            card == null ? null : card.coverImageUrl()),
+                    card == null ? null : card.category(),
                     new AuctionSummaryView.Seller(
                             auction.getSellerId(),
-                            sellerNames.getOrDefault(auction.getSellerId(), "Unknown seller")));
+                            card == null ? "Unknown seller" : card.sellerName()));
         };
     }
 
@@ -536,26 +566,24 @@ public class AuctionService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
 
-        ProductView product = products.findById(auction.getProductId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        ErrorCode.PRODUCT_NOT_FOUND, "The product behind this auction is gone"));
-
-        String sellerName = users.findById(auction.getSellerId())
-                .map(account -> account.fullName())
-                .orElse("Unknown seller");
+        // EN: The card (product, photos, seller) may come from Redis; the auction row above is always fresh,
+        //     and the two time-dependent fields below are worked out per request, never cached.
+        // VI: Thẻ (sản phẩm, ảnh, người bán) có thể lấy từ Redis; dòng auction ở trên luôn mới, và hai trường
+        //     phụ thuộc thời gian bên dưới được tính cho từng request, không bao giờ cache.
+        LotCard card = cards.cardsFor(List.of(auction)).get(auction.getId());
+        if (card == null) {
+            throw new ResourceNotFoundException(
+                    ErrorCode.PRODUCT_NOT_FOUND, "The product behind this auction is gone");
+        }
 
         Instant now = Instant.now();
 
         return new AuctionDetailPublicView(
                 toPublicView(auction),
-                new AuctionDetailPublicView.Product(
-                        product.id(),
-                        product.name(),
-                        product.description(),
-                        product.condition().name()),
-                product.category(),
-                images.listPublic(product.id()),
-                new AuctionDetailPublicView.Seller(auction.getSellerId(), sellerName),
+                new AuctionDetailPublicView.Product(card.productId(), card.name(), card.description(), card.condition()),
+                card.category(),
+                card.images(),
+                new AuctionDetailPublicView.Seller(auction.getSellerId(), card.sellerName()),
                 AuctionRules.minimumNextBid(auction),
                 AuctionRules.isOpenForBidding(auction, now),
                 now);

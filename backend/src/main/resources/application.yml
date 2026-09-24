@@ -37,6 +37,19 @@ spring:
         write-dates-as-timestamps: false
     time-zone: UTC
 
+  data:
+    redis:
+      host: ${NEXBID_REDIS_HOST:127.0.0.1}
+      port: ${NEXBID_REDIS_PORT:56379}
+      # EN: Short on purpose: a cache that answers slowly is worse than no cache at all.
+      # VI: Cố ý để ngắn: cache trả lời chậm còn tệ hơn là không có cache.
+      timeout: 250ms
+      connect-timeout: 250ms
+      # EN: Redis holds cache entries only; every repository here is JPA.
+      # VI: Redis chỉ giữ dữ liệu cache; mọi repository ở đây đều là JPA.
+      repositories:
+        enabled: false
+
 server:
   port: ${NEXBID_PORT:8080}
   error:
@@ -55,8 +68,21 @@ management:
       # EN: Which component failed is operational detail, not for the public probe.
       # VI: Thành phần nào hỏng là thông tin vận hành, không công khai ở probe.
       show-details: never
+  health:
+    redis:
+      # EN: A cache outage is not an outage (spec §20) — the probe must not report the app as down for it.
+      # VI: Cache sập không phải là app sập (spec §20) — probe không được báo app hỏng vì chuyện đó.
+      enabled: false
 
 nexbid:
+  cache:
+    # EN: How long a lot's unchanging details stay cached. Nothing that bidding changes is ever cached.
+    # VI: Thông tin không đổi của một lô được giữ trong cache bao lâu. Không thứ gì mà việc trả giá làm thay đổi được cache.
+    lot-ttl: ${NEXBID_LOT_CACHE_TTL:10m}
+    # EN: After Redis fails, stop asking it for this long instead of paying a timeout on every request.
+    # VI: Sau khi Redis lỗi, thôi hỏi nó trong khoảng này thay vì mỗi request phải chịu một lần timeout.
+    retry-after: 10s
+
   web:
     # EN: Origins allowed to open the realtime socket. The handshake checks this even though WebSocket
     #     itself ignores CORS, so a stray page cannot quietly attach to the feed.

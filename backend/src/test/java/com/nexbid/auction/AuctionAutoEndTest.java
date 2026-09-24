@@ -47,7 +47,7 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 import com.nexbid.bid.BidService;
 import com.nexbid.common.exception.BusinessException;
 import com.nexbid.common.exception.ErrorCode;
-import com.nexbid.support.PostgresTestcontainer;
+import com.nexbid.support.TestInfrastructure;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserService;
 
@@ -63,7 +63,7 @@ import tools.jackson.databind.ObjectMapper;
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "nexbid.scheduler.enabled=false")
 @AutoConfigureMockMvc
-@Import(PostgresTestcontainer.class)
+@Import(TestInfrastructure.class)
 class AuctionAutoEndTest {
 
     @LocalServerPort

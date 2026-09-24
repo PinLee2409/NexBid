@@ -66,6 +66,7 @@ public enum ErrorCode {
     PAYMENT_EXPIRED(HttpStatus.CONFLICT),
     // EN: Already settled — paying twice would charge twice. / VI: Đã thanh toán rồi — trả lần nữa là trừ tiền hai lần.
     PAYMENT_ALREADY_PAID(HttpStatus.CONFLICT),
+    ORDER_NOT_FOUND(HttpStatus.NOT_FOUND),
 
     /* --- Notifications / Thông báo ------------------------------------ */
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND),

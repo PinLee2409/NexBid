@@ -1,5 +1,7 @@
-# EN: Local infrastructure. Postgres is on 55432 because 5432 and 5433 are both taken on this machine.
-# VI: Hạ tầng chạy local. Postgres ở cổng 55432 vì 5432 và 5433 trên máy này đều đã bị chiếm.
+# EN: Local infrastructure. Postgres is on 55432 because 5432 and 5433 are both taken on this machine;
+#     Redis follows the same pattern on 56379.
+# VI: Hạ tầng chạy local. Postgres ở cổng 55432 vì 5432 và 5433 trên máy này đều đã bị chiếm;
+#     Redis theo cùng cách, ở cổng 56379.
 #
 # EN: On a contested port Docker may bind only the IPv6 half, and localhost then reaches the wrong server.
 # VI: Khi cổng bị tranh chấp, Docker có thể chỉ bind được phía IPv6, và localhost sẽ trỏ nhầm server khác.
@@ -31,6 +33,21 @@ services:
       timeout: 3s
       retries: 10
       start_period: 10s
+
+  # EN: A cache, not a store (spec §20): nothing is persisted, and when memory fills the least-used keys go.
+  # VI: Là cache, không phải kho lưu trữ (spec §20): không lưu xuống đĩa, và khi đầy bộ nhớ thì bỏ khoá ít dùng nhất.
+  redis:
+    image: redis:7-alpine
+    container_name: nexbid-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "56379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
   nexbid-postgres-data:

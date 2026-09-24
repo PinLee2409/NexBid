@@ -33,7 +33,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
-import com.nexbid.support.PostgresTestcontainer;
+import com.nexbid.support.TestInfrastructure;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserService;
 
@@ -47,7 +47,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
-@Import(PostgresTestcontainer.class)
+@Import(TestInfrastructure.class)
 class RealtimeBidTest {
 
     @LocalServerPort

@@ -31,7 +31,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.nexbid.auction.AuctionService;
-import com.nexbid.support.PostgresTestcontainer;
+import com.nexbid.support.TestInfrastructure;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserService;
 
@@ -45,7 +45,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @SpringBootTest(properties = "nexbid.scheduler.enabled=false")
 @AutoConfigureMockMvc
-@Import(PostgresTestcontainer.class)
+@Import(TestInfrastructure.class)
 class PaymentApiTest {
 
     @Autowired
@@ -353,8 +353,10 @@ class PaymentApiTest {
 
         assertThat(stored(failed.paymentId())).isEqualTo("EXPIRED");
         assertThat(stored(paid.paymentId())).isEqualTo("SUCCESS");
+        // EN: Completed by the payment (function 31), and the expiry job did not undo it.
+        // VI: Được hoàn tất nhờ thanh toán (chức năng 31), và job hết hạn không đảo ngược nó.
         assertThat(jdbc.queryForObject("SELECT status FROM auctions WHERE id = ?::uuid", String.class, paid.auctionId()))
-                .isEqualTo("ENDED");
+                .isEqualTo("COMPLETED");
     }
 
     @Test

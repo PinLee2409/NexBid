@@ -11,7 +11,7 @@ anti-sniping extensions, one winner per lot.
 | | |
 | --- | --- |
 | Frontend | Complete, running on mock data |
-| Backend | Function 30 of 40 — accounts, products, auctions and bidding, safe under concurrent load. Realtime price updates over WebSocket. Lots open and close on schedule, last-second bids extend the close, auto bids answer for their owners, and the top bidder wins. Watchlists, notifications, and a mock payment for the winner; orders not yet |
+| Backend | Function 32 of 40 — accounts, products, auctions and bidding, safe under concurrent load. Realtime price updates over WebSocket. Lots open and close on schedule, last-second bids extend the close, auto bids answer for their owners, and the top bidder wins. Watchlists, notifications, and a mock payment for the winner that completes the sale as an order. Lot details cached in Redis |
 
 The frontend does not call the backend yet. The mock services mirror the REST
 contract, so switching to the real API changes service bodies and nothing else.
@@ -24,7 +24,7 @@ contract, so switching to the real API changes service bodies and nothing else.
 next-intl (EN/VI), next-themes.
 
 **Backend** — Spring Boot 4.1, Java 21, Spring Data JPA, Spring Security,
-WebSocket, PostgreSQL 17.
+WebSocket, PostgreSQL 17, Redis 7.
 
 ---
 
@@ -45,8 +45,9 @@ cd frontend && npm install && npm run dev
 Frontend at http://localhost:3000 — works without the backend running.
 Backend at http://localhost:8080/api/health
 
-Postgres is published on port **55432**, not 5432 — see
-[`docker/compose.yaml`](docker/compose.yaml).
+Postgres is published on port **55432** and Redis on **56379**, not the defaults — see
+[`docker/compose.yaml`](docker/compose.yaml). Redis is only a cache: the backend keeps
+working without it.
 
 ---
 

@@ -35,7 +35,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import com.nexbid.common.exception.BusinessException;
 import com.nexbid.common.exception.ErrorCode;
-import com.nexbid.support.PostgresTestcontainer;
+import com.nexbid.support.TestInfrastructure;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserService;
 
@@ -49,7 +49,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @SpringBootTest(properties = "nexbid.scheduler.enabled=false")
 @AutoConfigureMockMvc
-@Import(PostgresTestcontainer.class)
+@Import(TestInfrastructure.class)
 class AutoBidApiTest {
 
     @Autowired

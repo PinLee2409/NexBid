@@ -15,7 +15,7 @@ import com.nexbid.user.entity.User;
 import com.nexbid.user.UserStatus;
 import com.nexbid.user.repository.RoleRepository;
 import com.nexbid.user.repository.UserRepository;
-import com.nexbid.support.PostgresTestcontainer;
+import com.nexbid.support.TestInfrastructure;
 
 /**
  * EN: Runs against the real migration, so the entity and the SQL are proven to agree.
@@ -23,7 +23,7 @@ import com.nexbid.support.PostgresTestcontainer;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(PostgresTestcontainer.class)
+@Import(TestInfrastructure.class)
 class UserPersistenceTest {
 
     @Autowired

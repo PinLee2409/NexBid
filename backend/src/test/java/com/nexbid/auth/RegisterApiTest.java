@@ -15,7 +15,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.nexbid.support.PostgresTestcontainer;
+import com.nexbid.support.TestInfrastructure;
 
 /**
  * EN: The whole registration path end to end — HTTP, validation, hashing, database.
@@ -23,7 +23,7 @@ import com.nexbid.support.PostgresTestcontainer;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import(PostgresTestcontainer.class)
+@Import(TestInfrastructure.class)
 class RegisterApiTest {
 
     @Autowired
