@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.nexbid.common.response.ErrorResponse;
@@ -98,7 +99,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             NoResourceFoundException.class,
             HttpRequestMethodNotSupportedException.class,
-            HttpMediaTypeNotSupportedException.class
+            HttpMediaTypeNotSupportedException.class,
+            // EN: The servlet rejects an oversized upload before any controller runs, so the size check
+            //     inside the image service never gets the chance to answer.
+            // VI: Servlet chặn file quá nặng trước khi controller chạy, nên bước kiểm dung lượng bên trong
+            //     service ảnh không bao giờ có cơ hội trả lời.
+            MaxUploadSizeExceededException.class
     })
     public ResponseEntity<ErrorResponse> handleProtocolFailure(Exception ex) {
         log.debug("Protocol failure: {}", ex.getMessage());
@@ -111,6 +117,10 @@ public class GlobalExceptionHandler {
             case HttpMediaTypeNotSupportedException e -> respond(
                     ErrorCode.UNSUPPORTED_MEDIA_TYPE,
                     "Content type is not supported",
+                    null);
+            case MaxUploadSizeExceededException e -> respond(
+                    ErrorCode.IMAGE_TOO_LARGE,
+                    "The upload is larger than this endpoint accepts",
                     null);
             default -> respond(ErrorCode.NOT_FOUND, "No endpoint for this request", null);
         };

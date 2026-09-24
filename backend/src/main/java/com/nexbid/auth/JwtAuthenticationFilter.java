@@ -48,7 +48,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // EN: Spring expects ROLE_ prefixed authorities for hasRole(...) to match.
                 // VI: Spring cần authority có tiền tố ROLE_ thì hasRole(...) mới khớp.
                 List<SimpleGrantedAuthority> authorities = user.roles().stream()
-                        .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
+                        .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
                         .toList();
 
                 var authentication = new UsernamePasswordAuthenticationToken(user, null, authorities);

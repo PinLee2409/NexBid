@@ -16,12 +16,35 @@ public enum ErrorCode {
 
     /* --- Catalogue / Sản phẩm ---------------------------------------- */
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND),
+    // EN: Not in §29, which never mentions categories — they arrive with guide §10.
+    // VI: Không có trong §29 vì đặc tả không nhắc tới danh mục — chúng xuất hiện ở guide §10.
+    CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND),
+    CATEGORY_ALREADY_EXISTS(HttpStatus.CONFLICT),
+    IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND),
+    // EN: Not an image, or unreadable — the request is well formed, the content is not.
+    // VI: Không phải ảnh, hoặc không đọc được — request đúng dạng nhưng nội dung thì không.
+    IMAGE_INVALID(HttpStatus.UNPROCESSABLE_ENTITY),
+    IMAGE_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE),
+    IMAGE_LIMIT_REACHED(HttpStatus.CONFLICT),
+    // EN: The product is in an auction or already sold, so it is no longer the seller's to change.
+    // VI: Sản phẩm đang trong phiên đấu giá hoặc đã bán, nên không còn thuộc quyền sửa của người bán.
+    PRODUCT_NOT_EDITABLE(HttpStatus.CONFLICT),
+    // EN: The product is a draft or already sold, so it has no business being on the block.
+    // VI: Sản phẩm còn là nháp hoặc đã bán, nên không có lý gì đưa lên sàn.
+    PRODUCT_NOT_SELLABLE(HttpStatus.CONFLICT),
+    PRODUCT_ALREADY_IN_AUCTION(HttpStatus.CONFLICT),
 
     /* --- Auction lifecycle / Vòng đời phiên -------------------------- */
     AUCTION_NOT_FOUND(HttpStatus.NOT_FOUND),
     AUCTION_NOT_ACTIVE(HttpStatus.CONFLICT),
     AUCTION_ALREADY_ENDED(HttpStatus.CONFLICT),
     AUCTION_NOT_EDITABLE(HttpStatus.CONFLICT),
+    // EN: The start and end times cannot make a runnable auction.
+    // VI: Mốc bắt đầu và kết thúc không tạo ra được một phiên chạy được.
+    AUCTION_SCHEDULE_INVALID(HttpStatus.UNPROCESSABLE_ENTITY),
+    // EN: A decision was made on a lot that is not waiting for one.
+    // VI: Có người ra quyết định trên một lô vốn không chờ quyết định.
+    AUCTION_NOT_PENDING(HttpStatus.CONFLICT),
 
     /* --- Bidding / Trả giá -------------------------------------------- */
     SELLER_CANNOT_BID(HttpStatus.FORBIDDEN),
@@ -33,10 +56,19 @@ public enum ErrorCode {
     BID_CONFLICT(HttpStatus.CONFLICT),
     BID_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS),
     AUTO_BID_INVALID(HttpStatus.UNPROCESSABLE_ENTITY),
+    // EN: Spec §14 allows one active auto bid per person per lot; change it with PUT instead.
+    // VI: Spec §14 chỉ cho mỗi người một auto bid đang bật trên mỗi lô; muốn đổi thì dùng PUT.
+    AUTO_BID_EXISTS(HttpStatus.CONFLICT),
+    AUTO_BID_NOT_FOUND(HttpStatus.NOT_FOUND),
 
     /* --- Settlement / Thanh toán -------------------------------------- */
     PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND),
     PAYMENT_EXPIRED(HttpStatus.CONFLICT),
+    // EN: Already settled — paying twice would charge twice. / VI: Đã thanh toán rồi — trả lần nữa là trừ tiền hai lần.
+    PAYMENT_ALREADY_PAID(HttpStatus.CONFLICT),
+
+    /* --- Notifications / Thông báo ------------------------------------ */
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND),
 
     /* --- Access / Quyền truy cập -------------------------------------- */
     ACCESS_DENIED(HttpStatus.FORBIDDEN),

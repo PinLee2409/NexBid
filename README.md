@@ -11,7 +11,7 @@ anti-sniping extensions, one winner per lot.
 | | |
 | --- | --- |
 | Frontend | Complete, running on mock data |
-| Backend | Function 03 of 40 — accounts and roles, no business logic yet |
+| Backend | Function 30 of 40 — accounts, products, auctions and bidding, safe under concurrent load. Realtime price updates over WebSocket. Lots open and close on schedule, last-second bids extend the close, auto bids answer for their owners, and the top bidder wins. Watchlists, notifications, and a mock payment for the winner; orders not yet |
 
 The frontend does not call the backend yet. The mock services mirror the REST
 contract, so switching to the real API changes service bodies and nothing else.
@@ -50,7 +50,30 @@ Postgres is published on port **55432**, not 5432 — see
 
 ---
 
-## API shape
+## API
+
+| | |
+| --- | --- |
+| `POST /api/auth/register` | Public. Creates a BUYER. |
+| `POST /api/auth/login` | Public. Returns a JWT valid for 2 hours. |
+| `GET /api/users/me` | The signed-in account. |
+| `PUT /api/users/me` | Renames it. Nothing else about an account is editable by its owner. |
+| `GET /api/health` | Liveness. No token needed. |
+
+Everything else requires `Authorization: Bearer <token>`. `/api/admin/**` needs the
+ADMIN role and `/api/seller/**` needs SELLER; the frontend also hides those menus,
+but that is decoration — the server is what refuses.
+
+The first admin cannot come from the public register endpoint, so roles are granted
+at startup from configuration:
+
+```bash
+NEXBID_ADMIN_EMAILS=you@example.com ./mvnw spring-boot:run
+```
+
+---
+
+## Response shape
 
 Every endpoint answers in one of two shapes (spec §28), so the client needs one
 parser instead of one per route.

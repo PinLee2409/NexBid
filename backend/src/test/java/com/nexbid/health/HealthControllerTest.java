@@ -37,7 +37,7 @@ class HealthControllerTest {
     void everythingElseStaysClosed() throws Exception {
         // EN: 401 not 403 — an anonymous caller is told to sign in, not that it would be pointless.
         // VI: 401 chứ không phải 403 — người chưa đăng nhập được bảo hãy đăng nhập, không phải bị cấm.
-        mockMvc.perform(get("/api/auctions"))
+        mockMvc.perform(get("/api/users/me"))
                 .andExpect(status().isUnauthorized());
     }
 }

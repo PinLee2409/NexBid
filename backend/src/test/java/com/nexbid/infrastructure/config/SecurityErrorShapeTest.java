@@ -31,7 +31,7 @@ class SecurityErrorShapeTest {
 
     @Test
     void anonymousCallIsRefusedAsJson() throws Exception {
-        mockMvc.perform(get("/api/auctions"))
+        mockMvc.perform(get("/api/users/me"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(false))

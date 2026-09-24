@@ -34,3 +34,7 @@ build/
 ### NexBid ###
 # Local run output; the dev server writes here.
 run.log
+
+# Uploaded product images. Data, not code.
+# Anh san pham nguoi dung tai len. La du lieu, khong phai ma nguon.
+var/

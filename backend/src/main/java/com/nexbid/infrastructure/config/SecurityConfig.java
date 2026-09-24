@@ -4,10 +4,12 @@ import java.io.IOException;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -20,6 +22,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import com.nexbid.auth.JwtAuthenticationFilter;
 import com.nexbid.common.exception.ErrorCode;
 import com.nexbid.common.response.ErrorResponse;
+import com.nexbid.user.RoleName;
 
 import jakarta.servlet.http.HttpServletResponse;
 import tools.jackson.databind.ObjectMapper;
@@ -30,6 +33,9 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Configuration
 @EnableWebSecurity
+// EN: Turns on @PreAuthorize, for rules a URL pattern cannot express — "only the seller who owns this lot".
+// VI: Bật @PreAuthorize, cho những luật mà mẫu URL không diễn tả được — "chỉ người bán sở hữu lô này".
+@EnableMethodSecurity
 public class SecurityConfig {
 
     /**
@@ -38,7 +44,22 @@ public class SecurityConfig {
      */
     // EN: Registration and login must be reachable without a token — that is what they are for.
     // VI: Đăng ký và đăng nhập phải gọi được khi chưa có token — vốn dĩ chúng sinh ra để làm thế.
-    static final String[] PUBLIC_PATHS = { "/api/health", "/actuator/health", "/api/auth/**" };
+    static final String[] PUBLIC_PATHS = {
+            "/api/health", "/actuator/health", "/api/auth/**",
+            // EN: Every countdown on the site measures against this, so it must answer before sign-in.
+            // VI: Mọi đồng hồ đếm ngược trên site đo theo mốc này, nên nó phải trả lời từ trước khi đăng nhập.
+            "/api/server-time",
+            // EN: Browsing is public — someone deciding whether to join must see what is on offer.
+            // VI: Duyệt hàng là công khai — người đang cân nhắc tham gia phải xem được có gì.
+            "/api/categories", "/api/categories/**",
+            "/api/auctions", "/api/auctions/**",
+            // EN: A browser loading <img> sends no Authorization header, so product photos must be open.
+            // VI: Trình duyệt nạp thẻ <img> không gửi header Authorization, nên ảnh sản phẩm phải mở.
+            "/media/**",
+            // EN: The realtime channel carries only what the public page already shows.
+            // VI: Kênh realtime chỉ chở những thứ trang công khai vốn đã hiển thị.
+            "/ws", "/ws/**"
+    };
 
     @Bean
     public SecurityFilterChain securityFilterChain(
@@ -52,7 +73,20 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // EN: Carved out before the public rule below: reading a lot is open to anyone,
+                        //     offering money for it, watching it or setting an auto bid on it is not.
+                        // VI: Khoét ra trước luật công khai bên dưới: xem một lô thì ai cũng được, còn bỏ
+                        //     tiền ra mua, theo dõi hay đặt auto bid thì không.
+                        .requestMatchers(HttpMethod.POST, "/api/auctions/*/bids").authenticated()
+                        .requestMatchers("/api/auctions/*/watch").authenticated()
+                        .requestMatchers("/api/auctions/*/auto-bid").authenticated()
                         .requestMatchers(PUBLIC_PATHS).permitAll()
+                        // EN: The frontend also hides these menus, but that is decoration —
+                        //     this is the line that actually stops someone typing the URL.
+                        // VI: Frontend cũng ẩn các menu này, nhưng đó chỉ là trang trí —
+                        //     đây mới là chỗ thật sự chặn người gõ thẳng URL.
+                        .requestMatchers("/api/admin/**").hasRole(RoleName.ADMIN.name())
+                        .requestMatchers("/api/seller/**").hasRole(RoleName.SELLER.name())
                         .anyRequest().authenticated())
                 // EN: No form login, no Basic prompt — failures must be JSON, not a login page.
                 // VI: Không form login, không Basic — lỗi phải trả JSON, không phải trang đăng nhập.

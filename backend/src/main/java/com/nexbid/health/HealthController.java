@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
  * VI: Probe sống — tiến trình còn phục vụ không? Body phẳng, nằm ngoài khung ApiResponse, dành cho load balancer.
  *
  * <p>EN: Whether the database is healthy is a different question, answered at /actuator/health.
- * <p>VI: Database c    òn khoẻ hay không là câu hỏi khác, /actuator/health trả lời.
+ * <p>VI: Database còn khoẻ hay không là câu hỏi khác, /actuator/health trả lời.
  */
 @RestController
 @RequestMapping("/api")

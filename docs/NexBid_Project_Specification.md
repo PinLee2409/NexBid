@@ -1482,6 +1482,12 @@ POST /api/auth/login
 POST /api/auth/refresh
 ```
 
+Bản triển khai hiện có `register` và `login`. **`refresh` chưa làm** — access token
+sống 2 giờ, hết hạn thì đăng nhập lại. Đây là khoản nợ có ý thức, không phải bỏ hẳn:
+làm refresh cần thêm bảng lưu token và vòng đời thu hồi.
+
+Token mang `sub` là **user id** chứ không phải email — email có thể đổi, id thì không.
+
 ---
 
 ## User
@@ -1648,7 +1654,14 @@ Ba mã bổ sung khi triển khai, vì chính ví dụ trong tài liệu cần t
 NOT_AUTHENTICATED   401 — danh sách trên có ACCESS_DENIED cho 403 nhưng bỏ trống 401
 VALIDATION_ERROR    400 — ví dụ ở Hướng dẫn §4 gọi đích danh mã này
 INTERNAL_ERROR      500 — catch-all vẫn phải trả đúng shape §28
+
+NOT_FOUND              404 — không có route này (khác với USER_NOT_FOUND vốn là thiếu bản ghi)
+METHOD_NOT_ALLOWED     405 — đúng URL nhưng sai method
+UNSUPPORTED_MEDIA_TYPE 415 — body không đọc được, thường do thiếu Content-Type
 ```
+
+Ba mã cuối thêm sau khi phát hiện catch-all `Exception` nuốt luôn các lỗi giao
+thức của Spring, khiến gõ sai URL hay sai method bị báo thành lỗi 500.
 
 Mỗi mã tự mang HTTP status của nó, nên thêm luật mới không đẻ ra status mới.
 

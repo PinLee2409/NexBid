@@ -4,6 +4,9 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+
+import com.nexbid.common.exception.ErrorCode;
+import com.nexbid.common.exception.ResourceNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.nexbid.user.entity.Role;
@@ -60,6 +63,54 @@ public class UserService {
         User user = new User(fullName, email, passwordHash);
         user.addRole(role);
 
+        return toAccount(users.save(user));
+    }
+
+    public Optional<UserAccount> findById(java.util.UUID id) {
+        return users.findById(id).map(UserService::toAccount);
+    }
+
+    /**
+     * EN: Names for a list of ids, in one query. Screens that show many rows would otherwise ask per row.
+     * VI: Lấy tên cho một loạt id trong một truy vấn. Nếu không, màn hình nhiều dòng sẽ hỏi từng dòng một.
+     */
+    public java.util.Map<java.util.UUID, String> namesOf(java.util.Collection<java.util.UUID> ids) {
+        if (ids.isEmpty()) {
+            return java.util.Map.of();
+        }
+
+        return users.findAllById(ids).stream()
+                .collect(Collectors.toMap(User::getId, User::getFullName));
+    }
+
+    /**
+     * EN: Renames an account. The id comes from the token, never from the request body.
+     * VI: Đổi tên tài khoản. Id lấy từ token, không bao giờ lấy từ body của request.
+     */
+    @Transactional
+    public UserAccount updateFullName(java.util.UUID id, String fullName) {
+        User user = users.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.USER_NOT_FOUND, "No account with id " + id));
+
+        user.setFullName(fullName.trim());
+        return toAccount(users.save(user));
+    }
+
+    /**
+     * EN: Adds a role to an existing account. Idempotent, so running it twice is harmless.
+     * VI: Thêm vai trò cho tài khoản đã có. Gọi nhiều lần vẫn an toàn vì không nhân đôi.
+     */
+    @Transactional
+    public UserAccount grantRole(String email, RoleName roleName) {
+        User user = users.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.USER_NOT_FOUND, "No account for " + email));
+
+        Role role = roles.findByName(roleName)
+                .orElseThrow(() -> new IllegalStateException("Role missing from database: " + roleName));
+
+        user.addRole(role);
         return toAccount(users.save(user));
     }
 

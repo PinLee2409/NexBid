@@ -124,16 +124,19 @@ class LoginApiTest {
         String bodyText = login(EMAIL, PASSWORD);
         String token = objectMapper.readTree(bodyText).get("data").get("accessToken").asString();
 
-        // EN: Without the token the same route is refused.
-        // VI: Không có token thì chính route đó bị từ chối.
-        mockMvc.perform(get("/api/auctions"))
+        // EN: Without the token the same route is refused. /api/auctions is public from function 18,
+        //     so the example here is a route that genuinely still needs a caller.
+        // VI: Không có token thì chính route đó bị từ chối. /api/auctions đã công khai từ chức năng 18,
+        //     nên ví dụ ở đây dùng một route thật sự vẫn cần biết người gọi là ai.
+        mockMvc.perform(get("/api/users/me"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("NOT_AUTHENTICATED"));
 
-        // EN: With it the request is authenticated, so it gets past security and 404s on the missing route.
-        // VI: Có token thì request được xác thực, đi qua được bảo mật và trả 404 vì route đó chưa tồn tại.
-        mockMvc.perform(get("/api/auctions").header("Authorization", "Bearer " + token))
-                .andExpect(status().isNotFound());
+        // EN: With it the request is authenticated and the profile comes back.
+        // VI: Có token thì request được xác thực và hồ sơ trả về.
+        mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.email").value(EMAIL));
     }
 
     @Test
@@ -141,7 +144,7 @@ class LoginApiTest {
         String bodyText = login(EMAIL, PASSWORD);
         String token = objectMapper.readTree(bodyText).get("data").get("accessToken").asString();
 
-        mockMvc.perform(get("/api/auctions").header("Authorization", "Bearer " + token + "x"))
+        mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + token + "x"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("NOT_AUTHENTICATED"));
     }
