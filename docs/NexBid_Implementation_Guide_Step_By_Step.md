@@ -553,6 +553,20 @@ Unknown email → FAIL
 Blocked user → FAIL
 ```
 
+## Lựa chọn khi triển khai
+
+Thư viện JWT dùng **jjwt** (`io.jsonwebtoken`), tách ba artifact api/impl/jackson để
+code chỉ biên dịch trên phần api.
+
+Secret đặt ở `NEXBID_JWT_SECRET`, có giá trị mặc định cho dev. HMAC-SHA256 cần khoá
+từ 32 byte trở lên; khoá ngắn hơn sẽ lỗi ngay lúc khởi động thay vì âm thầm làm token yếu.
+
+Email sai và mật khẩu sai trả về **cùng một lỗi** `INVALID_CREDENTIALS`, cùng câu chữ.
+Nếu phân biệt, endpoint này thành công cụ dò xem địa chỉ nào đã có tài khoản.
+
+Tài khoản `BLOCKED` trả `ACCOUNT_BLOCKED` (403), khác với sai mật khẩu — đây là lần
+đầu `UserStatus` có tác dụng thật kể từ chức năng 03.
+
 ## Tiêu chí hoàn thành
 
 Gọi API protected với JWT thành công.
@@ -618,6 +632,21 @@ Frontend chỉ ẩn UI.
 
 Backend mới là nơi thực sự bảo vệ permission.
 
+## Tài khoản ADMIN đầu tiên
+
+Mọi tài khoản đăng ký đều là BUYER, nên phải có đường cấp quyền nằm ngoài API công khai.
+Nhét cứng một admin vào migration sẽ phát tán một mật khẩu ai cũng biết, nên thay vào đó
+ứng dụng cấp vai trò lúc khởi động theo cấu hình:
+
+```bash
+NEXBID_ADMIN_EMAILS=you@example.com ./mvnw spring-boot:run
+```
+
+Email chưa đăng ký thì chỉ ghi cảnh báo, không làm chết ứng dụng.
+
+Lưu ý ADMIN **không** bao hàm SELLER: spec §4 định nghĩa ba vai trò là ba công việc
+khác nhau, không phải ba cấp bậc.
+
 ## Commit
 
 ```text
@@ -654,6 +683,19 @@ status
 ```text
 /profile
 ```
+
+## Nguyên tắc khi triển khai
+
+Id của người gọi lấy từ **token**, không bao giờ từ body. Nếu nhận từ body thì ai cũng
+đọc và sửa được hồ sơ người khác chỉ bằng cách đổi một con số.
+
+Danh sách cấm sửa là danh sách trắng chứ không phải danh sách đen: `UpdateProfileRequest`
+chỉ có đúng field `fullName`, nên `role`, `status`, `id` không phải bị chặn — chúng
+không tồn tại để mà gửi lên.
+
+Đây là endpoint đầu tiên cần biết cụ thể ai đang gọi, nên sinh ra kiểu `CurrentUser`.
+Nó đặt ở module `common` chứ không phải `auth`: `auth` vốn đã phụ thuộc `user`, thêm
+chiều ngược lại sẽ tạo vòng lặp phụ thuộc và Spring Modulith sẽ báo đỏ.
 
 ## Tiêu chí hoàn thành
 

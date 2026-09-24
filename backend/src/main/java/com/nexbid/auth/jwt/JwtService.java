@@ -10,6 +10,7 @@ import javax.crypto.SecretKey;
 
 import org.springframework.stereotype.Service;
 
+import com.nexbid.common.security.CurrentUser;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserCredentials;
 
@@ -55,7 +56,7 @@ public class JwtService {
      * EN: Returns the claims, or empty when the token is absent, tampered with, or expired.
      * VI: Trả về claims, hoặc rỗng khi token thiếu, bị sửa, hoặc đã hết hạn.
      */
-    public java.util.Optional<AuthenticatedUser> read(String token) {
+    public java.util.Optional<CurrentUser> read(String token) {
         try {
             Claims claims = Jwts.parser()
                     .verifyWith(key)
@@ -67,19 +68,15 @@ public class JwtService {
             @SuppressWarnings("unchecked")
             List<String> roles = claims.get("roles", List.class);
 
-            return java.util.Optional.of(new AuthenticatedUser(
+            return java.util.Optional.of(new CurrentUser(
                     UUID.fromString(claims.getSubject()),
                     claims.get("email", String.class),
-                    roles == null ? List.of() : roles.stream().map(RoleName::valueOf).toList()));
+                    roles == null ? java.util.Set.of() : java.util.Set.copyOf(roles)));
 
         } catch (JwtException | IllegalArgumentException ex) {
             // EN: Any failure means the same thing to the caller: this token is not usable.
             // VI: Mọi kiểu lỗi đều mang cùng một ý nghĩa với bên gọi: token này không dùng được.
             return java.util.Optional.empty();
         }
-    }
-
-    /** EN: Who the token says is calling. / VI: Token nói ai đang gọi. */
-    public record AuthenticatedUser(UUID id, String email, List<RoleName> roles) {
     }
 }

@@ -66,6 +66,24 @@ public class UserService {
         return toAccount(users.save(user));
     }
 
+    public Optional<UserAccount> findById(java.util.UUID id) {
+        return users.findById(id).map(UserService::toAccount);
+    }
+
+    /**
+     * EN: Renames an account. The id comes from the token, never from the request body.
+     * VI: Đổi tên tài khoản. Id lấy từ token, không bao giờ lấy từ body của request.
+     */
+    @Transactional
+    public UserAccount updateFullName(java.util.UUID id, String fullName) {
+        User user = users.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.USER_NOT_FOUND, "No account with id " + id));
+
+        user.setFullName(fullName.trim());
+        return toAccount(users.save(user));
+    }
+
     /**
      * EN: Adds a role to an existing account. Idempotent, so running it twice is harmless.
      * VI: Thêm vai trò cho tài khoản đã có. Gọi nhiều lần vẫn an toàn vì không nhân đôi.
