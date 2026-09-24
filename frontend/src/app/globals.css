@@ -198,6 +198,11 @@
     @apply font-sans;
     background: var(--background);
     -webkit-tap-highlight-color: transparent;
+    /* EN: Full-bleed sections measure against 100vw, which counts the scrollbar; clip absorbs the few
+       stray pixels without creating a scroll container, so the sticky header keeps working.
+       VI: Các khối tràn lề đo theo 100vw vốn tính cả thanh cuộn; clip nuốt phần dư mà không tạo
+       scroll container, nên header sticky vẫn hoạt động. */
+    overflow-x: clip;
   }
 
   body {
@@ -316,6 +321,17 @@
     );
   }
 
+  /* EN: Extends a box to the page's right edge from anywhere, including inside a grid column.
+     VI: Kéo một khối ra sát mép phải trang từ bất kỳ đâu, kể cả khi đang nằm trong một cột grid.
+
+     EN: The usual calc(50% - 50vw) trick assumes the box sits directly in the centred container.
+         Inside a 7-of-12 column its 50% is half a column, so the box overshoots.
+     VI: Mẹo calc(50% - 50vw) quen thuộc giả định khối nằm thẳng trong container căn giữa.
+         Nằm trong cột 7/12 thì 50% là nửa cột, nên khối bị lố ra ngoài. */
+  .bleed-right {
+    margin-right: calc(-1 * (2rem + max(0px, (100vw - 1680px) / 2)));
+  }
+
   .scrollbar-none {
     scrollbar-width: none;
   }
@@ -391,7 +407,7 @@
   .live-dot,
   .live-dot-critical,
   .marquee-track,
-  .flash-accent {
+  .flash-signal {
     animation: none !important;
   }
 

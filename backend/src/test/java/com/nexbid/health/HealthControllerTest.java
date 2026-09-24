@@ -12,14 +12,14 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.nexbid.infrastructure.config.SecurityConfig;
+import com.nexbid.support.WebSliceSecurity;
 
 /**
  * EN: A web slice with SecurityConfig imported, so the probe is proven reachable through the filter chain.
  * VI: Test lát web có import SecurityConfig, để chứng minh probe đi lọt qua filter chain.
  */
 @WebMvcTest(HealthController.class)
-@Import(SecurityConfig.class)
+@Import(WebSliceSecurity.class)
 class HealthControllerTest {
 
     @Autowired

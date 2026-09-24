@@ -13,14 +13,14 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.nexbid.infrastructure.config.SecurityConfig;
+import com.nexbid.support.WebSliceSecurity;
 
 /**
  * EN: Whatever goes wrong, the body has the same keys. One test per way of failing.
  * VI: Lỗi kiểu gì thì body cũng cùng một bộ key. Mỗi kiểu lỗi một test.
  */
 @WebMvcTest(ProbeController.class)
-@Import({ SecurityConfig.class, GlobalExceptionHandler.class })
+@Import({ WebSliceSecurity.class, GlobalExceptionHandler.class })
 // EN: Signed in, so each request reaches the controller and fails the way the test intends.
 // VI: Đã đăng nhập, để request tới được controller và lỗi đúng kiểu test muốn.
 @WithMockUser
@@ -74,6 +74,29 @@ class GlobalExceptionHandlerTest {
                 // EN: The exception named an internal host; the caller is told none of it.
                 // VI: Exception có nhắc tên host nội bộ; client không nhận được chữ nào.
                 .andExpect(jsonPath("$.message").value("Something went wrong"));
+    }
+
+    @Test
+    void wrongHttpMethodIs405NotAServerFault() throws Exception {
+        // EN: A GET on a POST-only endpoint is the caller's mistake, not ours.
+        // VI: Gọi GET vào endpoint chỉ nhận POST là lỗi bên gọi, không phải lỗi mình.
+        mockMvc.perform(get("/__test/validate"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"));
+    }
+
+    @Test
+    void missingContentTypeIs415() throws Exception {
+        mockMvc.perform(post("/__test/validate").content("{}"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.code").value("UNSUPPORTED_MEDIA_TYPE"));
+    }
+
+    @Test
+    void unknownRouteIs404() throws Exception {
+        mockMvc.perform(get("/__test/does-not-exist"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
     }
 
     @Test

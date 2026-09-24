@@ -15,6 +15,9 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.nexbid.common.response.ErrorResponse;
 
@@ -84,6 +87,33 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex) {
         return respond(ErrorCode.NOT_AUTHENTICATED, "Authentication is required", null);
+    }
+
+    /**
+     * EN: Spring's protocol failures — wrong URL, wrong verb, unreadable body. They already carry the right
+     *     status, so this only translates it into our code. Without them the catch-all reports a typo as a bug.
+     * VI: Các lỗi giao thức của Spring — sai URL, sai method, body không đọc được. Chúng đã mang sẵn status
+     *     đúng, nhánh này chỉ dịch sang mã của mình. Thiếu nó thì catch-all báo lỗi gõ nhầm thành lỗi hệ thống.
+     */
+    @ExceptionHandler({
+            NoResourceFoundException.class,
+            HttpRequestMethodNotSupportedException.class,
+            HttpMediaTypeNotSupportedException.class
+    })
+    public ResponseEntity<ErrorResponse> handleProtocolFailure(Exception ex) {
+        log.debug("Protocol failure: {}", ex.getMessage());
+
+        return switch (ex) {
+            case HttpRequestMethodNotSupportedException e -> respond(
+                    ErrorCode.METHOD_NOT_ALLOWED,
+                    "%s is not supported here".formatted(e.getMethod()),
+                    null);
+            case HttpMediaTypeNotSupportedException e -> respond(
+                    ErrorCode.UNSUPPORTED_MEDIA_TYPE,
+                    "Content type is not supported",
+                    null);
+            default -> respond(ErrorCode.NOT_FOUND, "No endpoint for this request", null);
+        };
     }
 
     /**

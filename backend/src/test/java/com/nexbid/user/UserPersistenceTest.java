@@ -10,9 +10,9 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 
 import com.nexbid.user.entity.Role;
-import com.nexbid.user.entity.RoleName;
+import com.nexbid.user.RoleName;
 import com.nexbid.user.entity.User;
-import com.nexbid.user.entity.UserStatus;
+import com.nexbid.user.UserStatus;
 import com.nexbid.user.repository.RoleRepository;
 import com.nexbid.user.repository.UserRepository;
 import com.nexbid.support.PostgresTestcontainer;

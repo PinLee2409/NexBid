@@ -1,5 +1,6 @@
 package com.nexbid.user.entity;
 
+import com.nexbid.user.RoleName;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

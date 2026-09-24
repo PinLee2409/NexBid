@@ -49,6 +49,16 @@ management:
       # VI: Thành phần nào hỏng là thông tin vận hành, không công khai ở probe.
       show-details: never
 
+nexbid:
+  jwt:
+    # EN: Development default only. Any real deployment must pass NEXBID_JWT_SECRET; HMAC-SHA256 needs 32+ bytes.
+    # VI: Chỉ là giá trị mặc định cho dev. Môi trường thật bắt buộc truyền NEXBID_JWT_SECRET; HMAC-SHA256 cần từ 32 byte.
+    secret: ${NEXBID_JWT_SECRET:nexbid-local-development-secret-key-change-me}
+    # EN: Short enough to limit a stolen token, long enough not to interrupt a bidding session.
+    # VI: Đủ ngắn để hạn chế thiệt hại nếu token bị lấy, đủ dài để không cắt ngang một phiên đấu giá.
+    expiry: ${NEXBID_JWT_EXPIRY:2h}
+    issuer: nexbid
+
 logging:
   level:
     com.nexbid: ${NEXBID_LOG_LEVEL:DEBUG}

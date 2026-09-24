@@ -47,6 +47,15 @@ public enum ErrorCode {
     // EN: Used by name in the guide's §4 example.
     // VI: Guide §4 gọi đích danh mã này trong ví dụ.
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST),
+    // EN: No such route. Distinct from USER_NOT_FOUND and friends, which mean a record is missing.
+    // VI: Không có route này. Khác với USER_NOT_FOUND và tương tự, vốn nghĩa là thiếu bản ghi.
+    NOT_FOUND(HttpStatus.NOT_FOUND),
+    // EN: Right URL, wrong verb — a GET where the endpoint expects POST.
+    // VI: Đúng URL nhưng sai method — gọi GET trong khi endpoint cần POST.
+    METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED),
+    // EN: A body the endpoint cannot read, usually a missing Content-Type.
+    // VI: Body endpoint không đọc được, thường do thiếu Content-Type.
+    UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE),
     // EN: The catch-all still has to answer in the documented shape.
     // VI: Catch-all vẫn phải trả về đúng shape đã quy định.
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);

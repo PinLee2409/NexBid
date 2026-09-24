@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.nexbid.health.HealthController;
+import com.nexbid.support.WebSliceSecurity;
 
 /**
  * EN: The filter chain answers before any controller runs, so its errors are written by SecurityConfig.
@@ -22,7 +23,7 @@ import com.nexbid.health.HealthController;
  * <p>VI: Test này giữ nó không lệch khỏi GlobalExceptionHandler — cùng bộ key, không phải body rỗng.
  */
 @WebMvcTest(HealthController.class)
-@Import(SecurityConfig.class)
+@Import(WebSliceSecurity.class)
 class SecurityErrorShapeTest {
 
     @Autowired

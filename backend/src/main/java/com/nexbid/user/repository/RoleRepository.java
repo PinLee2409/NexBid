@@ -5,7 +5,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.nexbid.user.entity.Role;
-import com.nexbid.user.entity.RoleName;
+import com.nexbid.user.RoleName;
 
 /**
  * EN: The three rows are seeded by migration, so this only ever reads.

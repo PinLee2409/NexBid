@@ -1,4 +1,4 @@
-package com.nexbid.user.entity;
+package com.nexbid.user;
 
 /**
  * EN: Account status (spec §5). BLOCKED users keep their history but cannot act.

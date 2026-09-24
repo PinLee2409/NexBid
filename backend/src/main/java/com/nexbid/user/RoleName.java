@@ -1,4 +1,4 @@
-package com.nexbid.user.entity;
+package com.nexbid.user;
 
 /**
  * EN: The three roles in spec §4. One user may hold several — a seller also buys.

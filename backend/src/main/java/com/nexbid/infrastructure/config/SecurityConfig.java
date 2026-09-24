@@ -6,12 +6,18 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import com.nexbid.auth.JwtAuthenticationFilter;
 import com.nexbid.common.exception.ErrorCode;
 import com.nexbid.common.response.ErrorResponse;
 
@@ -30,11 +36,15 @@ public class SecurityConfig {
      * EN: Paths that must answer without credentials. Kept short on purpose.
      * VI: Các đường phải trả lời khi chưa đăng nhập. Cố ý giữ thật ngắn.
      */
-    static final String[] PUBLIC_PATHS = { "/api/health", "/actuator/health" };
+    // EN: Registration and login must be reachable without a token — that is what they are for.
+    // VI: Đăng ký và đăng nhập phải gọi được khi chưa có token — vốn dĩ chúng sinh ra để làm thế.
+    static final String[] PUBLIC_PATHS = { "/api/health", "/actuator/health", "/api/auth/**" };
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper)
-            throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            ObjectMapper objectMapper,
+            JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
                 // EN: Token-based API with no browser session, so there is no CSRF surface.
                 // VI: API dùng token, không có session trình duyệt, nên không có bề mặt CSRF.
@@ -52,9 +62,33 @@ public class SecurityConfig {
                 // VI: Thiếu hai cái này, filter chain sẽ trả về body rỗng.
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(authenticationEntryPoint(objectMapper))
-                        .accessDeniedHandler(accessDeniedHandler(objectMapper)));
+                        .accessDeniedHandler(accessDeniedHandler(objectMapper)))
+                // EN: Before the username/password filter, so a valid token authenticates the request
+                //     before anything else tries to.
+                // VI: Đặt trước filter username/password, để token hợp lệ xác thực request trước khi
+                //     có thứ khác kịp xen vào.
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    /**
+     * EN: Exposes the manager so AuthService can ask Spring to run the credential checks.
+     * VI: Cung cấp manager để AuthService nhờ Spring chạy các bước kiểm tra thông tin đăng nhập.
+     */
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration)
+            throws Exception {
+        return configuration.getAuthenticationManager();
+    }
+
+    /**
+     * EN: BCrypt — deliberately slow, so a stolen password table is expensive to crack.
+     * VI: BCrypt — cố ý chạy chậm, để bảng mật khẩu nếu bị lấy cắp cũng rất tốn công bẻ.
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
     /**

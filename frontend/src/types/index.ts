@@ -59,6 +59,9 @@ export type ErrorCode =
   | "ACCESS_DENIED"
   | "NOT_AUTHENTICATED"
   | "VALIDATION_ERROR"
+  | "NOT_FOUND"
+  | "METHOD_NOT_ALLOWED"
+  | "UNSUPPORTED_MEDIA_TYPE"
   | "INTERNAL_ERROR";
 
 export interface Page<T> {

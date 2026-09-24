@@ -5,6 +5,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
 
+import com.nexbid.user.UserStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
