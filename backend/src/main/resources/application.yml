@@ -50,6 +50,29 @@ spring:
       repositories:
         enabled: false
 
+  kafka:
+    bootstrap-servers: ${NEXBID_KAFKA_SERVERS:127.0.0.1:59092}
+    producer:
+      properties:
+        # EN: Give up quickly when Kafka is down. Nothing is lost: the event stays in the outbox for a retry.
+        # VI: Bỏ cuộc sớm khi Kafka sập. Không mất gì: sự kiện vẫn nằm trong outbox chờ gửi lại.
+        max.block.ms: 2000
+        request.timeout.ms: 3000
+        delivery.timeout.ms: 5000
+    consumer:
+      # EN: A new consumer group starts at the oldest event, not just the ones after it joined.
+      # VI: Consumer group mới bắt đầu từ sự kiện cũ nhất, không chỉ những sự kiện tới sau khi nó tham gia.
+      auto-offset-reset: earliest
+    admin:
+      # EN: Creating topics at startup must not hold the app hostage when Kafka is down.
+      # VI: Việc tạo topic lúc khởi động không được bắt app chờ mãi khi Kafka sập.
+      operation-timeout: 5s
+      close-timeout: 1s
+    properties:
+      # EN: While Kafka is down, knock every 10 s rather than every second — the relay waits that long anyway.
+      # VI: Khi Kafka sập, 10 giây mới gõ cửa một lần thay vì mỗi giây — relay vốn cũng chờ ngần ấy.
+      reconnect.backoff.max.ms: 10000
+
 server:
   port: ${NEXBID_PORT:8080}
   error:
@@ -82,6 +105,30 @@ nexbid:
     # EN: After Redis fails, stop asking it for this long instead of paying a timeout on every request.
     # VI: Sau khi Redis lỗi, thôi hỏi nó trong khoảng này thay vì mỗi request phải chịu một lần timeout.
     retry-after: 10s
+
+  rate-limit:
+    bids:
+      # EN: Spec §20.2: 10 bid requests per 10 seconds per person, in any sliding 10-second window.
+      # VI: Spec §20.2: 10 request trả giá mỗi 10 giây mỗi người, trong bất kỳ khung trượt 10 giây nào.
+      limit: ${NEXBID_BID_RATE_LIMIT:10}
+      window: ${NEXBID_BID_RATE_WINDOW:10s}
+
+  kafka:
+    relay:
+      # EN: A commit wakes the relay at once; this poll only catches what a missed wake-up left behind.
+      # VI: Commit đánh thức relay ngay; lượt quét này chỉ gom những gì bị sót khi không được đánh thức.
+      interval: 1s
+      batch-size: 200
+      # EN: After Kafka fails, how long events wait in the outbox before the next try.
+      # VI: Sau khi Kafka lỗi, sự kiện nằm chờ trong outbox bao lâu trước lần thử tiếp.
+      retry-after: 10s
+      send-timeout: 10s
+    # EN: One thread per partition of nexbid.auctions. / VI: Mỗi partition của nexbid.auctions một luồng.
+    consumer-concurrency: 3
+    # EN: Kafka keeps events 7 days by default; after that none can be delivered again.
+    # VI: Mặc định Kafka giữ sự kiện 7 ngày; sau đó không sự kiện nào có thể được giao lại nữa.
+    consumed-retention: 7d
+    prune-interval: 3600000
 
   web:
     # EN: Origins allowed to open the realtime socket. The handshake checks this even though WebSocket
@@ -136,3 +183,9 @@ nexbid:
 logging:
   level:
     com.nexbid: ${NEXBID_LOG_LEVEL:DEBUG}
+    # EN: Kafka's clients print their whole config, and every reconnect attempt, at INFO.
+    # VI: Client của Kafka in toàn bộ cấu hình, và mọi lần thử kết nối lại, ở mức INFO.
+    org.apache.kafka: WARN
+    # EN: Logs each failed send with its full payload; the relay already reports the failure once.
+    # VI: Ghi mỗi lần gửi hỏng kèm toàn bộ payload; relay đã báo lỗi đó một lần rồi.
+    org.springframework.kafka.support.LoggingProducerListener: OFF

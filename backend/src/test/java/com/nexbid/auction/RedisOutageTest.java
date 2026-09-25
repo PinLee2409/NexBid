@@ -128,11 +128,24 @@ class RedisOutageTest {
                 .andExpect(jsonPath("$.data.auction.currentPrice").value(11000000));
         timed(millis, get("/api/auctions/" + auction)).andExpect(status().isOk());
 
+        // EN: With Redis gone the bid limit fails open: a dozen quick bids from one person all go through,
+        //     because refusing real bids over a broken guard would be worse than letting a burst in.
+        // VI: Khi Redis mất, giới hạn trả giá cho qua: một người đặt liền cả chục lượt đều được nhận, vì chặn
+        //     lượt trả giá thật chỉ vì lớp bảo vệ hỏng còn tệ hơn để lọt một đợt dồn dập.
+        for (int i = 1; i <= 12; i++) {
+            mockMvc.perform(post("/api/auctions/" + auction + "/bids").header("Authorization", "Bearer " + buyer)
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":" + (11000000 + i * 500000L) + "}"))
+                    .andExpect(status().isCreated());
+        }
+
         // EN: Redis was tried once, failed, and then left alone for the rest of the run — five requests, one
         //     failure. Counted, not timed: how fast a refused connection fails varies from machine to machine.
         // VI: Redis được thử một lần, hỏng, rồi được để yên suốt phần còn lại — năm request, một lần hỏng. Đếm
         //     chứ không đo giờ: kết nối bị từ chối hỏng nhanh hay chậm tuỳ từng máy.
-        assertThat(output.getOut().split("Redis unavailable", -1).length - 1).isEqualTo(1);
+        assertThat(output.getOut().split("serving lots from the database", -1).length - 1).isEqualTo(1);
+        // EN: The bid rate limiter has its own back-off: it failed open once and then stopped asking too.
+        // VI: Bộ giới hạn tần suất có cơ chế lùi riêng: nó cho qua một lần rồi cũng thôi hỏi Redis.
+        assertThat(output.getOut().split("bid rate limit not enforced", -1).length - 1).isEqualTo(1);
         assertThat(millis).allSatisfy(ms -> assertThat(ms).isLessThan(2_000));
 
         // EN: And the probe does not call the app down over a cache. / VI: Và probe không báo app sập chỉ vì cache.

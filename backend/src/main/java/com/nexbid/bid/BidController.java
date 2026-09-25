@@ -31,9 +31,11 @@ import jakarta.validation.Valid;
 public class BidController {
 
     private final BidService bids;
+    private final BidRateLimiter rateLimiter;
 
-    public BidController(BidService bids) {
+    BidController(BidService bids, BidRateLimiter rateLimiter) {
         this.bids = bids;
+        this.rateLimiter = rateLimiter;
     }
 
     @PostMapping
@@ -43,6 +45,9 @@ public class BidController {
             @PathVariable UUID auctionId,
             @Valid @RequestBody PlaceBidRequest request) {
 
+        // EN: Counted before anything else, so a refused bid still counts — this limits requests, not wins.
+        // VI: Đếm trước mọi thứ, nên lượt bị từ chối vẫn bị tính — đây là giới hạn số request, không phải số lần thắng.
+        rateLimiter.check(bidder.id());
         return ApiResponse.of(bids.place(auctionId, bidder.id(), request.amount()), "Bid placed");
     }
 

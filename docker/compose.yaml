@@ -1,7 +1,7 @@
 # EN: Local infrastructure. Postgres is on 55432 because 5432 and 5433 are both taken on this machine;
-#     Redis follows the same pattern on 56379.
+#     Redis and Kafka follow the same pattern on 56379 and 59092.
 # VI: Hạ tầng chạy local. Postgres ở cổng 55432 vì 5432 và 5433 trên máy này đều đã bị chiếm;
-#     Redis theo cùng cách, ở cổng 56379.
+#     Redis và Kafka theo cùng cách, ở cổng 56379 và 59092.
 #
 # EN: On a contested port Docker may bind only the IPv6 half, and localhost then reaches the wrong server.
 # VI: Khi cổng bị tranh chấp, Docker có thể chỉ bind được phía IPv6, và localhost sẽ trỏ nhầm server khác.
@@ -48,6 +48,40 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # EN: The event log (spec §19). One node in KRaft mode, no ZooKeeper. Data lives in the container: it
+  #     survives a restart but not `down`, which is fine locally since events are consumed within moments.
+  # VI: Nhật ký sự kiện (spec §19). Một node chạy KRaft, không cần ZooKeeper. Dữ liệu nằm trong container:
+  #     còn sau khi restart nhưng mất khi `down`, ở local không sao vì sự kiện được xử lý gần như ngay.
+  kafka:
+    image: apache/kafka-native:4.2.1
+    container_name: nexbid-kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # EN: Two doors: HOST for the app on this machine, DOCKER for containers on the compose network.
+      # VI: Hai cửa: HOST cho app chạy trên máy này, DOCKER cho các container trong mạng compose.
+      KAFKA_LISTENERS: HOST://:9092,DOCKER://:19092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: HOST://127.0.0.1:59092,DOCKER://kafka:19092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: HOST:PLAINTEXT,DOCKER:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: DOCKER
+      # EN: A single node cannot keep more than one copy of anything.
+      # VI: Một node thì không thể giữ nhiều hơn một bản sao.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    ports:
+      - "59092:9092"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9092"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
 volumes:
   nexbid-postgres-data:

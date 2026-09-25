@@ -69,7 +69,7 @@ class BidRecorder {
 
         // EN: Raised here, delivered after commit (guide §23). If the socket is down the bid still stands.
         // VI: Phát ra ở đây, giao đi sau commit (guide §23). Socket có hỏng thì lượt trả giá vẫn có hiệu lực.
-        events.publishEvent(new BidPlacedEvent(placed));
+        events.publishEvent(new BidPlacedEvent(placed, bidderId));
 
         return placed;
     }

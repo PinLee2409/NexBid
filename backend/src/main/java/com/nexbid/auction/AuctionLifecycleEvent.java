@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.springframework.modulith.events.Externalized;
+
 import com.nexbid.auction.entity.Auction;
 
 /**
@@ -12,6 +14,7 @@ import com.nexbid.auction.entity.Auction;
  * VI: Một lô vừa mở, vừa đóng hoặc bị lùi giờ đóng (guide §25, §26, §30). Phát ra trong transaction, chỉ
  *     giao đi sau khi transaction commit.
  */
+@Externalized("nexbid.auctions::#{auctionId()}")
 public record AuctionLifecycleEvent(
         String type,
         UUID auctionId,

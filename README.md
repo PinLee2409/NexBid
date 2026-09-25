@@ -11,7 +11,7 @@ anti-sniping extensions, one winner per lot.
 | | |
 | --- | --- |
 | Frontend | Complete, running on mock data |
-| Backend | Function 32 of 40 — accounts, products, auctions and bidding, safe under concurrent load. Realtime price updates over WebSocket. Lots open and close on schedule, last-second bids extend the close, auto bids answer for their owners, and the top bidder wins. Watchlists, notifications, and a mock payment for the winner that completes the sale as an order. Lot details cached in Redis |
+| Backend | Function 35 of 40 — accounts, products, auctions and bidding, safe under concurrent load. Realtime price updates over WebSocket. Lots open and close on schedule, last-second bids extend the close, auto bids answer for their owners, and the top bidder wins. Watchlists, notifications, and a mock payment for the winner that completes the sale as an order. Lot details cached in Redis, bidding rate limited per user, and domain events published to Kafka through a transactional outbox. Important actions are recorded in an admin-only audit log |
 
 The frontend does not call the backend yet. The mock services mirror the REST
 contract, so switching to the real API changes service bodies and nothing else.
@@ -24,7 +24,7 @@ contract, so switching to the real API changes service bodies and nothing else.
 next-intl (EN/VI), next-themes.
 
 **Backend** — Spring Boot 4.1, Java 21, Spring Data JPA, Spring Security,
-WebSocket, PostgreSQL 17, Redis 7.
+WebSocket, PostgreSQL 17, Redis 7, Kafka 4.
 
 ---
 
@@ -45,9 +45,10 @@ cd frontend && npm install && npm run dev
 Frontend at http://localhost:3000 — works without the backend running.
 Backend at http://localhost:8080/api/health
 
-Postgres is published on port **55432** and Redis on **56379**, not the defaults — see
-[`docker/compose.yaml`](docker/compose.yaml). Redis is only a cache: the backend keeps
-working without it.
+Postgres is published on port **55432**, Redis on **56379** and Kafka on **59092**, not the defaults —
+see [`docker/compose.yaml`](docker/compose.yaml). Redis holds the lot cache and the bid rate limit
+only: the backend keeps working without it, with bids simply not rate limited. Kafka is not on the
+bid path either: while it is down, events wait in the database and notifications arrive once it is back.
 
 ---
 
@@ -60,6 +61,8 @@ working without it.
 | `GET /api/users/me` | The signed-in account. |
 | `PUT /api/users/me` | Renames it. Nothing else about an account is editable by its owner. |
 | `GET /api/health` | Liveness. No token needed. |
+| `GET /api/admin/audit-logs?page=1&size=50` | Admin-only audit history, newest first. Pages contain at most 100 entries. |
+| `PATCH /api/admin/users/{id}/block` | Admin-only. Body `{ "blocked": true }` blocks an account; `false` restores access. |
 
 Everything else requires `Authorization: Bearer <token>`. `/api/admin/**` needs the
 ADMIN role and `/api/seller/**` needs SELLER; the frontend also hides those menus,

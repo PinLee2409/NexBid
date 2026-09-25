@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.springframework.modulith.events.Externalized;
+
 /**
  * EN: What the payment module announces. Orders (guide §33) and notifications listen; this module does
  *     not know they exist. Each listener chooses whether it runs inside the transaction or after commit.
@@ -25,9 +27,11 @@ public final class PaymentEvents {
     }
 
     /** EN: Spec §19 names it PaymentSucceededEvent. / VI: Spec §19 gọi nó là PaymentSucceededEvent. */
+    @Externalized("nexbid.payments::#{auctionId()}")
     public record Succeeded(UUID paymentId, UUID auctionId, UUID userId, BigDecimal amount, Instant at) {
     }
 
+    @Externalized("nexbid.payments::#{auctionId()}")
     public record Expired(UUID paymentId, UUID auctionId, UUID userId, BigDecimal amount, Instant at) {
     }
 }

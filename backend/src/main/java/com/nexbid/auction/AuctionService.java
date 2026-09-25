@@ -199,7 +199,10 @@ public class AuctionService {
                 request.extensionSeconds() == null ? 120 : request.extensionSeconds());
 
         try {
-            return toView(auctions.save(auction));
+            Auction saved = auctions.save(auction);
+            events.publishEvent(new AuctionAuditEvent(
+                    AuctionAuditEvent.Action.CREATED, saved.getId(), sellerId, null, saved.getStatus()));
+            return toView(saved);
         } catch (DataIntegrityViolationException ex) {
             // EN: Two requests can both pass the check above. The partial unique index is the real guard.
             // VI: Hai request đều có thể qua được bước kiểm trên. Index duy nhất có điều kiện mới là chốt thật.
@@ -668,7 +671,7 @@ public class AuctionService {
      *     SCHEDULED, đã qua rồi thì mở nhận trả giá ngay.
      */
     @Transactional
-    public AuctionView approve(UUID auctionId) {
+    public AuctionView approve(UUID auctionId, UUID adminId) {
         Auction auction = pendingAuction(auctionId);
         Instant now = Instant.now();
 
@@ -690,7 +693,11 @@ public class AuctionService {
         // VI: Duyệt xong là lúc sản phẩm không còn thuộc quyền sửa hay xoá của người bán nữa.
         products.markAuctionState(auction.getProductId(), ProductStatus.IN_AUCTION);
 
-        return toView(auctions.save(auction));
+        Auction saved = auctions.save(auction);
+        events.publishEvent(new AuctionAuditEvent(
+                AuctionAuditEvent.Action.APPROVED, auctionId, adminId,
+                AuctionStatus.PENDING_APPROVAL, saved.getStatus()));
+        return toView(saved);
     }
 
     /**
@@ -699,13 +706,17 @@ public class AuctionService {
      * VI: Từ chối một lô kèm lý do (guide §17). Sản phẩm vẫn tự do, nên người bán sửa chỗ sai rồi đăng lại được.
      */
     @Transactional
-    public AuctionView reject(UUID auctionId, String reason) {
+    public AuctionView reject(UUID auctionId, UUID adminId, String reason) {
         Auction auction = pendingAuction(auctionId);
 
         auction.setStatus(AuctionStatus.REJECTED);
         auction.setRejectionReason(reason.trim());
 
-        return toView(auctions.save(auction));
+        Auction saved = auctions.save(auction);
+        events.publishEvent(new AuctionAuditEvent(
+                AuctionAuditEvent.Action.REJECTED, auctionId, adminId,
+                AuctionStatus.PENDING_APPROVAL, saved.getStatus()));
+        return toView(saved);
     }
 
     /**

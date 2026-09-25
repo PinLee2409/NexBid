@@ -8,12 +8,8 @@ import java.util.Locale;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 import com.nexbid.auction.AuctionLifecycleEvent;
 import com.nexbid.auction.AuctionService;
@@ -23,10 +19,10 @@ import com.nexbid.payment.PaymentEvents;
 import com.nexbid.watchlist.WatchlistService;
 
 /**
- * EN: Decides who hears about what (guide §29, spec §15, §18, §38). Runs after commit, on another thread,
- *     so a failed notice never costs a bid — and never holds two DB connections at once (that deadlocked).
- * VI: Quyết định ai được báo về chuyện gì. Chạy sau commit, trên luồng khác, nên thông báo hỏng không làm
- *     mất lượt trả giá — và không bao giờ giữ hai kết nối DB cùng lúc (từng gây kẹt pool).
+ * EN: Decides who hears about what (guide §29, spec §15, §18, §38). Event handlers are called by
+ *     NotificationConsumer as events arrive from Kafka, long after the bid that caused them committed.
+ * VI: Quyết định ai được báo về chuyện gì (guide §29, spec §15, §18, §38). Các hàm xử lý sự kiện do
+ *     NotificationConsumer gọi khi sự kiện tới từ Kafka, sau khi lượt trả giá gây ra nó đã commit từ lâu.
  */
 @Component
 class NotificationTriggers {
@@ -57,9 +53,7 @@ class NotificationTriggers {
      * VI: Ai mất vị trí dẫn đầu thì được báo (spec §38) — quyết định khi lượt trả giá và các auto bid đáp trả
      *     đã ổn định, nên người được auto bid giành lại ngay sẽ không nghe gì.
      */
-    @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     void onOutbid(OutbidEvent event) {
         String message = auctions.lotTitleOf(event.auctionId()) + ": someone bid " + money(event.currentPrice()) + ".";
 
@@ -73,9 +67,7 @@ class NotificationTriggers {
      * EN: At the close, the winner hears they won and every other bidder hears they did not.
      * VI: Lúc đóng phiên, người thắng được báo là đã thắng, mọi người trả giá khác được báo là đã thua.
      */
-    @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     void onLifecycleChange(AuctionLifecycleEvent event) {
         if (!AuctionLifecycleEvent.ENDED.equals(event.type())) {
             return;
@@ -100,9 +92,7 @@ class NotificationTriggers {
     }
 
     /** EN: The payer hears it went through (spec §18). / VI: Người trả được báo là đã thành công (spec §18). */
-    @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     void onPaymentSucceeded(PaymentEvents.Succeeded event) {
         notifications.notify(event.userId(), NotificationType.PAYMENT_SUCCESS, "Payment successful",
                 auctions.lotTitleOf(event.auctionId()) + ": " + money(event.amount()) + " paid.",
@@ -110,9 +100,7 @@ class NotificationTriggers {
     }
 
     /** EN: The payer hears the window closed and the lot is gone (spec §18). / VI: Người trả được báo đã quá hạn và lô không còn (spec §18). */
-    @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     void onPaymentExpired(PaymentEvents.Expired event) {
         notifications.notify(event.userId(), NotificationType.PAYMENT_EXPIRED, "Payment window closed",
                 auctions.lotTitleOf(event.auctionId()) + ": not paid in time, so the sale was cancelled.",

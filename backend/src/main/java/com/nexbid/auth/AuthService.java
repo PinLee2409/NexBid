@@ -1,12 +1,14 @@
 package com.nexbid.auth;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.nexbid.auth.dto.LoginRequest;
 import com.nexbid.auth.dto.LoginResponse;
@@ -35,18 +37,21 @@ public class AuthService {
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
     private final AuthenticationManager authenticationManager;
+    private final ApplicationEventPublisher events;
 
     public AuthService(
             UserService users,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             JwtProperties jwtProperties,
-            AuthenticationManager authenticationManager) {
+            AuthenticationManager authenticationManager,
+            ApplicationEventPublisher events) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.jwtProperties = jwtProperties;
         this.authenticationManager = authenticationManager;
+        this.events = events;
     }
 
     public RegisterResponse register(RegisterRequest request) {
@@ -80,6 +85,7 @@ public class AuthService {
      * EN: Login (guide §7). Spring runs the checks; this method only turns their outcome into our error codes.
      * VI: Đăng nhập (guide §7). Spring chạy các bước kiểm tra; hàm này chỉ dịch kết quả sang mã lỗi của mình.
      */
+    @Transactional
     public LoginResponse login(LoginRequest request) {
         String email = request.email().trim();
 
@@ -89,6 +95,7 @@ public class AuthService {
 
             UserCredentials user = ((NexbidUserDetails) authentication.getPrincipal()).credentials();
             String token = jwtService.issue(user);
+            events.publishEvent(new SuccessfulLoginEvent(user.id()));
 
             return LoginResponse.of(token, Instant.now().plus(jwtProperties.expiry()), user);
 
