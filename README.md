@@ -223,6 +223,10 @@ flowchart LR
     outbox -- "relay, after commit,<br/>oldest first" --> topics["nexbid.auctions<br/>nexbid.payments<br/>(keyed by lot)"]
     topics --> consumer["Notification consumer"]
     consumer -- "once per event<br/>(consumed_events)" --> notices[("notifications")]
+    topics --> analytics["Analytics consumer"]
+    analytics -- "once per event" --> hourly[("analytics_hourly")]
+    consumer -. "can never succeed" .-> dlt["nexbid.*.DLT"]
+    analytics -.-> dlt
 ```
 
 Events (`BidPlacedEvent`, `AuctionLifecycleEvent` for start / extend / end, `OutbidEvent`,
@@ -231,8 +235,14 @@ same transaction as the change they describe. A relay hands them to Kafka after 
 once acknowledged. A rolled-back bid never produces an event; a committed one always does; Kafka being
 down only delays delivery. Events of one lot share a key, so they arrive in order. The consumer records
 each event it handled in the same transaction as its work, so a redelivery does nothing. An event that
-cannot be read, or that the database refuses outright (a user it does not have), is logged and skipped
-rather than blocking everything behind it; any other failure is retried until it clears.
+cannot be read, or that the database refuses outright (a user it does not have), is logged and parked on
+the topic's dead-letter twin (`nexbid.auctions.DLT`, `nexbid.payments.DLT`) rather than blocking
+everything behind it; any other failure is retried until it clears.
+
+Two consumer groups read the same topics independently (spec §19). The notification consumer writes the
+bell; the analytics consumer adds each bid, close and payment into hourly totals, which the admin overview
+charts for the last 24 hours (`GET /api/admin/analytics`). Audit entries are written inside the original
+transaction instead of by a consumer, so they can never disagree with the data.
 
 ---
 
@@ -248,7 +258,7 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | Bidding | `POST /api/auctions/{id}/bids`, `GET /api/auctions/{id}/bids`, `/api/auctions/{id}/auto-bid` |
 | Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders` (`…/{id}/received`), `…/me/watchlist`, `/api/notifications` |
 | Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions`, `/api/seller/orders` (`…/{id}/ship`) |
-| Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users`, `/api/admin/users/{id}/block`, `/api/admin/orders` (`…/{id}/refund`), `/api/admin/audit-logs` |
+| Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users`, `/api/admin/users/{id}/block`, `/api/admin/orders` (`…/{id}/refund`), `/api/admin/analytics`, `/api/admin/audit-logs` |
 | Realtime | STOMP at `/ws`: `/topic/auctions/{id}` for everyone, `/user/queue/notifications` for the signed-in user |
 
 `/api/admin/**` needs the ADMIN role and `/api/seller/**` needs SELLER. The frontend hides those menus
@@ -342,6 +352,19 @@ docker compose -f docker/compose.yaml down -v && docker compose -f docker/compos
 rm -f backend/var/images/*
 ```
 
+### Monitoring
+
+```bash
+docker compose --profile monitoring up
+```
+
+Adds Prometheus (http://localhost:9090) and Grafana (http://localhost:3001, viewable without signing in)
+with a provisioned dashboard: the metrics of spec §34 — `bid_requests_total`, `bid_success_total`,
+`bid_failed_total` by reason, `bid_latency` (p50 / p95 / p99), `active_auctions`,
+`websocket_connections`, `payment_success_total` — plus the database pool the load test found to be the
+bottleneck. In the Docker stack the backend serves health and metrics on port 8090, which is never
+published, so only Prometheus inside the network can read them.
+
 ---
 
 ## Testing
@@ -392,14 +415,16 @@ k6 against `docker compose up`, focusing on `POST /api/auctions/{id}/bids`. Late
 
 | Users | Requests/s | Bid p50 | Bid p95 | Bid p99 | Errors |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 10 | 12.6 | 10.9 | 14.3 | 16.9 | 0.00% |
-| 100 | 126.9 | 3.7 | 12.2 | 16.9 | 0.00% |
-| 500 | 637.0 | 3.0 | 11.5 | 19.4 | 0.00% |
-| 1000 | 1242.1 | 3.1 | 200.3 | 413.3 | 0.00% |
+| 10 | 12.6 | 15.2 | 26.0 | 36.0 | 0.00% |
+| 100 | 127.1 | 3.5 | 13.3 | 18.0 | 0.00% |
+| 500 | 637.9 | 2.1 | 9.3 | 13.6 | 0.00% |
+| 1000 | 1270.6 | 2.1 | 9.3 | 27.1 | 0.00% |
 
-Every spec §31 target (bid p95 < 500 ms, lot page p95 < 300 ms) holds at 1000 users on one laptop. The
-knee is between 500 and 1000 users, where 8 of the 10 pooled database connections were busy at the peak. Method,
-all endpoints, database and Redis figures, and how to run it: [`docs/load-test`](docs/load-test/README.md).
+Every spec §31 target (bid p95 < 500 ms, lot page p95 < 300 ms) holds at 1000 users on one laptop, by a
+wide margin. The first run had a knee between 500 and 1000 users — bid p95 200 ms, 8 of 10 database
+connections busy — caused by looking the account up on every request; caching that check for a few seconds
+removed it. Method, all endpoints, database and Redis figures, and how to run it:
+[`docs/load-test`](docs/load-test/README.md).
 
 ---
 

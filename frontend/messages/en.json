@@ -565,7 +565,18 @@
     "refundBody": "The order is cancelled and the payment marked refunded. This cannot be undone.",
     "refunded": "Order refunded",
     "refundedBody": "The payment is marked refunded.",
-    "confirmRefund": "Refund"
+    "confirmRefund": "Refund",
+    "adminNotBlockable": "Admin accounts cannot be blocked.",
+    "activityTitle": "Last 24 hours",
+    "activityHint": "Hourly, from the event stream",
+    "activityBids": "Bids",
+    "activityClosed": "Lots closed",
+    "activitySellThrough": "Sell-through",
+    "activityRevenue": "Revenue paid",
+    "activityChartLabel": "Bids per hour",
+    "activityChartSummary": "{total} bids in the last 24 hours; busiest hour {peak}.",
+    "activityHourBids": "{count, plural, one {# bid} other {# bids}}",
+    "activityUnavailable": "Activity is not available right now."
   },
   "howItWorks": {
     "title": "How NexBid works",
@@ -892,6 +903,7 @@
     "METHOD_NOT_ALLOWED": "That action is not supported.",
     "UNSUPPORTED_MEDIA_TYPE": "That file type is not supported.",
     "INTERNAL_ERROR": "Something went wrong. Please try again.",
-    "ORDER_STATUS_INVALID": "This order is not at that step."
+    "ORDER_STATUS_INVALID": "This order is not at that step.",
+    "ADMIN_NOT_BLOCKABLE": "Admin accounts cannot be blocked."
   }
 }

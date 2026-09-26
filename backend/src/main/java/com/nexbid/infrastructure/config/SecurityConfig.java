@@ -46,6 +46,9 @@ public class SecurityConfig {
     // VI: Đăng ký và đăng nhập phải gọi được khi chưa có token — vốn dĩ chúng sinh ra để làm thế.
     static final String[] PUBLIC_PATHS = {
             "/api/health", "/actuator/health", "/api/auth/**",
+            // EN: Scraped by Prometheus, which sends no token; in Docker it is only reachable inside the network.
+            // VI: Prometheus lấy số liệu mà không gửi token; trong Docker chỉ truy cập được từ mạng nội bộ.
+            "/actuator/prometheus",
             // EN: Every countdown on the site measures against this, so it must answer before sign-in.
             // VI: Mọi đồng hồ đếm ngược trên site đo theo mốc này, nên nó phải trả lời từ trước khi đăng nhập.
             "/api/server-time",

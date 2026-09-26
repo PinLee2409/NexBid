@@ -56,6 +56,9 @@ class ProductImageApiTest {
     private UserService users;
 
     @Autowired
+    private ProductService products;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     private String tokenFor(String email) throws Exception {
@@ -280,6 +283,38 @@ class ProductImageApiTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("IMAGE_INVALID"));
+    }
+
+    @Test
+    void thePhotosLockOnceTheAuctionIsApproved() throws Exception {
+        String token = tokenFor("img.locked@nexbid.com");
+        String product = productFor(token);
+        String uploaded = mockMvc.perform(multipart("/api/seller/products/" + product + "/images")
+                        .file(png("front.png"))
+                        .file(png("back.png"))
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String back = objectMapper.readTree(uploaded).get("data").get(1).get("id").asString();
+
+        // EN: What the approval does to the product. / VI: Việc mà bước duyệt làm với sản phẩm.
+        products.markAuctionState(java.util.UUID.fromString(product), ProductStatus.IN_AUCTION);
+
+        mockMvc.perform(multipart("/api/seller/products/" + product + "/images")
+                        .file(png("extra.png"))
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PRODUCT_NOT_EDITABLE"));
+        mockMvc.perform(delete("/api/seller/products/" + product + "/images/" + back)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isConflict());
+        mockMvc.perform(put("/api/seller/products/" + product + "/images/" + back + "/cover")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(get("/api/seller/products/" + product + "/images").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[1].id").value(back));
     }
 
     @Test

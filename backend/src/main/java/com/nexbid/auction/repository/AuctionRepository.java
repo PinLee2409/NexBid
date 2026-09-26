@@ -98,4 +98,6 @@ public interface AuctionRepository
      * VI: Cũ nhất trước — hàng chờ duyệt nên công bằng với người đợi lâu nhất.
      */
     List<Auction> findByStatusOrderByCreatedAtAsc(AuctionStatus status);
+
+    long countByStatus(AuctionStatus status);
 }

@@ -127,12 +127,15 @@ function ProductRow({ entry }: { entry: ProductWithMeta }) {
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <Button asChild size="sm" variant="outline">
-          <Link href={`/seller/products/${product.id}/edit`}>
-            <Pencil className="size-3.5" />
-            {tc("edit")}
-          </Link>
-        </Button>
+        {/* A product in an auction or sold is locked, photos included. */}
+        {product.status !== "IN_AUCTION" && product.status !== "SOLD" ? (
+          <Button asChild size="sm" variant="outline">
+            <Link href={`/seller/products/${product.id}/edit`}>
+              <Pencil className="size-3.5" />
+              {tc("edit")}
+            </Link>
+          </Button>
+        ) : null}
         {!auction ? (
           <Button asChild size="sm">
             <Link href={`/seller/auctions/create?productId=${product.id}`}>

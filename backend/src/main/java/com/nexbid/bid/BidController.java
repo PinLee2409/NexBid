@@ -32,10 +32,12 @@ public class BidController {
 
     private final BidService bids;
     private final BidRateLimiter rateLimiter;
+    private final BidMetrics metrics;
 
-    BidController(BidService bids, BidRateLimiter rateLimiter) {
+    BidController(BidService bids, BidRateLimiter rateLimiter, BidMetrics metrics) {
         this.bids = bids;
         this.rateLimiter = rateLimiter;
+        this.metrics = metrics;
     }
 
     @PostMapping
@@ -47,8 +49,11 @@ public class BidController {
 
         // EN: Counted before anything else, so a refused bid still counts — this limits requests, not wins.
         // VI: Đếm trước mọi thứ, nên lượt bị từ chối vẫn bị tính — đây là giới hạn số request, không phải số lần thắng.
-        rateLimiter.check(bidder.id());
-        return ApiResponse.of(bids.place(auctionId, bidder.id(), request.amount()), "Bid placed");
+        PlacedBidView placed = metrics.measure(() -> {
+            rateLimiter.check(bidder.id());
+            return bids.place(auctionId, bidder.id(), request.amount());
+        });
+        return ApiResponse.of(placed, "Bid placed");
     }
 
     /**

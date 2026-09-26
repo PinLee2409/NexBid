@@ -1,0 +1,10 @@
+# EN: Loads the dashboards in /var/lib/grafana/dashboards at startup.
+# VI: Nạp các dashboard trong /var/lib/grafana/dashboards lúc khởi động.
+apiVersion: 1
+
+providers:
+  - name: NexBid
+    folder: NexBid
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

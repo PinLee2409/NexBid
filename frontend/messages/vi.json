@@ -565,7 +565,18 @@
     "refundBody": "Đơn sẽ bị huỷ và khoản thanh toán được đánh dấu đã hoàn. Không thể hoàn tác.",
     "refunded": "Đã hoàn tiền",
     "refundedBody": "Khoản thanh toán đã được đánh dấu hoàn tiền.",
-    "confirmRefund": "Hoàn tiền"
+    "confirmRefund": "Hoàn tiền",
+    "adminNotBlockable": "Không thể khoá tài khoản admin.",
+    "activityTitle": "24 giờ qua",
+    "activityHint": "Theo giờ, từ luồng sự kiện",
+    "activityBids": "Lượt trả giá",
+    "activityClosed": "Lô đã đóng",
+    "activitySellThrough": "Tỉ lệ bán được",
+    "activityRevenue": "Doanh thu đã trả",
+    "activityChartLabel": "Lượt trả giá mỗi giờ",
+    "activityChartSummary": "{total} lượt trả giá trong 24 giờ qua; giờ sôi động nhất {peak}.",
+    "activityHourBids": "{count} lượt trả giá",
+    "activityUnavailable": "Hiện chưa xem được số liệu hoạt động."
   },
   "howItWorks": {
     "title": "NexBid hoạt động thế nào",
@@ -892,6 +903,7 @@
     "METHOD_NOT_ALLOWED": "Thao tác này không được hỗ trợ.",
     "UNSUPPORTED_MEDIA_TYPE": "Loại file này không được hỗ trợ.",
     "INTERNAL_ERROR": "Đã có lỗi xảy ra. Vui lòng thử lại.",
-    "ORDER_STATUS_INVALID": "Đơn hàng không ở bước này."
+    "ORDER_STATUS_INVALID": "Đơn hàng không ở bước này.",
+    "ADMIN_NOT_BLOCKABLE": "Không thể khoá tài khoản admin."
   }
 }

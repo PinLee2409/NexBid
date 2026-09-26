@@ -85,7 +85,14 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        # EN: Metrics for Prometheus (spec §34). The Docker stack moves these to a port it never publishes
+        #     (MANAGEMENT_SERVER_PORT in docker-compose.yml), so only Prometheus inside the network reads them.
+        # VI: Metric cho Prometheus (spec §34). Stack Docker chuyển chúng sang một cổng không bao giờ công bố
+        #     (MANAGEMENT_SERVER_PORT trong docker-compose.yml), nên chỉ Prometheus trong mạng nội bộ đọc được.
+        include: health,prometheus
+  metrics:
+    tags:
+      application: nexbid
   endpoint:
     health:
       # EN: Which component failed is operational detail, not for the public probe.
@@ -98,6 +105,13 @@ management:
       enabled: false
 
 nexbid:
+  auth:
+    # EN: How long "this account is active" is reused before asking the database again. A block takes effect
+    #     at once on this server; another server would see it within this time.
+    # VI: Câu trả lời "tài khoản đang hoạt động" được dùng lại bao lâu trước khi hỏi lại database. Khoá tài khoản
+    #     có hiệu lực ngay trên server này; server khác sẽ thấy trong khoảng thời gian này.
+    status-cache-ttl: ${NEXBID_STATUS_CACHE_TTL:10s}
+
   cache:
     # EN: How long a lot's unchanging details stay cached. Nothing that bidding changes is ever cached.
     # VI: Thông tin không đổi của một lô được giữ trong cache bao lâu. Không thứ gì mà việc trả giá làm thay đổi được cache.

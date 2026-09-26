@@ -1,8 +1,8 @@
 {
   "vus": 10,
   "peak_db_connections": 10,
-  "peak_busy_db_connections": 2,
-  "redis_hits": 1376,
-  "redis_misses": 10,
-  "redis_hit_rate": 0.9928
+  "peak_busy_db_connections": 1,
+  "redis_hits": 1378,
+  "redis_misses": 479,
+  "redis_hit_rate": 0.7421
 }

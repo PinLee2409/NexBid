@@ -13,6 +13,8 @@ public enum ErrorCode {
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT),
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED),
     ACCOUNT_BLOCKED(HttpStatus.FORBIDDEN),
+    // EN: Admins cannot block an admin — not another one, not themselves. / VI: Admin không khoá được admin — kể cả chính mình.
+    ADMIN_NOT_BLOCKABLE(HttpStatus.CONFLICT),
 
     /* --- Catalogue / Sản phẩm ---------------------------------------- */
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND),

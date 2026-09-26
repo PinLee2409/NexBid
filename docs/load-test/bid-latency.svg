@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 440" width="800" height="440" role="img" aria-labelledby="title desc" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
   <title id="title">Bid latency under load</title>
-  <desc id="desc">POST /api/auctions/{id}/bids latency by concurrent users. p50 stays near 3 to 11 ms at every level. p95 and p99 stay under 20 ms up to 500 users, then rise to 200 ms and 413 ms at 1000 users, still under the 500 ms p95 target.</desc>
+  <desc id="desc">POST /api/auctions/{id}/bids latency by concurrent users. p95 stays between 9 and 26 ms and p99 under 40 ms at every level up to 1000 users — the slowest numbers are at 10 users, which run first on a cold JVM. The spec §31 target of 500 ms p95 is ten times the top of the chart.</desc>
   <style>
     svg { --surface: #fcfcfb; --ink-1: #0b0b0b; --ink-2: #52514e; --ink-3: #8a8984; --grid: #e7e6e2; --axis: #b9b8b2;
           --c1: #86b6ef; --c2: #2a78d6; --c3: #104281; }
@@ -22,38 +22,33 @@
   </style>
 
   <rect class="surface" x="0" y="0" width="800" height="440" rx="8"/>
-
   <text class="ink-1" x="32" y="40" font-size="18" font-weight="600">Bid latency under load</text>
   <text class="ink-2" x="32" y="62" font-size="13">POST /api/auctions/{id}/bids · one backend container · 10 lots shared by all users</text>
-
   <!-- Legend -->
   <g font-size="12" class="ink-2">
     <line class="line s1" x1="530" y1="36" x2="552" y2="36"/><text x="558" y="40">p50</text>
     <line class="line s2" x1="598" y1="36" x2="620" y2="36"/><text x="626" y="40">p95</text>
     <line class="line s3" x1="666" y1="36" x2="688" y2="36"/><text x="694" y="40">p99</text>
   </g>
-
-  <!-- Grid: 0..500 ms, y = 360 - v * 0.52 -->
+  <!-- Grid: 0..50 ms, y = 360 - v * 5.2 -->
   <g>
     <line class="grid" x1="90" y1="308" x2="640" y2="308"/>
     <line class="grid" x1="90" y1="256" x2="640" y2="256"/>
     <line class="grid" x1="90" y1="204" x2="640" y2="204"/>
     <line class="grid" x1="90" y1="152" x2="640" y2="152"/>
+    <line class="grid" x1="90" y1="100" x2="640" y2="100"/>
     <line class="axis" x1="90" y1="360" x2="640" y2="360"/>
   </g>
   <g font-size="11" class="ink-3" text-anchor="end">
     <text x="80" y="364">0 ms</text>
-    <text x="80" y="312">100</text>
-    <text x="80" y="260">200</text>
-    <text x="80" y="208">300</text>
-    <text x="80" y="156">400</text>
-    <text x="80" y="104">500</text>
+    <text x="80" y="312">10</text>
+    <text x="80" y="260">20</text>
+    <text x="80" y="208">30</text>
+    <text x="80" y="156">40</text>
+    <text x="80" y="104">50</text>
   </g>
-
-  <!-- Spec §31 target for the bid endpoint -->
-  <line class="target" x1="90" y1="100" x2="640" y2="100"/>
-  <text class="ink-2" x="640" y="92" font-size="11" text-anchor="end">spec §31 target: p95 &lt; 500 ms</text>
-
+  <!-- Spec §31 target for the bid endpoint is 500 ms: ten times the top of this chart -->
+  <text class="ink-2" x="640" y="92" font-size="11" text-anchor="end">spec §31 target: p95 &lt; 500 ms (10× this chart's top)</text>
   <!-- X axis: concurrent users -->
   <g font-size="12" class="ink-2" text-anchor="middle">
     <text x="110" y="382">10</text>
@@ -62,23 +57,19 @@
     <text x="629" y="382">1000</text>
   </g>
   <text class="ink-3" x="370" y="406" font-size="11" text-anchor="middle">concurrent users</text>
-
   <!-- Series. x: 110, 283, 456, 629 -->
-  <polyline class="line s1" points="110,354.3 283,358.1 456,358.4 629,358.4"/>
-  <polyline class="line s2" points="110,352.6 283,353.7 456,354.0 629,255.8"/>
-  <polyline class="line s3" points="110,351.2 283,351.2 456,349.9 629,145.1"/>
-
-  <circle class="dot s1" cx="629" cy="358.4" r="4"/>
-  <circle class="dot s2" cx="629" cy="255.8" r="4"/>
-  <circle class="dot s3" cx="629" cy="145.1" r="4"/>
-
+  <polyline class="line s1" points="110,281.0 283,341.8 456,349.1 629,349.1"/>
+  <polyline class="line s2" points="110,224.8 283,290.8 456,311.6 629,311.6"/>
+  <polyline class="line s3" points="110,172.8 283,266.4 456,289.3 629,219.1"/>
+  <circle class="dot s1" cx="629" cy="349.1" r="4"/>
+  <circle class="dot s2" cx="629" cy="311.6" r="4"/>
+  <circle class="dot s3" cx="629" cy="219.1" r="4"/>
   <!-- Direct labels at the right end -->
   <g font-size="12">
-    <text class="ink-1" x="646" y="149" font-weight="600">p99 413 ms</text>
-    <text class="ink-1" x="646" y="260" font-weight="600">p95 200 ms</text>
-    <text class="ink-2" x="646" y="362">p50 3 ms</text>
+    <text class="ink-1" x="646" y="223.1" font-weight="600">p99 27 ms</text>
+    <text class="ink-1" x="646" y="315.6" font-weight="600">p95 9 ms</text>
+    <text class="ink-2" x="646" y="355.1">p50 2 ms</text>
   </g>
-
-  <!-- The flat part -->
-  <text class="ink-2" x="283" y="336" font-size="11" text-anchor="middle">under 20 ms at p99 up to 500 users</text>
+  <!-- The 10-user level runs first -->
+  <text class="ink-2" x="124" y="162.8" font-size="11">10 users run first, on a JVM that has just started</text>
 </svg>

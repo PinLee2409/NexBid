@@ -84,6 +84,21 @@ export interface ApiImage {
   sortOrder: number;
 }
 
+/** EN: One UTC hour of the Analytics Consumer's totals. / VI: Một giờ UTC trong số liệu tổng của Analytics Consumer. */
+export interface ApiAnalyticsHour {
+  hour: IsoDateString;
+  bids: number;
+  auctionsEnded: number;
+  auctionsSold: number;
+  payments: number;
+  revenue: number;
+}
+
+export interface ApiAnalyticsReport {
+  hours: ApiAnalyticsHour[];
+  totals: Omit<ApiAnalyticsHour, "hour"> & { sellThrough: number | null };
+}
+
 export interface ApiAuctionDetail {
   auction: ApiAuction;
   product: { id: string; name: string; description: string; condition: ProductCondition };
