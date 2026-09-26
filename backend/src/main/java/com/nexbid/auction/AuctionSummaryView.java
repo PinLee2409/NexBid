@@ -15,7 +15,7 @@ public record AuctionSummaryView(
         Seller seller) {
 
     /** EN: Just enough of the item to draw a card. / VI: Vừa đủ thông tin món hàng để vẽ một thẻ. */
-    public record Product(UUID id, String name, String coverImageUrl) {
+    public record Product(UUID id, String name, String coverImageUrl, String condition) {
     }
 
     public record Seller(UUID id, String displayName) {

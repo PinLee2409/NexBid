@@ -1,23 +1,19 @@
 "use client";
 
-import { AUCTION_CONFIG } from "@/constants/auction";
+import { isLocalFileUrl, localFileFor } from "@/lib/local-files";
 import type {
   Auction,
   AuctionSummary,
   Category,
   Product,
   ProductCondition,
+  ProductImage,
 } from "@/types";
 
-import {
-  CURRENT_USER_ID,
-  db,
-  delay,
-  findAuction,
-  nextId,
-  reconcileAuctionStatuses,
-  toAuctionSummary,
-} from "./mock/db";
+import type { ApiAuction, ApiImage, ApiProduct } from "./api/dto";
+import { api } from "./api/http";
+import { toAuction, toCategory, toImage, toProduct } from "./api/mappers";
+import { getCurrentUser } from "./session-service";
 
 /**
  * Seller APIs (spec §7.3, §7.4, §27).
@@ -37,30 +33,42 @@ export interface ProductWithMeta {
   auction: Auction | null;
 }
 
-/** `GET /api/products?sellerId=me` */
-export async function listMyProducts(): Promise<ProductWithMeta[]> {
-  await delay();
-  reconcileAuctionStatuses();
-
-  return db.products
-    .filter((product) => product.sellerId === CURRENT_USER_ID)
-    .map((product) => ({
-      product,
-      category:
-        db.categories.find((item) => item.id === product.categoryId) ?? null,
-      auction:
-        db.auctions.find((item) => item.productId === product.id) ?? null,
-    }))
-    .sort(
-      (a, b) =>
-        new Date(b.product.createdAt).getTime() -
-        new Date(a.product.createdAt).getTime(),
-    );
+async function imagesOf(product: ApiProduct): Promise<ProductImage[]> {
+  const images = await api<ApiImage[]>(`/api/seller/products/${product.id}/images`);
+  return images.map((image) => toImage(image, product.name));
 }
 
+/** The seller's products with their photos, and all their auctions — one load for both lists. */
+async function loadCatalogue(): Promise<{ products: ProductWithMeta[]; auctions: ApiAuction[] }> {
+  const [products, auctions] = await Promise.all([
+    api<ApiProduct[]>("/api/seller/products"),
+    api<ApiAuction[]>("/api/seller/auctions"),
+  ]);
+  const images = await Promise.all(products.map(imagesOf));
+
+  const entries = products.map((product, index) => {
+    // The newest auction for a product is the one that matters.
+    const auction = auctions
+      .filter((item) => item.productId === product.id)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    return {
+      product: toProduct(product, images[index]),
+      category: product.category ? toCategory(product.category) : null,
+      auction: auction ? toAuction(auction) : null,
+    };
+  });
+  return { products: entries, auctions };
+}
+
+/** `GET /api/seller/products`, each with its photos and current auction. */
+export async function listMyProducts(): Promise<ProductWithMeta[]> {
+  return (await loadCatalogue()).products;
+}
+
+/** `GET /api/seller/products/{id}` */
 export async function getProduct(productId: string): Promise<Product | null> {
-  await delay();
-  return db.products.find((product) => product.id === productId) ?? null;
+  const product = await api<ApiProduct>(`/api/seller/products/${productId}`);
+  return toProduct(product, await imagesOf(product));
 }
 
 export interface ProductInput {
@@ -68,79 +76,101 @@ export interface ProductInput {
   description: string;
   categoryId: string;
   condition: ProductCondition;
+  /** Server URLs for photos kept, object URLs for new ones; the first is the cover. */
   imageUrls: string[];
 }
 
-/** `POST /api/products` */
-export async function createProduct(input: ProductInput): Promise<Product> {
-  await delay(700);
+/**
+ * EN: Makes the product's photos match the form: uploads new files, deletes removed photos, and sets
+ *     the first one as the cover.
+ * VI: Làm cho ảnh của sản phẩm khớp với form: tải ảnh mới lên, xoá ảnh bị bỏ, và đặt ảnh đầu làm ảnh bìa.
+ */
+async function syncImages(productId: string, wanted: string[], existing: ProductImage[]): Promise<void> {
+  const base = `/api/seller/products/${productId}/images`;
 
-  const timestamp = new Date().toISOString();
-  const id = nextId("prod");
+  for (const image of existing.filter((item) => !wanted.includes(item.url))) {
+    await api(`${base}/${image.id}`, { method: "DELETE" });
+  }
 
-  const product: Product = {
-    id,
-    sellerId: CURRENT_USER_ID,
-    categoryId: input.categoryId,
-    name: input.name.trim(),
-    description: input.description.trim(),
-    condition: input.condition,
-    status: "AVAILABLE",
-    images: input.imageUrls.map((url, index) => ({
-      id: `${id}-img-${index}`,
-      url,
-      alt: `${input.name} — view ${index + 1}`,
-      sortOrder: index,
-    })),
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  };
+  const newFiles = wanted.filter(isLocalFileUrl).map((url) => ({ url, file: localFileFor(url) }));
+  let current = existing.filter((item) => wanted.includes(item.url));
+  const uploadedByUrl = new Map<string, string>();
+  if (newFiles.some((entry) => entry.file)) {
+    const form = new FormData();
+    for (const { file } of newFiles) if (file) form.append("files", file);
+    const after = await api<ApiImage[]>(base, { method: "POST", form });
+    // The server lists existing photos first, then the new ones in upload order.
+    const added = after.filter((image) => !current.some((item) => item.id === image.id));
+    newFiles.forEach((entry, index) => {
+      if (added[index]) uploadedByUrl.set(entry.url, added[index].id);
+    });
+    current = after.map((image) => toImage(image, ""));
+  }
 
-  db.products.unshift(product);
-  return product;
+  const coverUrl = wanted[0];
+  const coverId = coverUrl
+    ? (uploadedByUrl.get(coverUrl) ?? current.find((image) => image.url === coverUrl)?.id)
+    : undefined;
+  if (coverId && current[0]?.id !== coverId) {
+    await api(`${base}/${coverId}/cover`, { method: "PUT" });
+  }
 }
 
-/** `PUT /api/products/{id}` */
-export async function updateProduct(
-  productId: string,
-  input: ProductInput,
-): Promise<Product | null> {
-  await delay(600);
+/** `POST /api/seller/products`, then its photos. */
+export async function createProduct(input: ProductInput): Promise<Product> {
+  const product = await api<ApiProduct>("/api/seller/products", {
+    method: "POST",
+    body: {
+      name: input.name.trim(),
+      description: input.description.trim(),
+      categoryId: input.categoryId,
+      condition: input.condition,
+      publishNow: true,
+    },
+  });
+  await syncImages(product.id, input.imageUrls, []);
+  return toProduct(product, await imagesOf(product));
+}
 
-  const product = db.products.find((item) => item.id === productId);
-  if (!product) return null;
-
-  product.name = input.name.trim();
-  product.description = input.description.trim();
-  product.categoryId = input.categoryId;
-  product.condition = input.condition;
-  product.images = input.imageUrls.map((url, index) => ({
-    id: `${productId}-img-${index}`,
-    url,
-    alt: `${input.name} — view ${index + 1}`,
-    sortOrder: index,
-  }));
-  product.updatedAt = new Date().toISOString();
-
-  return { ...product };
+/** `PUT /api/seller/products/{id}`, then its photos. */
+export async function updateProduct(productId: string, input: ProductInput): Promise<Product> {
+  const existing = await imagesOf(await api<ApiProduct>(`/api/seller/products/${productId}`));
+  const product = await api<ApiProduct>(`/api/seller/products/${productId}`, {
+    method: "PUT",
+    body: {
+      name: input.name.trim(),
+      description: input.description.trim(),
+      categoryId: input.categoryId,
+      condition: input.condition,
+    },
+  });
+  await syncImages(productId, input.imageUrls, existing);
+  return toProduct(product, await imagesOf(product));
 }
 
 /* -------------------------------------------------------------------------- */
 /*                                  Auctions                                  */
 /* -------------------------------------------------------------------------- */
 
-/** `GET /api/auctions?sellerId=me` */
+/** `GET /api/seller/auctions`, as cards with the seller's own product details. */
 export async function listMyAuctions(): Promise<AuctionSummary[]> {
-  await delay();
-  reconcileAuctionStatuses();
+  const { products, auctions } = await loadCatalogue();
+  const seller = getCurrentUser();
 
-  return db.auctions
-    .filter((auction) => auction.sellerId === CURRENT_USER_ID)
-    .map(toAuctionSummary)
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+  return auctions
+    .map((view): AuctionSummary | null => {
+      const entry = products.find((item) => item.product.id === view.productId);
+      if (!entry) return null;
+      return {
+        ...toAuction(view),
+        product: entry.product,
+        category: entry.category ?? toCategory(null),
+        seller: { id: view.sellerId, displayName: seller?.displayName ?? "" },
+        watched: false,
+      };
+    })
+    .filter((item): item is AuctionSummary => item !== null)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export interface SellerStats {
@@ -152,23 +182,14 @@ export interface SellerStats {
 }
 
 export async function getSellerStats(): Promise<SellerStats> {
-  await delay();
-  reconcileAuctionStatuses();
-
-  const mine = db.auctions.filter(
-    (auction) => auction.sellerId === CURRENT_USER_ID,
-  );
-
+  const mine = await listMyAuctions();
+  const completed = mine.filter((auction) => auction.status === "COMPLETED");
   return {
     activeAuctions: mine.filter((auction) => auction.status === "ACTIVE").length,
-    upcomingAuctions: mine.filter((auction) => auction.status === "SCHEDULED")
-      .length,
+    upcomingAuctions: mine.filter((auction) => auction.status === "SCHEDULED").length,
     totalBids: mine.reduce((total, auction) => total + auction.bidCount, 0),
-    completedSales: mine.filter((auction) => auction.status === "COMPLETED")
-      .length,
-    grossSales: mine
-      .filter((auction) => auction.status === "COMPLETED")
-      .reduce((total, auction) => total + auction.currentPrice, 0),
+    completedSales: completed.length,
+    grossSales: completed.reduce((total, auction) => total + auction.currentPrice, 0),
   };
 }
 
@@ -183,67 +204,29 @@ export interface AuctionInput {
   extensionSeconds: number;
 }
 
-/** `POST /api/auctions` */
+/** `POST /api/seller/auctions`, and `…/submit` straight after when asked. */
 export async function createAuction(
   input: AuctionInput,
   submitForApproval: boolean,
 ): Promise<Auction> {
-  await delay(800);
-
-  const timestamp = new Date().toISOString();
-
-  const auction: Auction = {
-    id: nextId("auction"),
-    productId: input.productId,
-    sellerId: CURRENT_USER_ID,
-    // New lots continue the catalogue numbering.
-    lotNumber: db.auctions.reduce((highest, item) => Math.max(highest, item.lotNumber), 0) + 1,
-    startingPrice: input.startingPrice,
-    currentPrice: input.startingPrice,
-    minimumIncrement: input.minimumIncrement,
-    startTime: input.startTime,
-    endTime: input.endTime,
-    status: submitForApproval ? "PENDING_APPROVAL" : "DRAFT",
-    bidCount: 0,
-    winnerId: null,
-    antiSniping: {
-      enabled: input.antiSnipingEnabled,
-      windowSeconds:
-        input.antiSnipingWindowSeconds ||
-        AUCTION_CONFIG.defaultAntiSnipingWindowSeconds,
-      extensionSeconds:
-        input.extensionSeconds || AUCTION_CONFIG.defaultExtensionSeconds,
+  const created = await api<ApiAuction>("/api/seller/auctions", {
+    method: "POST",
+    body: {
+      productId: input.productId,
+      startingPrice: input.startingPrice,
+      minimumIncrement: input.minimumIncrement,
+      startTime: input.startTime,
+      endTime: input.endTime,
+      antiSnipingEnabled: input.antiSnipingEnabled,
+      antiSnipingWindowSeconds: input.antiSnipingEnabled ? input.antiSnipingWindowSeconds : undefined,
+      extensionSeconds: input.antiSnipingEnabled ? input.extensionSeconds : undefined,
     },
-    extensionCount: 0,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  };
-
-  db.auctions.unshift(auction);
-
-  const product = db.products.find((item) => item.id === input.productId);
-  if (product) product.status = "IN_AUCTION";
-
-  return auction;
+  });
+  if (!submitForApproval) return toAuction(created);
+  return toAuction(await api<ApiAuction>(`/api/seller/auctions/${created.id}/submit`, { method: "POST" }));
 }
 
-/** `POST /api/auctions/{id}/submit` */
-export async function submitAuctionForApproval(
-  auctionId: string,
-): Promise<Auction | null> {
-  await delay(500);
-
-  const auction = findAuction(auctionId);
-  if (!auction) return null;
-
-  // Only a draft (or a rejected listing being resubmitted) can be sent.
-  if (auction.status !== "DRAFT" && auction.status !== "REJECTED") {
-    return auction;
-  }
-
-  auction.status = "PENDING_APPROVAL";
-  auction.rejectionReason = undefined;
-  auction.updatedAt = new Date().toISOString();
-
-  return { ...auction };
+/** `POST /api/seller/auctions/{id}/submit` */
+export async function submitAuctionForApproval(auctionId: string): Promise<Auction> {
+  return toAuction(await api<ApiAuction>(`/api/seller/auctions/${auctionId}/submit`, { method: "POST" }));
 }

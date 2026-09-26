@@ -129,15 +129,21 @@ export default async function AuctionDetailPage(
                       />
                     ) : null}
                   </p>
-                  <p className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-3 text-xs">
-                    <span className="inline-flex items-center gap-1">
-                      <Star className="size-3 fill-current" aria-hidden="true" />
-                      {t("sellerRating", { rating: auction.seller.rating })}
-                    </span>
-                    <span>
-                      {t("sellerSales", { count: auction.seller.totalSales })}
-                    </span>
-                  </p>
+                  {auction.seller.rating !== undefined || auction.seller.totalSales !== undefined ? (
+                    <p className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-3 text-xs">
+                      {auction.seller.rating !== undefined ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Star className="size-3 fill-current" aria-hidden="true" />
+                          {t("sellerRating", { rating: auction.seller.rating })}
+                        </span>
+                      ) : null}
+                      {auction.seller.totalSales !== undefined ? (
+                        <span>
+                          {t("sellerSales", { count: auction.seller.totalSales })}
+                        </span>
+                      ) : null}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </div>

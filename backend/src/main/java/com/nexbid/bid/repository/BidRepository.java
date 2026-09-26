@@ -1,5 +1,7 @@
 package com.nexbid.bid.repository;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,4 +27,23 @@ public interface BidRepository extends JpaRepository<Bid, UUID> {
 
     @Query("SELECT DISTINCT b.bidderId FROM Bid b WHERE b.auctionId = :auctionId")
     List<UUID> findDistinctBidderIds(@Param("auctionId") UUID auctionId);
+
+    /**
+     * EN: One row per lot this person bid on: their highest bid and when they last bid, latest first.
+     * VI: Mỗi lô người này từng trả giá một dòng: lượt cao nhất của họ và lần trả gần nhất, mới nhất trước.
+     */
+    @Query("""
+            SELECT b.auctionId AS auctionId, MAX(b.amount) AS highest, MAX(b.createdAt) AS lastBidAt
+              FROM Bid b WHERE b.bidderId = :bidderId
+             GROUP BY b.auctionId ORDER BY MAX(b.createdAt) DESC
+            """)
+    List<BidderLot> findLotsBidOnBy(@Param("bidderId") UUID bidderId);
+
+    interface BidderLot {
+        UUID getAuctionId();
+
+        BigDecimal getHighest();
+
+        Instant getLastBidAt();
+    }
 }

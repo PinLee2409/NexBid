@@ -10,6 +10,8 @@ import java.util.UUID;
  */
 public record AuctionView(
         UUID id,
+        // EN: Catalogue number, shown as "Lot 001". / VI: Số thứ tự trong danh mục, hiển thị như "Lot 001".
+        Long lotNumber,
         UUID productId,
         UUID sellerId,
         BigDecimal startingPrice,

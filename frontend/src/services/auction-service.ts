@@ -1,31 +1,20 @@
 import { AUCTION_CONFIG } from "@/constants/auction";
-import { getMsRemaining, isEndingSoon } from "@/lib/auction-rules";
 import type {
   AuctionDetail,
   AuctionQuery,
-  AuctionSort,
   AuctionSummary,
   Category,
   Page,
 } from "@/types";
 
-import {
-  CURRENT_USER_ID,
-  bidsForAuction,
-  db,
-  delay,
-  findAuction,
-  publicAuctions,
-  reconcileAuctionStatuses,
-  serverTime,
-  toAuctionSummary,
-} from "./mock/db";
+import type { ApiAuctionDetail, ApiAuctionSummary, ApiBid, ApiCategory, ApiPage } from "./api/dto";
+import { ApiError, api } from "./api/http";
+import { toAuction, toBid, toCategory, toImage, toSummary } from "./api/mappers";
 
 /**
- * Read APIs for the public marketplace.
- *
- * Each function maps to one REST endpoint from spec §27. Replacing the mock
- * body with `fetch()` should be the only change needed to go live.
+ * Read APIs for the public marketplace (spec §27). They run on the server for
+ * the first render and in the browser afterwards; both are anonymous, so
+ * anything about the signed-in reader is fetched separately on the client.
  */
 
 export interface AuctionListResult extends Page<AuctionSummary> {
@@ -33,130 +22,84 @@ export interface AuctionListResult extends Page<AuctionSummary> {
   serverTime: string;
 }
 
-function sortAuctions(
-  auctions: AuctionSummary[],
-  sort: AuctionSort,
-  now: number,
-): AuctionSummary[] {
-  const sorted = [...auctions];
-
-  switch (sort) {
-    case "ENDING_SOON":
-      return sorted.sort((a, b) => {
-        // Live lots first, then upcoming, then finished.
-        const rank = (auction: AuctionSummary) =>
-          auction.status === "ACTIVE" ? 0 : auction.status === "SCHEDULED" ? 1 : 2;
-        const rankDiff = rank(a) - rank(b);
-        if (rankDiff !== 0) return rankDiff;
-        return getMsRemaining(a, now) - getMsRemaining(b, now);
-      });
-    case "NEWEST":
-      return sorted.sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
-    case "MOST_BIDS":
-      return sorted.sort((a, b) => b.bidCount - a.bidCount);
-    case "PRICE_ASC":
-      return sorted.sort((a, b) => a.currentPrice - b.currentPrice);
-    case "PRICE_DESC":
-      return sorted.sort((a, b) => b.currentPrice - a.currentPrice);
-    default:
-      return sorted;
-  }
+/** `GET /api/server-time` */
+export async function getServerTime(): Promise<string> {
+  const { serverTime } = await api<{ serverTime: string }>("/api/server-time");
+  return serverTime;
 }
 
-function matchesQuery(
-  auction: AuctionSummary,
-  query: AuctionQuery,
-  now: number,
-): boolean {
-  if (query.search) {
-    const needle = query.search.trim().toLowerCase();
-    const haystack = `${auction.product.name} ${auction.category.name} ${auction.seller.displayName}`.toLowerCase();
-    if (!haystack.includes(needle)) return false;
-  }
-
-  if (query.categorySlugs?.length) {
-    if (!query.categorySlugs.includes(auction.category.slug)) return false;
-  }
-
-  if (query.statuses?.length) {
-    if (!query.statuses.includes(auction.status)) return false;
-  }
-
-  if (query.conditions?.length) {
-    if (!query.conditions.includes(auction.product.condition)) return false;
-  }
-
-  if (typeof query.minPrice === "number" && auction.currentPrice < query.minPrice) {
-    return false;
-  }
-
-  if (typeof query.maxPrice === "number" && auction.currentPrice > query.maxPrice) {
-    return false;
-  }
-
-  if (query.endingSoon && !isEndingSoon(auction, now)) return false;
-
-  return true;
+async function fetchPage(query: AuctionQuery): Promise<Page<AuctionSummary>> {
+  const page = await api<ApiPage<ApiAuctionSummary>>("/api/auctions", {
+    query: {
+      q: query.search?.trim(),
+      category: query.categorySlugs,
+      status: query.statuses,
+      condition: query.conditions,
+      minPrice: query.minPrice,
+      maxPrice: query.maxPrice,
+      endingSoon: query.endingSoon || undefined,
+      sort: query.sort,
+      page: query.page,
+      size: query.pageSize ?? AUCTION_CONFIG.pageSize,
+    },
+  });
+  return { ...page, items: page.items.map((item) => toSummary(item)) };
 }
 
 /** `GET /api/auctions` */
-export async function listAuctions(
-  query: AuctionQuery = {},
-): Promise<AuctionListResult> {
-  await delay();
-  reconcileAuctionStatuses();
+export async function listAuctions(query: AuctionQuery = {}): Promise<AuctionListResult> {
+  const [page, serverTime] = await Promise.all([fetchPage(query), getServerTime()]);
+  return { ...page, serverTime };
+}
 
-  const now = Date.now();
-  const page = Math.max(1, query.page ?? 1);
-  const pageSize = query.pageSize ?? AUCTION_CONFIG.pageSize;
+/** `GET /api/auctions/{id}`, with the most recent bids. Null when the lot is not public. */
+export async function getAuction(auctionId: string): Promise<AuctionDetail | null> {
+  let detail: ApiAuctionDetail;
+  let bids: ApiPage<ApiBid>;
+  try {
+    [detail, bids] = await Promise.all([
+      api<ApiAuctionDetail>(`/api/auctions/${auctionId}`),
+      api<ApiPage<ApiBid>>(`/api/auctions/${auctionId}/bids`, { query: { size: 20 } }),
+    ]);
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 404 || error.status === 400)) return null;
+    throw error;
+  }
 
-  const all = publicAuctions()
-    .map(toAuctionSummary)
-    .filter((auction) => matchesQuery(auction, query, now));
-
-  const sorted = sortAuctions(all, query.sort ?? "ENDING_SOON", now);
-  const start = (page - 1) * pageSize;
-
+  const auction = toAuction(detail.auction);
+  const category = toCategory(detail.category);
   return {
-    items: sorted.slice(start, start + pageSize),
-    page,
-    pageSize,
-    totalItems: sorted.length,
-    totalPages: Math.max(1, Math.ceil(sorted.length / pageSize)),
-    serverTime: serverTime(),
+    ...auction,
+    product: {
+      id: detail.product.id,
+      sellerId: detail.seller.id,
+      categoryId: category.id,
+      name: detail.product.name,
+      description: detail.product.description,
+      condition: detail.product.condition,
+      status: "IN_AUCTION",
+      images: detail.images.map((image) => toImage(image, detail.product.name)),
+      createdAt: auction.createdAt,
+      updatedAt: auction.updatedAt,
+    },
+    category,
+    seller: { id: detail.seller.id, displayName: detail.seller.displayName },
+    watched: false,
+    recentBids: bids.items.map((bid) => toBid(bid, null)),
   };
 }
 
-/** `GET /api/auctions/{id}` */
-export async function getAuction(auctionId: string): Promise<AuctionDetail | null> {
-  await delay();
-  reconcileAuctionStatuses();
-
-  const auction = findAuction(auctionId);
-  if (!auction) return null;
-
-  const summary = toAuctionSummary(auction);
-  const recentBids = bidsForAuction(auctionId);
-  const viewerBids = recentBids.filter((bid) => bid.bidderId === CURRENT_USER_ID);
-  const autoBid =
-    db.autoBids.find(
-      (item) =>
-        item.auctionId === auctionId && item.userId === CURRENT_USER_ID && item.active,
-    ) ?? null;
-
-  return {
-    ...summary,
-    recentBids,
-    viewerState: {
-      isSeller: auction.sellerId === CURRENT_USER_ID,
-      isHighestBidder: recentBids[0]?.bidderId === CURRENT_USER_ID,
-      hasBid: viewerBids.length > 0,
-      lastBidAmount: viewerBids[0]?.amount ?? null,
-      autoBid,
-    },
-  };
+/** Lots open right now, for the header's "LIVE 09" counter. */
+export async function getLiveCount(): Promise<number> {
+  try {
+    const page = await api<ApiPage<ApiAuctionSummary>>("/api/auctions", {
+      query: { status: ["ACTIVE"], size: 1 },
+    });
+    return page.totalItems;
+  } catch {
+    // The counter is decoration; the page must render without it.
+    return 0;
+  }
 }
 
 export interface HomeFeed {
@@ -164,67 +107,69 @@ export interface HomeFeed {
   endingSoon: AuctionSummary[];
   upcoming: AuctionSummary[];
   featured: AuctionSummary | null;
+  /** A second live lot for the editorial spread, with its description and photos. */
+  editorial: AuctionSummary | null;
   categories: Category[];
   stats: {
     liveCount: number;
-    bidsToday: number;
-    registeredBidders: number;
   };
   serverTime: string;
 }
 
-/**
- * Aggregated landing-page payload. A real deployment would expose this as a
- * single cached endpoint (spec §20.1) rather than several round trips.
- */
+/** Landing page: a few small list queries run in parallel. */
 export async function getHomeFeed(): Promise<HomeFeed> {
-  await delay();
-  reconcileAuctionStatuses();
+  const [live, endingSoon, upcoming, featured, categories, serverTime] = await Promise.all([
+    fetchPage({ statuses: ["ACTIVE"], sort: "ENDING_SOON", pageSize: 8 }),
+    fetchPage({ statuses: ["ACTIVE"], endingSoon: true, sort: "ENDING_SOON", pageSize: 4 }),
+    fetchPage({ statuses: ["SCHEDULED"], sort: "ENDING_SOON", pageSize: 4 }),
+    // The showcase lot: the most contested auction still running.
+    fetchPage({ statuses: ["ACTIVE"], sort: "MOST_BIDS", pageSize: 1 }),
+    listCategoriesWithLiveCounts(),
+    getServerTime(),
+  ]);
 
-  const now = Date.now();
-  const all = publicAuctions().map(toAuctionSummary);
-
-  const live = sortAuctions(
-    all.filter((auction) => auction.status === "ACTIVE"),
-    "ENDING_SOON",
-    now,
-  );
-
-  const endingSoon = live.filter((auction) => isEndingSoon(auction, now));
-
-  const upcoming = all
-    .filter((auction) => auction.status === "SCHEDULED")
-    .sort(
-      (a, b) =>
-        new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
-    );
-
-  // The showcase lot: the most contested auction still comfortably running.
-  const featured =
-    [...live].sort((a, b) => b.bidCount - a.bidCount)[0] ?? live[0] ?? null;
+  const showcase = featured.items[0] ?? null;
+  // The editorial spread quotes the description, which cards do not carry. It must not repeat the showcase.
+  const spread = live.items.find((auction) => auction.id !== showcase?.id);
+  const editorial = spread ? ((await getAuction(spread.id)) ?? spread) : null;
 
   return {
-    live: live.slice(0, 8),
-    endingSoon: endingSoon.slice(0, 4),
-    upcoming: upcoming.slice(0, 4),
-    featured,
-    categories: db.categories,
-    stats: {
-      liveCount: live.length,
-      bidsToday: all.reduce((total, auction) => total + auction.bidCount, 0),
-      registeredBidders: 12_480,
-    },
-    serverTime: serverTime(),
+    live: live.items,
+    endingSoon: endingSoon.items,
+    upcoming: upcoming.items,
+    featured: showcase,
+    editorial,
+    categories,
+    stats: { liveCount: live.totalItems },
+    serverTime,
   };
 }
 
 /** `GET /api/categories` */
 export async function listCategories(): Promise<Category[]> {
-  await delay();
-  return db.categories;
+  const categories = await api<ApiCategory[]>("/api/categories");
+  return categories.map(toCategory);
 }
 
+/** Categories with how many of their lots are live, for the home page's rooms. */
+async function listCategoriesWithLiveCounts(): Promise<Category[]> {
+  const categories = await listCategories();
+  const counts = await Promise.all(
+    categories.map((category) =>
+      api<ApiPage<ApiAuctionSummary>>("/api/auctions", {
+        query: { status: ["ACTIVE"], category: [category.slug], size: 1 },
+      }).then((page) => page.totalItems),
+    ),
+  );
+  return categories.map((category, index) => ({ ...category, auctionCount: counts[index] }));
+}
+
+/** `GET /api/categories/{slug}` */
 export async function getCategoryBySlug(slug: string): Promise<Category | null> {
-  await delay();
-  return db.categories.find((category) => category.slug === slug) ?? null;
+  try {
+    return toCategory(await api<ApiCategory>(`/api/categories/${slug}`));
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
 }

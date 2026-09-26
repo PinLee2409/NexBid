@@ -110,11 +110,18 @@ services:
       retries: 12
       start_period: 30s
 
-  # EN: Runs on mock data for now (see README), so it does not wait for the backend.
-  # VI: Hiện chạy trên dữ liệu giả (xem README), nên không cần chờ backend.
+  # EN: Pages are rendered from the backend's data, and the browser opens the socket on the backend's published port.
+  # VI: Trang được render từ dữ liệu của backend, còn trình duyệt mở socket qua cổng backend công bố ra ngoài.
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        NEXBID_API_URL: http://backend:8080
+        NEXT_PUBLIC_WS_URL: ws://localhost:${NEXBID_BACKEND_PORT:-8080}/ws
     restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
     ports:
       - "${NEXBID_FRONTEND_PORT:-3000}:3000"
 

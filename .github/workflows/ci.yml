@@ -1,0 +1,102 @@
+# EN: Every push and pull request runs the backend tests, checks the frontend and builds both Docker images.
+#     A push to main then publishes the images to GitHub Container Registry.
+# VI: Mỗi lần push và pull request: chạy test backend, kiểm tra frontend và build cả hai image Docker.
+#     Push lên main thì còn đẩy image lên GitHub Container Registry.
+name: CI/CD
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  workflow_dispatch:
+
+# EN: A newer push to the same branch cancels the run it makes stale. / VI: Push mới trên cùng nhánh huỷ lần chạy đã lỗi thời.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      # EN: Testcontainers starts Postgres, Redis and Kafka on the runner's Docker. / VI: Testcontainers chạy Postgres, Redis và Kafka trên Docker của runner.
+      - run: ./mvnw -B -ntp verify
+      - name: Keep the test reports of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: surefire-reports
+          path: backend/target/surefire-reports/
+          retention-days: 7
+
+  frontend:
+    name: Frontend checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm run build
+
+  images:
+    name: Docker image (${{ matrix.app }})
+    # EN: Only code that passed both checks is built, and only then published. / VI: Chỉ code đã qua cả hai bước kiểm tra mới được build, rồi mới được đẩy lên.
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        app: [backend, frontend]
+    env:
+      PUBLISH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - if: env.PUBLISH == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/nexbid-${{ matrix.app }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha
+      - uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.app }}
+          push: ${{ env.PUBLISH == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}

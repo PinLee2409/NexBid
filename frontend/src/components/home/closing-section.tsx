@@ -2,9 +2,9 @@
 
 import { Flame, Gavel } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Image from "next/image";
 import Link from "next/link";
 
+import { ProductPhoto } from "@/components/common/product-photo";
 import { AuctionClock } from "@/components/nexbid/auction-clock";
 import { LivePulse } from "@/components/nexbid/live-pulse";
 import { formatLot } from "@/components/nexbid/lot-number";
@@ -12,7 +12,6 @@ import { SectionHead } from "@/components/nexbid/section-head";
 import { AUCTION_CONFIG } from "@/constants/auction";
 import { getMsRemaining } from "@/lib/auction-rules";
 import { formatCurrency } from "@/lib/format";
-import { isLocalImage } from "@/lib/images";
 import { cn } from "@/lib/utils";
 import type { AuctionSummary } from "@/types";
 
@@ -105,16 +104,13 @@ function ClosingRow({
             prominent ? "size-24" : "size-16",
           )}
         >
-          {cover ? (
-            <Image
-              unoptimized={isLocalImage(cover.url)}
-              src={cover.url}
-              alt=""
-              fill
-              sizes="96px"
-              className="object-cover transition-transform duration-700 group-hover:scale-105"
-            />
-          ) : null}
+          <ProductPhoto
+            src={cover?.url}
+            alt=""
+            sizes="96px"
+            className="object-cover transition-transform duration-700 group-hover:scale-105"
+            fallback="icon"
+          />
         </span>
 
         <span className="min-w-0 flex-1">

@@ -44,11 +44,13 @@ export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
   }, [open, onOpenChange]);
 
   const trimmed = query.trim();
-  const { state } = useAsyncData(`search-${trimmed}`, () =>
-    listAuctions({ search: trimmed || undefined, pageSize: 6 }),
+  // The overlay is mounted on every page; ask the server only once there is a query to show.
+  const searching = open && trimmed !== "";
+  const { state } = useAsyncData(`search-${searching ? trimmed : ""}`, () =>
+    searching ? listAuctions({ search: trimmed, pageSize: 6 }) : Promise.resolve(null),
   );
 
-  const results = state.status === "success" ? state.data.items : [];
+  const results = state.status === "success" && state.data ? state.data.items : [];
 
   return (
     <AnimatePresence>

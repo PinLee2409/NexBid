@@ -2,11 +2,11 @@
 
 import { Check, Gavel, Loader2, X } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import Image from "next/image";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { ProductPhoto } from "@/components/common/product-photo";
 import { AuctionStatusBadge } from "@/components/auction/auction-status-badge";
 import { CategoryName } from "@/components/common/category-name";
 import { EmptyState } from "@/components/common/empty-state";
@@ -25,8 +25,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAsyncData } from "@/hooks/use-async-data";
+import { useApiErrorMessage } from "@/hooks/use-labels";
 import { formatCurrency } from "@/lib/format";
-import { isLocalImage } from "@/lib/images";
 import {
   approveAuction,
   listAuctionsForReview,
@@ -131,9 +131,16 @@ function ReviewCard({
   const cover = auction.product.images[0];
   const isPendingReview = auction.status === "PENDING_APPROVAL";
 
+  const errorMessage = useApiErrorMessage();
+
   function handleApprove() {
     startTransition(async () => {
-      await approveAuction(auction.id);
+      try {
+        await approveAuction(auction.id);
+      } catch (error) {
+        toast.error(errorMessage(error));
+        return;
+      }
       onApproved();
       toast.success(t("approved"), {
         description: t("approvedBody", { name: auction.product.name }),
@@ -145,16 +152,13 @@ function ReviewCard({
     <li className="border-line border-t last:border-b">
       <div className="flex flex-wrap items-start gap-x-6 gap-y-4 py-6">
         <div className="on-media bg-surface relative size-20 shrink-0 overflow-hidden">
-          {cover ? (
-            <Image
-              unoptimized={isLocalImage(cover.url)}
-              src={cover.url}
-              alt={cover.alt}
-              fill
-              sizes="80px"
-              className="object-cover"
-            />
-          ) : null}
+          <ProductPhoto
+            src={cover?.url}
+            alt={cover?.alt}
+            sizes="80px"
+            className="object-cover"
+            fallback="icon"
+          />
         </div>
 
         <div className="min-w-[14rem] flex-1">
@@ -259,6 +263,7 @@ function RejectDialog({
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const errorMessage = useApiErrorMessage();
 
   function handleReject() {
     if (!auction) return;
@@ -269,7 +274,12 @@ function RejectDialog({
     }
 
     startTransition(async () => {
-      await rejectAuction(auction.id, reason);
+      try {
+        await rejectAuction(auction.id, reason);
+      } catch (failure) {
+        setError(errorMessage(failure));
+        return;
+      }
       setReason("");
       setError(null);
       onClose();

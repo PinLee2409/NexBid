@@ -2,11 +2,11 @@
 
 import { CreditCard, Loader2, Receipt } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import Image from "next/image";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { ProductPhoto } from "@/components/common/product-photo";
 import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { PageHeader } from "@/components/layout/page-header";
@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/dialog";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useEnumLabels } from "@/hooks/use-labels";
-import { isLocalImage } from "@/lib/images";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { listOrders, type OrderEntry } from "@/services/order-service";
@@ -104,16 +103,13 @@ function OrderRow({
       )}
     >
       <div className="on-media bg-surface relative size-16 shrink-0 overflow-hidden">
-        {cover ? (
-          <Image
-            unoptimized={isLocalImage(cover.url)}
-            src={cover.url}
-            alt={cover.alt}
-            fill
-            sizes="64px"
-            className="object-cover"
-          />
-        ) : null}
+        <ProductPhoto
+          src={cover?.url}
+          alt={cover?.alt}
+          sizes="64px"
+          className="object-cover"
+          fallback="icon"
+        />
       </div>
 
       <div className="min-w-[10rem] flex-1">

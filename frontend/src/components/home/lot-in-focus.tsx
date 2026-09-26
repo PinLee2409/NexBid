@@ -1,11 +1,10 @@
 import { useFormatter, useTranslations } from "next-intl";
-import Image from "next/image";
 import Link from "next/link";
 
+import { ProductPhoto } from "@/components/common/product-photo";
 import { AuctionClock } from "@/components/nexbid/auction-clock";
 import { LotNumber } from "@/components/nexbid/lot-number";
 import { AuctionPriceTicker } from "@/components/nexbid/price-ticker";
-import { isLocalImage } from "@/lib/images";
 import type { AuctionSummary } from "@/types";
 
 interface LotInFocusProps {
@@ -95,16 +94,12 @@ export function LotInFocus({ auction, serverTime }: LotInFocusProps) {
           {/* The image breaks the container and bleeds to the right edge. */}
           <div className="lg:col-span-7">
             <div className="bg-surface relative aspect-[4/3] lg:bleed-right lg:aspect-[5/6] lg:h-full">
-              {image ? (
-                <Image
-                  unoptimized={isLocalImage(image.url)}
-                  src={image.url}
-                  alt={image.alt}
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 60vw"
-                  className="object-cover"
-                />
-              ) : null}
+              <ProductPhoto
+                src={image?.url}
+                alt={image?.alt}
+                sizes="(max-width: 1024px) 100vw, 60vw"
+                className="object-cover"
+              />
             </div>
           </div>
         </div>

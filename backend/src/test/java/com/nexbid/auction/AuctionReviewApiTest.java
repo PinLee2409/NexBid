@@ -219,6 +219,39 @@ class AuctionReviewApiTest {
         mockMvc.perform(get("/api/admin/auctions/pending").header("Authorization", "Bearer " + seller))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+        mockMvc.perform(get("/api/admin/auctions").param("status", "REJECTED")
+                        .header("Authorization", "Bearer " + seller))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void theConsoleTabsListLotsByStatusWithTheirItemAndSeller() throws Exception {
+        String seller = tokenFor("rev.tabs@nexbid.com", "Tabs Seller", RoleName.SELLER);
+        String admin = tokenFor("rev.tabs.admin@nexbid.com", "Tabs Reviewer", RoleName.ADMIN);
+        String refused = draftAuction(seller, "Refused lamp");
+        mockMvc.perform(post("/api/seller/auctions/" + refused + "/submit").header("Authorization", "Bearer " + seller));
+        mockMvc.perform(post("/api/admin/auctions/" + refused + "/reject").header("Authorization", "Bearer " + admin)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Photos are blurry\"}"));
+        String waiting = draftAuction(seller, "Waiting lamp");
+        mockMvc.perform(post("/api/seller/auctions/" + waiting + "/submit").header("Authorization", "Bearer " + seller));
+
+        // EN: Rejected lots never reach the public list, so this tab is their only way back into view.
+        // VI: Lô bị từ chối không bao giờ lên danh sách công khai, nên tab này là cách duy nhất để thấy lại chúng.
+        mockMvc.perform(get("/api/admin/auctions").param("status", "REJECTED").param("size", "100")
+                        .header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[?(@.auction.id == '" + refused + "')].product.name")
+                        .value("Refused lamp"))
+                .andExpect(jsonPath("$.data.items[?(@.auction.id == '" + refused + "')].auction.rejectionReason")
+                        .value("Photos are blurry"))
+                .andExpect(jsonPath("$.data.items[?(@.auction.id == '" + refused + "')].seller.displayName")
+                        .value("Tabs Seller"))
+                .andExpect(jsonPath("$.data.items[?(@.auction.id == '" + waiting + "')]").isEmpty());
+
+        mockMvc.perform(get("/api/admin/auctions").param("status", "PENDING_APPROVAL").param("size", "100")
+                        .header("Authorization", "Bearer " + admin))
+                .andExpect(jsonPath("$.data.items[?(@.auction.id == '" + waiting + "')]").isNotEmpty())
+                .andExpect(jsonPath("$.data.items[?(@.auction.id == '" + refused + "')]").isEmpty());
     }
 
     @Test

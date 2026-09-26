@@ -3,10 +3,12 @@ package com.nexbid.user;
 import java.util.UUID;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nexbid.common.response.ApiResponse;
@@ -24,6 +26,16 @@ public class AdminUserController {
 
     AdminUserController(UserService users) {
         this.users = users;
+    }
+
+    /** EN: `GET /api/admin/users` (spec §27). / VI: `GET /api/admin/users` (spec §27). */
+    @GetMapping
+    public ApiResponse<UserPage> list(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) UserStatus status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return ApiResponse.of(users.search(search, status, page, size));
     }
 
     @PatchMapping("/{id}/block")

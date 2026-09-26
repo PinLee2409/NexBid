@@ -31,13 +31,8 @@ export interface ApiError {
 }
 
 /**
- * Error codes the backend returns (spec §29).
- *
- * The last three are not in §29's list but the specification's own examples
- * require them, and the server defines them for that reason: §29 names
- * ACCESS_DENIED for 403 but nothing for 401, the guide's §4 error example uses
- * VALIDATION_ERROR by name, and a catch-all still has to answer in the
- * documented shape.
+ * Error codes the backend returns — the same list, in the same order, as
+ * `backend/.../common/exception/ErrorCode.java`. The two change together.
  */
 export type ErrorCode =
   | "USER_NOT_FOUND"
@@ -45,17 +40,33 @@ export type ErrorCode =
   | "INVALID_CREDENTIALS"
   | "ACCOUNT_BLOCKED"
   | "PRODUCT_NOT_FOUND"
+  | "CATEGORY_NOT_FOUND"
+  | "CATEGORY_ALREADY_EXISTS"
+  | "IMAGE_NOT_FOUND"
+  | "IMAGE_INVALID"
+  | "IMAGE_TOO_LARGE"
+  | "IMAGE_LIMIT_REACHED"
+  | "PRODUCT_NOT_EDITABLE"
+  | "PRODUCT_NOT_SELLABLE"
+  | "PRODUCT_ALREADY_IN_AUCTION"
   | "AUCTION_NOT_FOUND"
   | "AUCTION_NOT_ACTIVE"
   | "AUCTION_ALREADY_ENDED"
   | "AUCTION_NOT_EDITABLE"
+  | "AUCTION_SCHEDULE_INVALID"
+  | "AUCTION_NOT_PENDING"
   | "SELLER_CANNOT_BID"
   | "BID_TOO_LOW"
   | "BID_CONFLICT"
   | "BID_RATE_LIMITED"
   | "AUTO_BID_INVALID"
+  | "AUTO_BID_EXISTS"
+  | "AUTO_BID_NOT_FOUND"
   | "PAYMENT_NOT_FOUND"
   | "PAYMENT_EXPIRED"
+  | "PAYMENT_ALREADY_PAID"
+  | "ORDER_NOT_FOUND"
+  | "NOTIFICATION_NOT_FOUND"
   | "ACCESS_DENIED"
   | "NOT_AUTHENTICATED"
   | "VALIDATION_ERROR"
@@ -97,11 +108,11 @@ export interface SellerSummary {
   id: Id;
   displayName: string;
   avatarUrl?: string;
-  /** 0–5, one decimal. */
-  rating: number;
-  totalSales: number;
-  memberSince: IsoDateString;
-  verified: boolean;
+  /** 0–5, one decimal. Not provided by the API yet; the UI hides it when absent. */
+  rating?: number;
+  totalSales?: number;
+  memberSince?: IsoDateString;
+  verified?: boolean;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -114,7 +125,8 @@ export interface Category {
   name: string;
   description: string;
   imageUrl: string;
-  auctionCount: number;
+  /** Lots live in this category, when the caller asked for it. */
+  auctionCount?: number;
 }
 
 /** Product condition (spec §7.3). */
@@ -205,8 +217,8 @@ export interface AuctionSummary extends Auction {
   product: Product;
   category: Category;
   seller: SellerSummary;
-  /** Live viewer count, sourced from Redis (spec §20.3). */
-  viewerCount: number;
+  /** Live viewer count (spec §20.3). Not provided by the API yet; hidden when absent. */
+  viewerCount?: number;
   /** Whether the *current* user watches this auction. */
   watched: boolean;
 }
@@ -270,9 +282,15 @@ export interface PlaceBidRequest {
   amount: number;
 }
 
+/** What the server answers to an accepted bid. */
 export interface PlaceBidResult {
   bid: Bid;
-  auction: Auction;
+  currentPrice: number;
+  bidCount: number;
+  minimumNextBid: number;
+  endTime: IsoDateString;
+  /** False when an auto bid answered straight away and took the lead back. */
+  leading: boolean;
 }
 
 /** Auto bid — max amount is never exposed to other users (spec §14, §30). */
@@ -428,7 +446,8 @@ export type AuditAction =
   | "AUCTION_EXTENDED"
   | "AUCTION_ENDED"
   | "PAYMENT_SUCCESS"
-  | "USER_BLOCKED";
+  | "USER_BLOCKED"
+  | "USER_UNBLOCKED";
 
 export interface AuditLog {
   id: Id;

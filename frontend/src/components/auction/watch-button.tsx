@@ -2,11 +2,13 @@
 
 import { Heart } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useSession } from "@/services/session-service";
 import { toggleWatch, useIsWatched } from "@/services/watchlist-service";
 
 interface WatchButtonProps {
@@ -25,12 +27,20 @@ export function WatchButton({
 }: WatchButtonProps) {
   const t = useTranslations("common");
   const watched = useIsWatched(auctionId);
+  const { user } = useSession();
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   function handleToggle(event: React.MouseEvent) {
     // Watch buttons often sit inside a linked card.
     event.preventDefault();
     event.stopPropagation();
+
+    // A watchlist belongs to an account.
+    if (!user) {
+      router.push("/login");
+      return;
+    }
 
     startTransition(async () => {
       const nowWatching = await toggleWatch(auctionId);

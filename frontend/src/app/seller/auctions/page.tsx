@@ -12,6 +12,7 @@ import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { useAsyncData } from "@/hooks/use-async-data";
+import { useApiErrorMessage } from "@/hooks/use-labels";
 import { isAuctionEditable } from "@/lib/auction-rules";
 import {
   listMyAuctions,
@@ -87,12 +88,18 @@ function SellerAuctionRow({
   const t = useTranslations("seller");
   const tc = useTranslations("common");
   const [isPending, startTransition] = useTransition();
+  const errorMessage = useApiErrorMessage();
 
   const canSubmit = isAuctionEditable(auction.status);
 
   function handleSubmit() {
     startTransition(async () => {
-      await submitAuctionForApproval(auction.id);
+      try {
+        await submitAuctionForApproval(auction.id);
+      } catch (error) {
+        toast.error(errorMessage(error));
+        return;
+      }
       onChanged();
       toast.success(t("submittedTitle"), {
         description: t("submittedBody", { name: auction.product.name }),

@@ -1,16 +1,15 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { ProductPhoto } from "@/components/common/product-photo";
 import { AuctionStatusBadge } from "@/components/auction/auction-status-badge";
 import { CategoryName } from "@/components/common/category-name";
 import { AuctionClock } from "@/components/nexbid/auction-clock";
 import { formatLot } from "@/components/nexbid/lot-number";
 import { formatCurrency } from "@/lib/format";
-import { isLocalImage } from "@/lib/images";
 import { cn } from "@/lib/utils";
 import type { AuctionSummary } from "@/types";
 
@@ -59,16 +58,13 @@ export function AuctionListItem({
       </span>
 
       <span className="on-media bg-surface relative size-16 shrink-0 overflow-hidden">
-        {cover ? (
-          <Image
-            unoptimized={isLocalImage(cover.url)}
-            src={cover.url}
-            alt=""
-            fill
-            sizes="64px"
-            className="object-cover transition-transform duration-700 group-hover:scale-105"
-          />
-        ) : null}
+        <ProductPhoto
+          src={cover?.url}
+          alt=""
+          sizes="64px"
+          className="object-cover transition-transform duration-700 group-hover:scale-105"
+          fallback="icon"
+        />
       </span>
 
       <span className="min-w-[10rem] flex-1">

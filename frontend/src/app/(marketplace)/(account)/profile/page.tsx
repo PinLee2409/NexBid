@@ -28,8 +28,9 @@ export default function ProfilePage() {
   const { user } = useSession();
   const { state } = useAsyncData("account-stats", getAccountStats);
 
-  const [fullName, setFullName] = useState(user?.fullName ?? "");
-  const [displayName, setDisplayName] = useState(user?.displayName ?? "");
+  // Null until edited, so the field follows the account once the session has loaded.
+  const [draftName, setDraftName] = useState<string | null>(null);
+  const fullName = draftName ?? user?.fullName ?? "";
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -43,8 +44,13 @@ export default function ProfilePage() {
 
     setError(null);
     startTransition(async () => {
-      await updateProfile({ fullName, displayName });
-      toast.success(t("profileSaved"));
+      try {
+        await updateProfile({ fullName });
+        setDraftName(null);
+        toast.success(t("profileSaved"));
+      } catch {
+        toast.error(tc("somethingWentWrong"));
+      }
     });
   }
 
@@ -97,7 +103,7 @@ export default function ProfilePage() {
                   {...field}
                   value={fullName}
                   onChange={(event) => {
-                    setFullName(event.target.value);
+                    setDraftName(event.target.value);
                     setError(null);
                   }}
                   className=""
@@ -112,8 +118,8 @@ export default function ProfilePage() {
               {(field) => (
                 <Input
                   {...field}
-                  value={displayName}
-                  onChange={(event) => setDisplayName(event.target.value)}
+                  value={user.displayName}
+                  readOnly
                   className=""
                 />
               )}

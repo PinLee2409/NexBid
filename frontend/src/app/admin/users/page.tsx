@@ -11,7 +11,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAsyncData } from "@/hooks/use-async-data";
-import { useEnumLabels } from "@/hooks/use-labels";
+import { useApiErrorMessage, useEnumLabels } from "@/hooks/use-labels";
 import { cn } from "@/lib/utils";
 import { listUsers, setUserBlocked } from "@/services/admin-service";
 import type { User } from "@/types";
@@ -69,12 +69,18 @@ function UserRow({ user, onChanged }: { user: User; onChanged: () => void }) {
   const labels = useEnumLabels();
   const format = useFormatter();
   const [isPending, startTransition] = useTransition();
+  const errorMessage = useApiErrorMessage();
 
   const blocked = user.status === "BLOCKED";
 
   function toggleBlocked() {
     startTransition(async () => {
-      await setUserBlocked(user.id, !blocked);
+      try {
+        await setUserBlocked(user.id, !blocked);
+      } catch (error) {
+        toast.error(errorMessage(error));
+        return;
+      }
       onChanged();
       toast.success(blocked ? t("userUnblocked") : t("userBlocked"), {
         description: user.email,

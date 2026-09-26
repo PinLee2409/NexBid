@@ -52,6 +52,25 @@ public class BidService {
     }
 
     /**
+     * EN: Every lot this person bid on, most recent activity first, with where they stand on each.
+     * VI: Mọi lô người này từng trả giá, hoạt động gần nhất lên trước, kèm vị thế của họ trên từng lô.
+     */
+    @Transactional(readOnly = true)
+    public List<MyBidView> lotsBidOnBy(UUID bidderId) {
+        List<BidRepository.BidderLot> rows = bids.findLotsBidOnBy(bidderId);
+        List<UUID> ids = rows.stream().map(BidRepository.BidderLot::getAuctionId).toList();
+        var lots = auctions.participantSummariesOf(ids);
+        var standings = auctions.standingsOf(bidderId, ids);
+
+        return rows.stream()
+                .filter(row -> lots.containsKey(row.getAuctionId()))
+                .map(row -> new MyBidView(
+                        lots.get(row.getAuctionId()), row.getHighest(), row.getLastBidAt(),
+                        standings.get(row.getAuctionId())))
+                .toList();
+    }
+
+    /**
      * EN: Records the bid, lets any auto bids answer it (guide §31), and reports where the lot ended up —
      *     all in one transaction, so nobody ever sees the price between a bid and its answer.
      * VI: Ghi lượt trả giá, để các auto bid đáp trả (guide §31), rồi báo lô dừng ở đâu — tất cả trong một
@@ -60,7 +79,7 @@ public class BidService {
     @Transactional
     public PlacedBidView place(UUID auctionId, UUID bidderId, BigDecimal amount) {
         LeadTracker leads = new LeadTracker();
-        PlacedBidView mine = recorder.record(auctionId, bidderId, amount, Instant.now(), leads);
+        PlacedBidView mine = recorder.record(auctionId, bidderId, amount, leads);
 
         BiddingState lot = proxies.settleAndAnnounce(auctionId, mine.bid().createdAt(), leads);
 

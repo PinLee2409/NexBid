@@ -129,7 +129,7 @@ interface PriceDeltaProps {
   className?: string;
 }
 
-/** `+ $750 / +4.17%` — the movement line under a live price. */
+/** `+ ₫500,000 / +4.17%` — the movement line under a live price. */
 export function PriceDelta({ delta, percent, className }: PriceDeltaProps) {
   if (delta <= 0) return null;
 

@@ -1,5 +1,7 @@
 # NexBid
 
+[![CI/CD](https://github.com/PinLee2409/NexBid/actions/workflows/ci.yml/badge.svg)](https://github.com/PinLee2409/NexBid/actions/workflows/ci.yml)
+
 Real-time online auction platform. Sellers list lots, an admin approves them, buyers bid against a
 server-owned clock, and the server decides everything that matters — the price, the close, the winner.
 The interesting part is not the number of screens but getting the hard problems right: concurrent bids,
@@ -7,11 +9,8 @@ realtime updates, scheduling, caching, rate limiting and event delivery.
 
 | | |
 | --- | --- |
-| Frontend | Complete, running on mock data |
+| Frontend | Complete, wired to the backend API and realtime socket |
 | Backend | Complete — all 40 functions of the [implementation guide](docs/NexBid_Implementation_Guide_Step_By_Step.md) |
-
-The frontend does not call the backend yet. The mock services mirror the REST contract, so switching to
-the real API changes service bodies and nothing else.
 
 ---
 
@@ -66,6 +65,11 @@ flowchart LR
 
 PostgreSQL is the only source of truth. Redis, WebSocket and Kafka each carry a copy of what the database
 already committed; if any of them is down, bids still go through.
+
+The browser only talks to its own origin: Next.js rewrites `/api/*` and `/media/*` to the backend, so
+there is no CORS setup. Server components render public pages straight from the backend, anonymously;
+anything about the signed-in reader (their bids, watchlist, standing on a lot) is fetched in the browser
+with the JWT. The realtime socket is the one direct connection from the browser to the backend.
 
 ---
 
@@ -184,6 +188,12 @@ Broadcasts happen after commit, never during, so a browser can never see a price
 back. Clients may only subscribe; a client trying to publish on a lot topic is refused. Countdowns are
 measured against `GET /api/server-time`, not the browser's clock.
 
+Lot topics are public, so an event never says who is leading from the reader's side. After each
+`BID_PLACED` the page re-reads the lot's recent bids with the reader's token, and the `mine` flag on each
+bid decides between "You're leading" and "You've been outbid". Personal notifications (outbid, won,
+payment due) are polled every 30 seconds; a per-user socket channel is on the
+[backlog](docs/NexBid_Backlog.md).
+
 ---
 
 ## Redis
@@ -218,7 +228,8 @@ same transaction as the change they describe. A relay hands them to Kafka after 
 once acknowledged. A rolled-back bid never produces an event; a committed one always does; Kafka being
 down only delays delivery. Events of one lot share a key, so they arrive in order. The consumer records
 each event it handled in the same transaction as its work, so a redelivery does nothing. An event that
-cannot be read is logged and skipped rather than blocking everything behind it.
+cannot be read, or that the database refuses outright (a user it does not have), is logged and skipped
+rather than blocking everything behind it; any other failure is retried until it clears.
 
 ---
 
@@ -232,9 +243,9 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | Auth | `POST /api/auth/register`, `POST /api/auth/login` (JWT, 2 hours) |
 | Catalogue | `GET /api/auctions`, `GET /api/auctions/{id}`, `GET /api/categories`, `GET /api/server-time` — public |
 | Bidding | `POST /api/auctions/{id}/bids`, `GET /api/auctions/{id}/bids`, `/api/auctions/{id}/auto-bid` |
-| Buyer | `/api/users/me`, `…/me/wins`, `…/me/payments`, `…/me/orders`, `…/me/watchlist`, `/api/notifications` |
+| Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders`, `…/me/watchlist`, `/api/notifications` |
 | Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions` |
-| Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users/{id}/block`, `/api/admin/audit-logs` |
+| Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users`, `/api/admin/users/{id}/block`, `/api/admin/audit-logs` |
 | Realtime | STOMP at `/ws`, topic `/topic/auctions/{id}` |
 
 `/api/admin/**` needs the ADMIN role and `/api/seller/**` needs SELLER. The frontend hides those menus
@@ -286,8 +297,9 @@ cd backend && ./mvnw spring-boot:run
 cd frontend && npm install && npm run dev
 ```
 
-Frontend at http://localhost:3000 — works without the backend running.
-Backend at http://localhost:8080/api/health
+Frontend at http://localhost:3000, backend at http://localhost:8080/api/health. The frontend expects the
+backend on 8080; to point it elsewhere, copy [`frontend/.env.example`](frontend/.env.example) to
+`frontend/.env.local` and change `NEXBID_API_URL` and `NEXT_PUBLIC_WS_URL`.
 
 Postgres is published on port **55432**, Redis on **56379** and Kafka on **59092**, not the defaults —
 see [`docker/compose.yaml`](docker/compose.yaml). The first admin cannot come from the public register
@@ -295,6 +307,36 @@ endpoint, so roles are granted at startup from configuration:
 
 ```bash
 NEXBID_ADMIN_EMAILS=you@example.com ./mvnw spring-boot:run
+```
+
+### Demo data
+
+With the backend running on an empty database:
+
+```bash
+node docs/demo/seed.mjs
+```
+
+[`docs/demo/seed.mjs`](docs/demo/seed.mjs) builds a catalogue of 18 lots with real photos (downloaded from
+Unsplash): nine live lots mid-bidding, lots opening later, an approval queue, a rejection, a draft, and two
+lots that close while it runs — one paid, one waiting for payment. It takes about a minute. Everything goes
+through the API, so bids, auto bids, notifications, payments and the audit log are real; only the SELLER
+and ADMIN roles are granted in SQL. Against the Docker stack, run it with `STACK=docker`.
+
+Every account's password is `nexbid-demo`. Sign in as **pin@nexbid.test** (bids, an auto bid, wins,
+watchlist and own listings) or **admin@nexbid.test** (approvals, users, audit log). Sellers are
+`atelier@`, `vault@` and `lumen@nexbid.test`; `alex@`, `john@`, `mika@`, `sara@` and `dmitri@` bid
+against you.
+
+To start over, stop the backend, wipe the dev services and uploaded photos, start the backend again (Flyway
+recreates the schema), then seed:
+
+```bash
+docker compose -f docker/compose.yaml down -v && docker compose -f docker/compose.yaml up -d
+```
+
+```bash
+rm -f backend/var/images/*
 ```
 
 ---
@@ -320,6 +362,25 @@ and Kafka in containers. Highlights:
 - Kafka outage, Redis outage, duplicate delivery and rollback each have a test, and each test was checked
   by breaking the code it guards and watching it fail.
 
+### CI/CD
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request: the full
+backend suite (`./mvnw verify`, with Testcontainers on the runner's Docker), then `tsc`, ESLint and
+`next build` for the frontend, then both Docker images are built. A push to `main` publishes the images
+once everything above passed:
+
+```bash
+docker pull ghcr.io/pinlee2409/nexbid-backend:latest
+```
+
+```bash
+docker pull ghcr.io/pinlee2409/nexbid-frontend:latest
+```
+
+Images are tagged `latest` and with the commit (`sha-<short>`). The frontend image is built for the
+Compose stack: pages reach the backend at `http://backend:8080` and the browser opens the socket on
+`ws://localhost:8080/ws`.
+
 ---
 
 ## Load test results
@@ -341,4 +402,5 @@ all endpoints, database and Redis figures, and how to run it: [`docs/load-test`]
 
 ## Docs
 
-The specification and the step-by-step implementation guide are in [`docs/`](docs/).
+The specification and the step-by-step implementation guide are in [`docs/`](docs/). What the specification
+asks for beyond the 40 guide functions is tracked in [`docs/NexBid_Backlog.md`](docs/NexBid_Backlog.md).
