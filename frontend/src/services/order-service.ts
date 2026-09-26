@@ -2,14 +2,9 @@
 
 import type { AuctionSummary, Order, Payment } from "@/types";
 
-import {
-  CURRENT_USER_ID,
-  db,
-  delay,
-  findAuction,
-  reconcileAuctionStatuses,
-  toAuctionSummary,
-} from "./mock/db";
+import type { ApiOrder } from "./api/dto";
+import { ApiError, api } from "./api/http";
+import { toOrder, toPayment, toSummary } from "./api/mappers";
 
 /**
  * Orders (spec §16).
@@ -24,29 +19,26 @@ export interface OrderEntry {
   auction: AuctionSummary | null;
 }
 
-/** `GET /api/orders` */
-export async function listOrders(): Promise<OrderEntry[]> {
-  await delay();
-  reconcileAuctionStatuses();
-
-  return db.orders
-    .filter((order) => order.buyerId === CURRENT_USER_ID)
-    .map((order) => {
-      const auction = findAuction(order.auctionId);
-      return {
-        order,
-        payment: db.payments.find((item) => item.id === order.paymentId) ?? null,
-        auction: auction ? toAuctionSummary(auction) : null,
-      };
-    })
-    .sort(
-      (a, b) =>
-        new Date(b.order.createdAt).getTime() -
-        new Date(a.order.createdAt).getTime(),
-    );
+function toEntry(view: ApiOrder): OrderEntry {
+  return {
+    order: toOrder(view.order),
+    payment: view.payment ? toPayment(view.payment) : null,
+    auction: view.auction ? toSummary(view.auction) : null,
+  };
 }
 
+/** `GET /api/users/me/orders` */
+export async function listOrders(): Promise<OrderEntry[]> {
+  const orders = await api<ApiOrder[]>("/api/users/me/orders");
+  return orders.map(toEntry);
+}
+
+/** `GET /api/users/me/orders/{id}` */
 export async function getOrder(orderId: string): Promise<OrderEntry | null> {
-  const orders = await listOrders();
-  return orders.find((entry) => entry.order.id === orderId) ?? null;
+  try {
+    return toEntry(await api<ApiOrder>(`/api/users/me/orders/${orderId}`));
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
 }

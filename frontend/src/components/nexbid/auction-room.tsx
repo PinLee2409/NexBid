@@ -135,7 +135,7 @@ export function AuctionRoomView({ auction, serverTime }: AuctionRoomViewProps) {
       </section>
 
       {/* Phones keep the price, the clock and the action within thumb reach. */}
-      {auction.status === "ACTIVE" && !room.ended ? (
+      {room.status === "ACTIVE" && !room.ended ? (
         <div className="bg-background/95 border-line fixed inset-x-0 bottom-0 z-40 border-t p-3 backdrop-blur-md lg:hidden">
           <div className="mx-auto flex max-w-[1320px] items-center gap-3">
             <div className="min-w-0 flex-1">

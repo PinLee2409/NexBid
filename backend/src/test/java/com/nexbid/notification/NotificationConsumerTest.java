@@ -173,8 +173,28 @@ class NotificationConsumerTest {
                 new PaymentEvents.Succeeded(UUID.randomUUID(), lot, buyer, new BigDecimal("12000000"), Instant.now()));
 
         await().atMost(Duration.ofSeconds(15)).until(() -> paymentNotices(buyer) == 1);
-        assertThat(output).contains("Skipping an event that cannot be read: PaymentEvents.Succeeded at nexbid.payments-");
+        assertThat(output).contains("Skipping an event that can never be handled: PaymentEvents.Succeeded at nexbid.payments-");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM consumed_events WHERE event_id = ?", Integer.class, broken))
+                .isZero();
+    }
+
+    @Test
+    void anEventTheDatabaseRefusesIsSkippedInsteadOfHoldingUpTheOnesBehindIt(CapturedOutput output) throws Exception {
+        UUID buyer = register("consumer.refused@nexbid.com", "Refused Buyer", RoleName.BUYER);
+        UUID lot = someLot("refused");
+        UUID refused = UUID.randomUUID();
+        String type = EventHeaders.typeName(PaymentEvents.Succeeded.class);
+
+        // EN: Names a buyer this database has never had — retrying can never make the insert pass.
+        // VI: Trỏ tới người mua mà database này chưa từng có — thử lại bao nhiêu lần cũng không insert được.
+        deliver(lot, refused, type, new PaymentEvents.Succeeded(
+                UUID.randomUUID(), lot, UUID.randomUUID(), new BigDecimal("12000000"), Instant.now()));
+        deliver(lot, UUID.randomUUID(), type,
+                new PaymentEvents.Succeeded(UUID.randomUUID(), lot, buyer, new BigDecimal("12000000"), Instant.now()));
+
+        await().atMost(Duration.ofSeconds(15)).until(() -> paymentNotices(buyer) == 1);
+        assertThat(output).contains("Skipping an event that can never be handled: PaymentEvents.Succeeded at nexbid.payments-");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM consumed_events WHERE event_id = ?", Integer.class, refused))
                 .isZero();
     }
 

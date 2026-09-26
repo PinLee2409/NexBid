@@ -21,6 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { AUCTION_CONFIG } from "@/constants/auction";
 import { CURRENCY, formatCurrency, fromDateAndTimeParts } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useApiErrorMessage } from "@/hooks/use-labels";
 import { createAuction } from "@/services/seller-service";
 import type { ProductWithMeta } from "@/services/seller-service";
 
@@ -69,8 +70,8 @@ export function AuctionForm({ products, initialProductId }: AuctionFormProps) {
   const schedule = defaultSchedule();
 
   const [productId, setProductId] = useState(initialProductId ?? "");
-  const [startingPrice, setStartingPrice] = useState("500");
-  const [minimumIncrement, setMinimumIncrement] = useState("25");
+  const [startingPrice, setStartingPrice] = useState("1000000");
+  const [minimumIncrement, setMinimumIncrement] = useState("100000");
   const [startDate, setStartDate] = useState(schedule.startDate);
   const [startTime, setStartTime] = useState(schedule.startTime);
   const [endDate, setEndDate] = useState(schedule.endDate);
@@ -85,6 +86,7 @@ export function AuctionForm({ products, initialProductId }: AuctionFormProps) {
 
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isPending, startTransition] = useTransition();
+  const errorMessage = useApiErrorMessage();
 
   const startIso = fromDateAndTimeParts(startDate, startTime);
   const endIso = fromDateAndTimeParts(endDate, endTime);
@@ -117,19 +119,24 @@ export function AuctionForm({ products, initialProductId }: AuctionFormProps) {
     if (Object.keys(nextErrors).length > 0 || !startIso || !endIso) return;
 
     startTransition(async () => {
-      await createAuction(
-        {
-          productId,
-          startingPrice: Number(startingPrice),
-          minimumIncrement: Number(minimumIncrement),
-          startTime: startIso,
-          endTime: endIso,
-          antiSnipingEnabled: antiSniping,
-          antiSnipingWindowSeconds: Number(snipeWindow),
-          extensionSeconds: Number(extension),
-        },
-        submitForApproval,
-      );
+      try {
+        await createAuction(
+          {
+            productId,
+            startingPrice: Number(startingPrice),
+            minimumIncrement: Number(minimumIncrement),
+            startTime: startIso,
+            endTime: endIso,
+            antiSnipingEnabled: antiSniping,
+            antiSnipingWindowSeconds: Number(snipeWindow),
+            extensionSeconds: Number(extension),
+          },
+          submitForApproval,
+        );
+      } catch (error) {
+        toast.error(errorMessage(error));
+        return;
+      }
 
       toast.success(t("auctionCreated"), {
         description: t("auctionCreatedBody", {

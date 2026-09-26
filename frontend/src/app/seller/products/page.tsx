@@ -2,9 +2,9 @@
 
 import { Gavel, Package, Pencil, Plus } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import Image from "next/image";
 import Link from "next/link";
 
+import { ProductPhoto } from "@/components/common/product-photo";
 import { AuctionStatusBadge } from "@/components/auction/auction-status-badge";
 import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
@@ -12,7 +12,6 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useCategoryLabels, useEnumLabels } from "@/hooks/use-labels";
-import { isLocalImage } from "@/lib/images";
 import { listMyProducts, type ProductWithMeta } from "@/services/seller-service";
 import type { ProductStatus } from "@/types";
 
@@ -90,16 +89,13 @@ function ProductRow({ entry }: { entry: ProductWithMeta }) {
   return (
     <li className="border-line group flex flex-wrap items-center gap-x-6 gap-y-4 border-t py-5 last:border-b">
       <div className="on-media bg-surface relative size-16 shrink-0 overflow-hidden">
-        {cover ? (
-          <Image
-            unoptimized={isLocalImage(cover.url)}
-            src={cover.url}
-            alt={cover.alt}
-            fill
-            sizes="80px"
-            className="object-cover"
-          />
-        ) : null}
+        <ProductPhoto
+          src={cover?.url}
+          alt={cover?.alt}
+          sizes="80px"
+          className="object-cover"
+          fallback="icon"
+        />
       </div>
 
       <div className="min-w-[12rem] flex-1">

@@ -2,11 +2,11 @@
 
 import { CreditCard, Loader2, Wallet } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import Image from "next/image";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { ProductPhoto } from "@/components/common/product-photo";
 import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { PageHeader } from "@/components/layout/page-header";
@@ -24,7 +24,6 @@ import {
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useEnumLabels } from "@/hooks/use-labels";
 import { formatCurrency } from "@/lib/format";
-import { isLocalImage } from "@/lib/images";
 import { cn } from "@/lib/utils";
 import { listPayments, payPayment, type PaymentEntry } from "@/services/payment-service";
 
@@ -133,16 +132,13 @@ function PaymentRow({
         ) : null}
 
         <span className="on-media bg-surface relative size-16 shrink-0 overflow-hidden">
-          {cover ? (
-            <Image
-              unoptimized={isLocalImage(cover.url)}
-              src={cover.url}
-              alt=""
-              fill
-              sizes="64px"
-              className="object-cover"
-            />
-          ) : null}
+          <ProductPhoto
+            src={cover?.url}
+            alt=""
+            sizes="64px"
+            className="object-cover"
+            fallback="icon"
+          />
         </span>
 
         <span className="min-w-[10rem] flex-1">

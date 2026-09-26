@@ -1,5 +1,6 @@
 /**
- * Display currency for the storefront.
+ * Display currency for the storefront: VND, the single currency the spec
+ * prices in (§3.2 leaves multi-currency out).
  *
  * Prices are rendered the same way in every locale — an auction has one price,
  * and a bidder comparing lots should not see the number reshaped by their UI
@@ -7,9 +8,9 @@
  * next-intl's `useFormatter()` rather than this module.
  */
 export const CURRENCY = {
-  code: "USD",
+  code: "VND",
   locale: "en-US",
-  symbol: "$",
+  symbol: "₫",
 } as const;
 
 const currencyFormatter = new Intl.NumberFormat(CURRENCY.locale, {
@@ -29,17 +30,17 @@ const numberFormatter = new Intl.NumberFormat(CURRENCY.locale, {
   maximumFractionDigits: 0,
 });
 
-/** `$1,850` — the canonical price rendering across the product. */
+/** `₫18,500,000` — the canonical price rendering across the product. */
 export function formatCurrency(amount: number): string {
   return currencyFormatter.format(amount);
 }
 
-/** `$1.9K` — for dense surfaces such as dashboard stat tiles. */
+/** `₫18.5M` — for dense surfaces such as dashboard stat tiles. */
 export function formatCompactCurrency(amount: number): string {
   return compactCurrencyFormatter.format(amount);
 }
 
-/** `1,850` — bare number, used inside inputs where the symbol sits outside. */
+/** `18,500,000` — bare number, used inside inputs where the symbol sits outside. */
 export function formatNumber(value: number): string {
   return numberFormatter.format(value);
 }
@@ -53,7 +54,7 @@ export function formatCompactNumber(value: number): string {
   }).format(value);
 }
 
-/** Parses user input like `1,900` or `$1,900` back into a number. */
+/** Parses user input like `19,000,000` or `₫19,000,000` back into a number. */
 export function parseCurrencyInput(value: string): number | null {
   const normalized = value.replace(/[^0-9.]/g, "");
   if (normalized === "") return null;

@@ -40,8 +40,22 @@ class BidRecorder {
      * EN: The tracker notes who led before this bid, so the outbid can be told once everything settles.
      * VI: Bộ theo dõi ghi lại ai dẫn trước lượt này, để báo người bị vượt giá khi mọi thứ đã ổn định.
      */
+    PlacedBidView record(UUID auctionId, UUID bidderId, BigDecimal amount, LeadTracker leads) {
+        return save(auctions.acceptBid(auctionId, bidderId, amount), bidderId, amount, leads);
+    }
+
+    /**
+     * EN: The same, judged at a given instant — for an auto bid answering the bid it was triggered by.
+     * VI: Như trên, nhưng xét tại một thời điểm cho trước — cho auto bid đáp trả lượt đã kích hoạt nó.
+     */
     PlacedBidView record(UUID auctionId, UUID bidderId, BigDecimal amount, Instant at, LeadTracker leads) {
-        AuctionService.AcceptedBid accepted = auctions.acceptBid(auctionId, bidderId, amount, at);
+        return save(auctions.acceptBid(auctionId, bidderId, amount, at), bidderId, amount, leads);
+    }
+
+    private PlacedBidView save(
+            AuctionService.AcceptedBid accepted, UUID bidderId, BigDecimal amount, LeadTracker leads) {
+
+        UUID auctionId = accepted.auctionId();
         leads.saw(accepted.previousLeaderId(), bidderId);
 
         Bid bid;

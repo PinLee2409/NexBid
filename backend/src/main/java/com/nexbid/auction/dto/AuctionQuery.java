@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.nexbid.auction.AuctionSort;
 import com.nexbid.auction.AuctionStatus;
+import com.nexbid.product.ProductCondition;
 
 /**
  * EN: Everything the browse URL can carry (guide §18). All optional — a bare /api/auctions is valid.
@@ -13,6 +14,9 @@ import com.nexbid.auction.AuctionStatus;
 public record AuctionQuery(
         List<AuctionStatus> status,
         List<String> category,
+        // EN: Words in the product name. / VI: Từ khoá trong tên sản phẩm.
+        String q,
+        List<ProductCondition> condition,
         BigDecimal minPrice,
         BigDecimal maxPrice,
         Boolean endingSoon,

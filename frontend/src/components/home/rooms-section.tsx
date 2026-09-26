@@ -27,7 +27,10 @@ export function RoomsSection({ categories }: RoomsSectionProps) {
       id="categories"
       className="mx-auto max-w-[1680px] scroll-mt-20 px-5 py-16 sm:px-8 lg:py-24"
     >
-      <SectionHead title={t("title")} description={t("lead")} />
+      <SectionHead
+        title={t("title")}
+        description={t("lead", { count: categories.length })}
+      />
 
       <div className="mt-12">
         {categories.map((category, index) => (
@@ -38,13 +41,15 @@ export function RoomsSection({ categories }: RoomsSectionProps) {
           >
             {/* The photograph only appears as the row is approached. */}
             <span className="absolute inset-0" aria-hidden="true">
-              <Image
-                src={category.imageUrl}
-                alt=""
-                fill
-                sizes="100vw"
-                className="object-cover opacity-0 transition-all duration-[900ms] ease-out group-hover:scale-105 group-hover:opacity-40"
-              />
+              {category.imageUrl ? (
+                <Image
+                  src={category.imageUrl}
+                  alt=""
+                  fill
+                  sizes="100vw"
+                  className="object-cover opacity-0 transition-all duration-[900ms] ease-out group-hover:scale-105 group-hover:opacity-40"
+                />
+              ) : null}
               <span className="from-background via-background/70 absolute inset-0 bg-gradient-to-r to-transparent" />
             </span>
 
@@ -67,7 +72,7 @@ export function RoomsSection({ categories }: RoomsSectionProps) {
               </span>
 
               <span className="label text-dim group-hover:text-signal-text shrink-0 text-right transition-colors">
-                {t("lotsLive", { count: category.auctionCount })}
+                {t("lotsLive", { count: category.auctionCount ?? 0 })}
                 <span className="ml-3 inline-block transition-transform group-hover:translate-x-1">
                   →
                 </span>

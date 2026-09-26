@@ -1,16 +1,12 @@
 "use client";
 
-import type { AuctionSummary, Bid, Order, Payment, User } from "@/types";
+import type { AuctionSummary, Order, Payment, User } from "@/types";
 
-import {
-  CURRENT_USER_ID,
-  bidsForAuction,
-  db,
-  delay,
-  findAuction,
-  reconcileAuctionStatuses,
-  toAuctionSummary,
-} from "./mock/db";
+import type { ApiAuctionSummary, ApiMyBid, ApiOrder, ApiPayment, ApiUser } from "./api/dto";
+import { api } from "./api/http";
+import { toOrder, toPayment, toSummary } from "./api/mappers";
+import { applyAccount } from "./session-service";
+import { listWatchlist } from "./watchlist-service";
 
 /**
  * Buyer account APIs (spec §27 — `/api/users/me/*`).
@@ -27,54 +23,15 @@ export interface MyBidEntry {
   standing: BidStanding;
 }
 
-function standingFor(
-  auctionId: string,
-  status: AuctionSummary["status"],
-): BidStanding {
-  const bids = bidsForAuction(auctionId);
-  const leading = bids[0]?.bidderId === CURRENT_USER_ID;
-  const finished = status === "ENDED" || status === "COMPLETED";
-
-  if (finished) return leading ? "WON" : "LOST";
-  return leading ? "WINNING" : "OUTBID";
-}
-
 /** `GET /api/users/me/bids` */
 export async function listMyBids(): Promise<MyBidEntry[]> {
-  await delay();
-  reconcileAuctionStatuses();
-
-  const byAuction = new Map<string, Bid[]>();
-
-  for (const bid of db.bids) {
-    if (bid.bidderId !== CURRENT_USER_ID) continue;
-    const existing = byAuction.get(bid.auctionId) ?? [];
-    existing.push(bid);
-    byAuction.set(bid.auctionId, existing);
-  }
-
-  const entries: MyBidEntry[] = [];
-
-  for (const [auctionId, bids] of byAuction) {
-    const auction = findAuction(auctionId);
-    if (!auction) continue;
-
-    const highest = bids.reduce((best, bid) =>
-      bid.amount > best.amount ? bid : best,
-    );
-
-    entries.push({
-      auction: toAuctionSummary(auction),
-      yourBid: highest.amount,
-      yourLastBidAt: highest.createdAt,
-      standing: standingFor(auctionId, auction.status),
-    });
-  }
-
-  return entries.sort(
-    (a, b) =>
-      new Date(b.yourLastBidAt).getTime() - new Date(a.yourLastBidAt).getTime(),
-  );
+  const rows = await api<ApiMyBid[]>("/api/users/me/bids");
+  return rows.map((row) => ({
+    auction: toSummary(row.auction),
+    yourBid: Number(row.yourBid),
+    yourLastBidAt: row.yourLastBidAt,
+    standing: row.standing,
+  }));
 }
 
 export interface MyWinEntry {
@@ -84,25 +41,25 @@ export interface MyWinEntry {
   order: Order | null;
 }
 
-/** `GET /api/users/me/wins` */
+/** `GET /api/users/me/wins`, joined with the payment and order of each win. */
 export async function listMyWins(): Promise<MyWinEntry[]> {
-  await delay();
-  reconcileAuctionStatuses();
+  const [wins, payments, orders] = await Promise.all([
+    api<ApiAuctionSummary[]>("/api/users/me/wins"),
+    api<ApiPayment[]>("/api/users/me/payments"),
+    api<ApiOrder[]>("/api/users/me/orders"),
+  ]);
 
-  return db.auctions
-    .filter((auction) => auction.winnerId === CURRENT_USER_ID)
-    .map((auction) => ({
-      auction: toAuctionSummary(auction),
+  return wins.map((win) => {
+    const auction = toSummary(win);
+    const payment = payments.find((item) => item.payment.auctionId === auction.id);
+    const order = orders.find((item) => item.order.auctionId === auction.id);
+    return {
+      auction,
       winningBid: auction.currentPrice,
-      payment:
-        db.payments.find((item) => item.auctionId === auction.id) ?? null,
-      order: db.orders.find((item) => item.auctionId === auction.id) ?? null,
-    }))
-    .sort(
-      (a, b) =>
-        new Date(b.auction.endTime).getTime() -
-        new Date(a.auction.endTime).getTime(),
-    );
+      payment: payment ? toPayment(payment.payment) : null,
+      order: order ? toOrder(order.order) : null,
+    };
+  });
 }
 
 export interface AccountStats {
@@ -113,41 +70,36 @@ export interface AccountStats {
 }
 
 export async function getAccountStats(): Promise<AccountStats> {
-  await delay();
-  reconcileAuctionStatuses();
-
-  const bids = await listMyBids();
-  const wins = await listMyWins();
+  const [bids, wins, watching, payments] = await Promise.all([
+    listMyBids(),
+    api<ApiAuctionSummary[]>("/api/users/me/wins"),
+    listWatchlist(),
+    api<ApiPayment[]>("/api/users/me/payments"),
+  ]);
 
   return {
-    activeBids: bids.filter(
-      (entry) => entry.standing === "WINNING" || entry.standing === "OUTBID",
-    ).length,
+    activeBids: bids.filter((entry) => entry.standing === "WINNING" || entry.standing === "OUTBID").length,
     won: wins.length,
-    watching: db.watchedAuctionIds.size,
-    totalSpent: db.payments
-      .filter((payment) => payment.status === "SUCCESS")
-      .reduce((total, payment) => total + payment.amount, 0),
+    watching: watching.length,
+    totalSpent: payments
+      .filter((entry) => entry.payment.status === "SUCCESS")
+      .reduce((total, entry) => total + Number(entry.payment.amount), 0),
   };
 }
 
 /** `GET /api/users/me` */
-export async function getProfile(): Promise<User | null> {
-  await delay();
-  return db.users.find((user) => user.id === CURRENT_USER_ID) ?? null;
+export async function getProfile(): Promise<User> {
+  return applyAccount(await api<ApiUser>("/api/users/me"));
 }
 
-/** `PUT /api/users/me` */
-export async function updateProfile(input: {
-  fullName: string;
-  displayName: string;
-}): Promise<User | null> {
-  await delay(500);
-
-  const user = db.users.find((item) => item.id === CURRENT_USER_ID);
-  if (!user) return null;
-
-  user.fullName = input.fullName.trim();
-  user.displayName = input.displayName.trim();
-  return { ...user };
+/**
+ * `PUT /api/users/me` — only the name can change. The public handle is
+ * derived from it by the server, so it follows on its own.
+ */
+export async function updateProfile(input: { fullName: string }): Promise<User> {
+  const me = await api<ApiUser>("/api/users/me", {
+    method: "PUT",
+    body: { fullName: input.fullName.trim() },
+  });
+  return applyAccount(me);
 }

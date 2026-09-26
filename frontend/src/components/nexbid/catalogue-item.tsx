@@ -1,14 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import Image from "next/image";
 import Link from "next/link";
 
+import { ProductPhoto } from "@/components/common/product-photo";
 import { AuctionClock } from "@/components/nexbid/auction-clock";
 import { LivePulse } from "@/components/nexbid/live-pulse";
 import { formatLot } from "@/components/nexbid/lot-number";
 import { formatCurrency } from "@/lib/format";
-import { isLocalImage } from "@/lib/images";
 import { cn } from "@/lib/utils";
 import type { AuctionSummary } from "@/types";
 
@@ -59,21 +58,17 @@ export function AuctionCatalogueItem({
     <article className={cn("group relative", className)}>
       <Link href={`/auctions/${auction.id}`} className="block">
         <div className={cn("on-media bg-surface relative overflow-hidden", RATIOS[scale])}>
-          {cover ? (
-            <Image
-              unoptimized={isLocalImage(cover.url)}
-              src={cover.url}
-              alt={cover.alt}
-              fill
-              priority={priority}
-              sizes={
-                scale === "hero" || scale === "wide"
-                  ? "(max-width: 1024px) 100vw, 60vw"
-                  : "(max-width: 640px) 100vw, 33vw"
-              }
-              className="object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.04]"
-            />
-          ) : null}
+          <ProductPhoto
+            src={cover?.url}
+            alt={cover?.alt}
+            priority={priority}
+            sizes={
+            scale === "hero" || scale === "wide"
+            ? "(max-width: 1024px) 100vw, 60vw"
+            : "(max-width: 640px) 100vw, 33vw"
+            }
+            className="object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.04]"
+          />
 
           {/* Lot index sits on the image, growing slightly on approach. */}
           <span
@@ -139,8 +134,10 @@ export function AuctionCatalogueItem({
                 </span>
               )}
               <p className="mono-figure text-dim mt-1.5 text-[11px]">
-                {String(auction.bidCount).padStart(2, "0")} ·{" "}
-                {String(auction.viewerCount).padStart(2, "0")}
+                {String(auction.bidCount).padStart(2, "0")}
+                {auction.viewerCount !== undefined
+                  ? ` · ${String(auction.viewerCount).padStart(2, "0")}`
+                  : null}
               </p>
             </div>
           </div>

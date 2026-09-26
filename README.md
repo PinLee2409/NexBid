@@ -7,11 +7,8 @@ realtime updates, scheduling, caching, rate limiting and event delivery.
 
 | | |
 | --- | --- |
-| Frontend | Complete, running on mock data |
+| Frontend | Complete, wired to the backend API and realtime socket |
 | Backend | Complete — all 40 functions of the [implementation guide](docs/NexBid_Implementation_Guide_Step_By_Step.md) |
-
-The frontend does not call the backend yet. The mock services mirror the REST contract, so switching to
-the real API changes service bodies and nothing else.
 
 ---
 
@@ -66,6 +63,11 @@ flowchart LR
 
 PostgreSQL is the only source of truth. Redis, WebSocket and Kafka each carry a copy of what the database
 already committed; if any of them is down, bids still go through.
+
+The browser only talks to its own origin: Next.js rewrites `/api/*` and `/media/*` to the backend, so
+there is no CORS setup. Server components render public pages straight from the backend, anonymously;
+anything about the signed-in reader (their bids, watchlist, standing on a lot) is fetched in the browser
+with the JWT. The realtime socket is the one direct connection from the browser to the backend.
 
 ---
 
@@ -184,6 +186,12 @@ Broadcasts happen after commit, never during, so a browser can never see a price
 back. Clients may only subscribe; a client trying to publish on a lot topic is refused. Countdowns are
 measured against `GET /api/server-time`, not the browser's clock.
 
+Lot topics are public, so an event never says who is leading from the reader's side. After each
+`BID_PLACED` the page re-reads the lot's recent bids with the reader's token, and the `mine` flag on each
+bid decides between "You're leading" and "You've been outbid". Personal notifications (outbid, won,
+payment due) are polled every 30 seconds; a per-user socket channel is on the
+[backlog](docs/NexBid_Backlog.md).
+
 ---
 
 ## Redis
@@ -218,7 +226,8 @@ same transaction as the change they describe. A relay hands them to Kafka after 
 once acknowledged. A rolled-back bid never produces an event; a committed one always does; Kafka being
 down only delays delivery. Events of one lot share a key, so they arrive in order. The consumer records
 each event it handled in the same transaction as its work, so a redelivery does nothing. An event that
-cannot be read is logged and skipped rather than blocking everything behind it.
+cannot be read, or that the database refuses outright (a user it does not have), is logged and skipped
+rather than blocking everything behind it; any other failure is retried until it clears.
 
 ---
 
@@ -232,9 +241,9 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | Auth | `POST /api/auth/register`, `POST /api/auth/login` (JWT, 2 hours) |
 | Catalogue | `GET /api/auctions`, `GET /api/auctions/{id}`, `GET /api/categories`, `GET /api/server-time` — public |
 | Bidding | `POST /api/auctions/{id}/bids`, `GET /api/auctions/{id}/bids`, `/api/auctions/{id}/auto-bid` |
-| Buyer | `/api/users/me`, `…/me/wins`, `…/me/payments`, `…/me/orders`, `…/me/watchlist`, `/api/notifications` |
+| Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders`, `…/me/watchlist`, `/api/notifications` |
 | Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions` |
-| Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users/{id}/block`, `/api/admin/audit-logs` |
+| Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users`, `/api/admin/users/{id}/block`, `/api/admin/audit-logs` |
 | Realtime | STOMP at `/ws`, topic `/topic/auctions/{id}` |
 
 `/api/admin/**` needs the ADMIN role and `/api/seller/**` needs SELLER. The frontend hides those menus
@@ -286,8 +295,9 @@ cd backend && ./mvnw spring-boot:run
 cd frontend && npm install && npm run dev
 ```
 
-Frontend at http://localhost:3000 — works without the backend running.
-Backend at http://localhost:8080/api/health
+Frontend at http://localhost:3000, backend at http://localhost:8080/api/health. The frontend expects the
+backend on 8080; to point it elsewhere, copy [`frontend/.env.example`](frontend/.env.example) to
+`frontend/.env.local` and change `NEXBID_API_URL` and `NEXT_PUBLIC_WS_URL`.
 
 Postgres is published on port **55432**, Redis on **56379** and Kafka on **59092**, not the defaults —
 see [`docker/compose.yaml`](docker/compose.yaml). The first admin cannot come from the public register
@@ -341,4 +351,5 @@ all endpoints, database and Redis figures, and how to run it: [`docs/load-test`]
 
 ## Docs
 
-The specification and the step-by-step implementation guide are in [`docs/`](docs/).
+The specification and the step-by-step implementation guide are in [`docs/`](docs/). What the specification
+asks for beyond the 40 guide functions is tracked in [`docs/NexBid_Backlog.md`](docs/NexBid_Backlog.md).

@@ -4,6 +4,9 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.hibernate.annotations.Generated;
+import org.hibernate.generator.EventType;
+
 import com.nexbid.auction.AuctionStatus;
 
 import jakarta.persistence.Column;
@@ -33,6 +36,12 @@ public class Auction {
     @Id
     @GeneratedValue
     private UUID id;
+
+    // EN: The catalogue number ("Lot 001"), assigned by the database on insert (V15).
+    // VI: Số thứ tự trong danh mục ("Lot 001"), do database cấp khi insert (V15).
+    @Generated(event = EventType.INSERT)
+    @Column(name = "lot_number", insertable = false, updatable = false)
+    private Long lotNumber;
 
     @Column(name = "product_id", nullable = false, updatable = false)
     private UUID productId;
@@ -194,6 +203,10 @@ public class Auction {
 
     public UUID getId() {
         return id;
+    }
+
+    public Long getLotNumber() {
+        return lotNumber;
     }
 
     public UUID getProductId() {

@@ -2,11 +2,10 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslations } from "next-intl";
-import Image from "next/image";
 import { useState } from "react";
 
+import { ProductPhoto } from "@/components/common/product-photo";
 import { formatLot } from "@/components/nexbid/lot-number";
-import { isLocalImage } from "@/lib/images";
 import { cn } from "@/lib/utils";
 import type { ProductImage } from "@/types";
 
@@ -25,7 +24,11 @@ export function ProductStage({ images, lotNumber, className }: ProductStageProps
   const [index, setIndex] = useState(0);
 
   if (images.length === 0) {
-    return <div className={cn("bg-surface aspect-[4/5]", className)} />;
+    return (
+      <div className={cn("bg-surface relative aspect-[4/5]", className)}>
+        <ProductPhoto src={undefined} />
+      </div>
+    );
   }
 
   const active = images[Math.min(index, images.length - 1)];
@@ -42,11 +45,9 @@ export function ProductStage({ images, lotNumber, className }: ProductStageProps
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0"
           >
-            <Image
-              unoptimized={isLocalImage(active.url)}
+            <ProductPhoto
               src={active.url}
               alt={active.alt}
-              fill
               priority
               sizes="(max-width: 1024px) 100vw, 70vw"
               className="object-cover"

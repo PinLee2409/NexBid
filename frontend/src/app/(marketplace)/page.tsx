@@ -24,9 +24,8 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const feed = await getHomeFeed();
 
-  // The editorial break must not repeat the lot already on the opening stage.
-  const editorialLot =
-    feed.live.find((auction) => auction.id !== feed.featured?.id) ?? null;
+  // The editorial break never repeats the lot already on the opening stage.
+  const editorialLot = feed.editorial;
 
   /**
    * Each section is a different spatial composition — stage, tape, catalogue,

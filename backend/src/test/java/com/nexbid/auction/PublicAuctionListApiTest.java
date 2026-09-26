@@ -1,5 +1,6 @@
 package com.nexbid.auction;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -299,5 +300,49 @@ class PublicAuctionListApiTest {
         // VI: Không chặn trên thì một request có thể kéo về cả bảng.
         mockMvc.perform(get("/api/auctions").param("size", "5000"))
                 .andExpect(jsonPath("$.data.pageSize").value(Matchers.lessThanOrEqualTo(50)));
+    }
+
+    @Test
+    void searchingMatchesWordsInTheProductName() throws Exception {
+        approvedLot("Leica M6 body", "cameras", new BigDecimal("900"), Duration.ofHours(4));
+        approvedLot("Nikon F3", "cameras", new BigDecimal("400"), Duration.ofHours(4));
+
+        mockMvc.perform(get("/api/auctions").param("q", "LEICA m6"))
+                .andExpect(jsonPath("$.data.totalItems").value(1))
+                .andExpect(jsonPath("$.data.items[0].product.name").value("Leica M6 body"));
+
+        // EN: Typed wildcards are literal: "%" matches no name, instead of every name.
+        // VI: Ký tự đại diện người dùng gõ là chữ thường: "%" không khớp tên nào, thay vì khớp mọi tên.
+        mockMvc.perform(get("/api/auctions").param("q", "%"))
+                .andExpect(jsonPath("$.data.totalItems").value(0));
+    }
+
+    @Test
+    void filteringByConditionAndShowingItOnTheCard() throws Exception {
+        approvedLot("Worn watch", "watches", new BigDecimal("100"), Duration.ofHours(4));
+        approvedLot("Boxed watch", "watches", new BigDecimal("200"), Duration.ofHours(4));
+        jdbc.update("UPDATE products SET condition = 'LIKE_NEW' WHERE name = 'Boxed watch'");
+
+        mockMvc.perform(get("/api/auctions").param("condition", "LIKE_NEW"))
+                .andExpect(jsonPath("$.data.totalItems").value(1))
+                .andExpect(jsonPath("$.data.items[0].product.name").value("Boxed watch"));
+        mockMvc.perform(get("/api/auctions").param("condition", "GOOD", "LIKE_NEW").param("sort", "PRICE_ASC"))
+                .andExpect(jsonPath("$.data.totalItems").value(2))
+                .andExpect(jsonPath("$.data.items[0].product.condition").value("GOOD"));
+    }
+
+    @Test
+    void everyLotGetsTheNextCatalogueNumber() throws Exception {
+        approvedLot("First lot", "art", new BigDecimal("100"), Duration.ofHours(4));
+        approvedLot("Second lot", "art", new BigDecimal("100"), Duration.ofHours(5));
+
+        String body = mockMvc.perform(get("/api/auctions").param("sort", "ENDING_SOON"))
+                .andReturn().getResponse().getContentAsString();
+        var items = objectMapper.readTree(body).get("data").get("items");
+        long first = items.get(0).get("auction").get("lotNumber").asLong();
+        long second = items.get(1).get("auction").get("lotNumber").asLong();
+
+        assertThat(first).isPositive();
+        assertThat(second).isEqualTo(first + 1);
     }
 }

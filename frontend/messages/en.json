@@ -1,6 +1,7 @@
 {
   "common": {
     "appName": "NexBid",
+    "noPhoto": "No photo yet",
     "tagline": "Real-time online auctions",
     "description": "Discover unique products and compete in live auctions with real-time bidding.",
     "loading": "Loading",
@@ -74,7 +75,8 @@
     "hoursAgo": "{count} hr ago",
     "daysAgo": "{count, plural, one {# day ago} other {# days ago}}",
     "language": "Language",
-    "changeLanguage": "Change language"
+    "changeLanguage": "Change language",
+    "somethingWentWrong": "Something went wrong. Please try again."
   },
   "nav": {
     "auctions": "Auctions",
@@ -269,7 +271,9 @@
     "BID_TOO_LOW": "Bid must be at least {amount}.",
     "BID_EMPTY": "Enter a bid amount.",
     "BID_CONFLICT": "Someone bid at the same moment. Review the new price and try again.",
-    "BID_RATE_LIMITED": "Too many bids in a short time. Wait a moment and try again."
+    "BID_RATE_LIMITED": "Too many bids in a short time. Wait a moment and try again.",
+    "AUTO_BID_INVALID": "Your maximum must be at least {amount}.",
+    "BID_FAILED": "The bid could not be placed. Try again."
   },
   "auth": {
     "loginTitle": "Welcome back",
@@ -315,7 +319,7 @@
     "profileSubtitle": "Your details and how you appear to other bidders.",
     "personalDetails": "Personal details",
     "publicHandle": "Public handle",
-    "publicHandleHint": "Shown in bid history instead of your full name.",
+    "publicHandleHint": "Shown in bid history instead of your full name. It is made from your name.",
     "memberSince": "Member since",
     "roles": "Roles",
     "accountStatus": "Account status",
@@ -650,7 +654,8 @@
       "AUCTION_EXTENDED": "Auction extended",
       "AUCTION_ENDED": "Auction ended",
       "PAYMENT_SUCCESS": "Payment successful",
-      "USER_BLOCKED": "User blocked"
+      "USER_BLOCKED": "User blocked",
+      "USER_UNBLOCKED": "User unblocked"
     },
     "role": {
       "BUYER": "Buyer",
@@ -703,7 +708,7 @@
   },
   "stage": {
     "live": "Live",
-    "auctionsLive": "{count} auctions live",
+    "auctionsLive": "{count, plural, one {# auction live} other {# auctions live}}",
     "openingLot": "Opening lot",
     "current": "Current",
     "bids": "{count, plural, =0 {No bids} one {# bid} other {# bids}}",
@@ -728,8 +733,8 @@
   },
   "rooms": {
     "title": "The rooms",
-    "lead": "Seven collections. Every lot reviewed before it opens.",
-    "lotsLive": "{count} lots live"
+    "lead": "{count, plural, one {# collection} other {# collections}}. Every lot reviewed before it opens.",
+    "lotsLive": "{count, plural, one {# lot live} other {# lots live}}"
   },
   "schedule": {
     "title": "On the schedule",
@@ -822,5 +827,46 @@
     "dark": "Dark",
     "system": "System",
     "toggle": "Change appearance"
+  },
+  "apiErrors": {
+    "USER_NOT_FOUND": "That account does not exist.",
+    "EMAIL_ALREADY_EXISTS": "An account with this email already exists.",
+    "INVALID_CREDENTIALS": "Incorrect email or password.",
+    "ACCOUNT_BLOCKED": "This account has been suspended.",
+    "PRODUCT_NOT_FOUND": "That product no longer exists.",
+    "CATEGORY_NOT_FOUND": "That category no longer exists.",
+    "CATEGORY_ALREADY_EXISTS": "A category with this name already exists.",
+    "IMAGE_NOT_FOUND": "That photo no longer exists.",
+    "IMAGE_INVALID": "That file is not a supported image. Use JPEG, PNG or WebP.",
+    "IMAGE_TOO_LARGE": "That photo is too large.",
+    "IMAGE_LIMIT_REACHED": "This product already has the maximum number of photos.",
+    "PRODUCT_NOT_EDITABLE": "This product is in an auction and can no longer be edited.",
+    "PRODUCT_NOT_SELLABLE": "Only a published, unsold product can be put up for auction.",
+    "PRODUCT_ALREADY_IN_AUCTION": "This product is already in an auction.",
+    "AUCTION_NOT_FOUND": "That auction no longer exists.",
+    "AUCTION_NOT_ACTIVE": "This auction is not accepting bids.",
+    "AUCTION_ALREADY_ENDED": "This auction has ended.",
+    "AUCTION_NOT_EDITABLE": "This auction can no longer be changed.",
+    "AUCTION_SCHEDULE_INVALID": "Check the schedule: the end must be after the start, and in the future.",
+    "AUCTION_NOT_PENDING": "This auction is no longer waiting for review.",
+    "SELLER_CANNOT_BID": "You cannot bid on your own auction.",
+    "BID_TOO_LOW": "The bid is below the minimum.",
+    "BID_CONFLICT": "Someone bid at the same moment. Try again.",
+    "BID_RATE_LIMITED": "Too many attempts in a short time. Wait a moment and try again.",
+    "AUTO_BID_INVALID": "That auto bid maximum is not valid.",
+    "AUTO_BID_EXISTS": "You already have an auto bid on this lot.",
+    "AUTO_BID_NOT_FOUND": "You have no auto bid on this lot.",
+    "PAYMENT_NOT_FOUND": "That payment does not exist.",
+    "PAYMENT_EXPIRED": "The payment window has closed.",
+    "PAYMENT_ALREADY_PAID": "This has already been paid.",
+    "ORDER_NOT_FOUND": "That order does not exist.",
+    "NOTIFICATION_NOT_FOUND": "That notification no longer exists.",
+    "ACCESS_DENIED": "You do not have permission to do that.",
+    "NOT_AUTHENTICATED": "Sign in to continue.",
+    "VALIDATION_ERROR": "Some details are missing or invalid.",
+    "NOT_FOUND": "Not found.",
+    "METHOD_NOT_ALLOWED": "That action is not supported.",
+    "UNSUPPORTED_MEDIA_TYPE": "That file type is not supported.",
+    "INTERNAL_ERROR": "Something went wrong. Please try again."
   }
 }

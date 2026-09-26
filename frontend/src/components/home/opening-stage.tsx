@@ -1,14 +1,13 @@
 import { ArrowRight } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Image from "next/image";
 import Link from "next/link";
 
+import { ProductPhoto } from "@/components/common/product-photo";
 import { AuctionClock } from "@/components/nexbid/auction-clock";
 import { LiveTag } from "@/components/nexbid/live-pulse";
 import { LotNumber } from "@/components/nexbid/lot-number";
 import { AuctionPriceTicker } from "@/components/nexbid/price-ticker";
 import { formatCompactNumber } from "@/lib/format";
-import { isLocalImage } from "@/lib/images";
 import type { AuctionSummary } from "@/types";
 
 interface OpeningStageProps {
@@ -38,17 +37,14 @@ export function OpeningStage({
     <section className="on-media bg-background relative -mt-16 flex min-h-[100svh] flex-col overflow-hidden">
       {/* The object fills the stage; the vignette lets type sit on top of it. */}
       <div className="absolute inset-0">
-        {cover ? (
-          <Image
-            unoptimized={isLocalImage(cover.url)}
-            src={cover.url}
-            alt={cover.alt}
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-center"
-          />
-        ) : null}
+        <ProductPhoto
+          src={cover?.url}
+          alt={cover?.alt}
+          priority
+          sizes="100vw"
+          className="object-cover object-center"
+          fallback="none"
+        />
         <div className="stage-fade absolute inset-0" aria-hidden="true" />
         <div
           className="scrim-bottom absolute inset-x-0 bottom-0 h-[70%]"
@@ -108,14 +104,16 @@ export function OpeningStage({
                   {String(auction.bidCount).padStart(2, "0")}
                 </p>
               </div>
-              <div>
-                <p className="label text-muted-foreground mb-2">
-                  {t("watching", { count: "" }).trim()}
-                </p>
-                <p className="mono-figure text-lg">
-                  {formatCompactNumber(auction.viewerCount)}
-                </p>
-              </div>
+              {auction.viewerCount !== undefined ? (
+                <div>
+                  <p className="label text-muted-foreground mb-2">
+                    {t("watching", { count: "" }).trim()}
+                  </p>
+                  <p className="mono-figure text-lg">
+                    {formatCompactNumber(auction.viewerCount)}
+                  </p>
+                </div>
+              ) : null}
             </div>
 
             <Link

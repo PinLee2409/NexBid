@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
@@ -34,6 +35,18 @@ public class AdminAuctionController {
     @GetMapping("/pending")
     public ApiResponse<List<AuctionView>> pending() {
         return ApiResponse.of(auctions.listPendingApproval());
+    }
+
+    /**
+     * EN: The review console's tabs, e.g. ?status=SCHEDULED&status=ACTIVE, with the item and seller on each card.
+     * VI: Các tab của trang duyệt, ví dụ ?status=SCHEDULED&status=ACTIVE, mỗi thẻ kèm món hàng và người bán.
+     */
+    @GetMapping
+    public ApiResponse<PageView<AuctionSummaryView>> byStatus(
+            @RequestParam List<AuctionStatus> status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return ApiResponse.of(auctions.listForAdmin(status, page, size));
     }
 
     /**

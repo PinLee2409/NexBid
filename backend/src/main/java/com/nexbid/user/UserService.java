@@ -3,6 +3,10 @@ package com.nexbid.user;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -115,6 +119,32 @@ public class UserService {
 
         user.addRole(role);
         return toAccount(users.save(user));
+    }
+
+    /**
+     * EN: Accounts for the admin console, newest first. {@code search} matches name or email; either filter
+     *     may be left out.
+     * VI: Danh sách tài khoản cho trang quản trị, mới nhất trước. {@code search} khớp tên hoặc email; có thể
+     *     bỏ trống bất kỳ bộ lọc nào.
+     */
+    @Transactional(readOnly = true)
+    public UserPage search(String search, UserStatus status, int page, int size) {
+        Specification<User> spec = (root, query, cb) -> cb.conjunction();
+        if (status != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), status));
+        }
+        if (search != null && !search.isBlank()) {
+            String pattern = "%" + search.trim().toLowerCase()
+                    .replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
+            spec = spec.and((root, query, cb) -> cb.or(
+                    cb.like(cb.lower(root.get("fullName")), pattern, '!'),
+                    cb.like(cb.lower(root.get("email")), pattern, '!')));
+        }
+
+        Page<User> found = users.findAll(spec, PageRequest.of(
+                Math.max(0, page - 1), Math.clamp(size, 1, 100), Sort.by(Sort.Direction.DESC, "createdAt")));
+        return new UserPage(found.getContent().stream().map(UserService::toAccount).toList(),
+                found.getNumber() + 1, found.getSize(), found.getTotalElements(), found.getTotalPages());
     }
 
     /** EN: A status change and its audit event commit together. / VI: Đổi trạng thái và audit commit cùng nhau. */

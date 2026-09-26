@@ -5,17 +5,19 @@ import { useSyncExternalStore } from "react";
 import { createStore } from "@/lib/create-store";
 import type { User, UserRole } from "@/types";
 
-import { CURRENT_USER_ID, db, delay } from "./mock/db";
+import type { ApiLogin, ApiUser } from "./api/dto";
+import { ApiError, api } from "./api/http";
+import { toUser } from "./api/mappers";
+import { clearToken, getToken, onTokenChange, setToken } from "./api/token-store";
 
 /**
- * Client-side session.
+ * Client-side session, backed by the JWT from `POST /api/auth/login`.
  *
- * Today it is backed by the mock user table and `localStorage`. When JWT auth
- * lands, only `signIn`/`signUp`/`signOut` and `readPersistedSession` change —
- * every consumer keeps using `useSession()`.
+ * EN: The token is the truth: with one, the account comes from `GET /api/users/me`; without one (or
+ *     once the server rejects it) the reader is signed out.
+ * VI: Token là sự thật: có token thì thông tin tài khoản lấy từ `GET /api/users/me`; không có (hoặc server
+ *     từ chối nó) thì người đọc đã đăng xuất.
  */
-
-const STORAGE_KEY = "nexbid.session";
 
 export interface SessionState {
   user: User | null;
@@ -23,64 +25,59 @@ export interface SessionState {
   hydrated: boolean;
 }
 
-function demoUser(): User | null {
-  return db.users.find((user) => user.id === CURRENT_USER_ID) ?? null;
-}
+const sessionStore = createStore<SessionState>({ user: null, hydrated: false });
 
-/**
- * The portfolio build opens signed in so the full experience is reachable
- * without a login step. A persisted "signed out" choice overrides this.
- */
-const sessionStore = createStore<SessionState>({
-  user: demoUser(),
-  hydrated: false,
-});
+let started = false;
 
-let initialised = false;
-
-function readPersistedSession(): void {
-  if (initialised || typeof window === "undefined") return;
-  initialised = true;
-
+async function loadAccount(): Promise<void> {
+  if (!getToken()) {
+    sessionStore.setState({ user: null, hydrated: true });
+    return;
+  }
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw === null) {
-      sessionStore.setState((state) => ({ ...state, hydrated: true }));
-      return;
-    }
-
-    const parsed = JSON.parse(raw) as { userId: string | null };
-    const user = parsed.userId
-      ? (db.users.find((item) => item.id === parsed.userId) ?? null)
-      : null;
-
-    sessionStore.setState({ user, hydrated: true });
+    const me = await api<ApiUser>("/api/users/me");
+    sessionStore.setState({ user: toUser(me), hydrated: true });
   } catch {
-    sessionStore.setState((state) => ({ ...state, hydrated: true }));
+    // EN: A rejected token was already cleared by the HTTP client. / VI: Token bị từ chối đã được HTTP client xoá.
+    sessionStore.setState({ user: null, hydrated: true });
   }
 }
 
-function persist(user: User | null): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ userId: user?.id ?? null }),
-    );
-  } catch {
-    // Storage can be unavailable (private mode); the session still works
-    // for the current page view.
-  }
+function start(): void {
+  if (started || typeof window === "undefined") return;
+  started = true;
+  onTokenChange(() => {
+    if (!getToken()) sessionStore.setState({ user: null, hydrated: true });
+  });
+  void loadAccount();
 }
 
 export function useSession(): SessionState {
-  readPersistedSession();
-
+  start();
   return useSyncExternalStore(
     sessionStore.subscribe,
     sessionStore.getSnapshot,
     sessionStore.getServerSnapshot,
   );
+}
+
+/**
+ * EN: For stores that must follow who is signed in. Also called once straight away when someone is already
+ *     signed in, e.g. a store first used on the page the sign-in form redirected to.
+ * VI: Cho các store cần đi theo người đang đăng nhập. Cũng được gọi ngay một lần nếu đã có người đăng nhập,
+ *     ví dụ store được dùng lần đầu ở trang mà form đăng nhập chuyển tới.
+ */
+export function onSessionChange(listener: (user: User | null) => void): () => void {
+  start();
+  const current = sessionStore.getSnapshot().user;
+  let previous = current?.id ?? null;
+  if (current) queueMicrotask(() => listener(current));
+  return sessionStore.subscribe(() => {
+    const user = sessionStore.getSnapshot().user;
+    if ((user?.id ?? null) === previous) return;
+    previous = user?.id ?? null;
+    listener(user);
+  });
 }
 
 /** Convenience helper for role-gated UI. */
@@ -105,55 +102,67 @@ export type AuthResult =
   | { ok: true; user: User }
   | { ok: false; message: string };
 
-/** `POST /api/auth/login` */
-export async function signIn({ email }: Credentials): Promise<AuthResult> {
-  await delay(500);
-
-  const user = db.users.find(
-    (item) => item.email.toLowerCase() === email.trim().toLowerCase(),
-  );
-
-  // Any password is accepted while the backend is mocked, but the blocked and
-  // unknown-account paths behave exactly as specified (§7.2).
-  if (!user) {
-    return { ok: false, message: "Incorrect email or password." };
+function failure(error: unknown): AuthResult {
+  if (error instanceof ApiError) {
+    switch (error.code) {
+      case "INVALID_CREDENTIALS":
+        return { ok: false, message: "Incorrect email or password." };
+      case "ACCOUNT_BLOCKED":
+        return { ok: false, message: "This account has been suspended." };
+      case "EMAIL_ALREADY_EXISTS":
+        return { ok: false, message: "An account with this email already exists." };
+      case "VALIDATION_ERROR": {
+        const first = error.details ? Object.values(error.details)[0] : undefined;
+        return { ok: false, message: first ?? error.message };
+      }
+      case "BID_RATE_LIMITED":
+        return { ok: false, message: "Too many attempts. Wait a moment and try again." };
+      default:
+        break;
+    }
   }
-
-  if (user.status === "BLOCKED") {
-    return { ok: false, message: "This account has been suspended." };
-  }
-
-  sessionStore.setState({ user, hydrated: true });
-  persist(user);
-  return { ok: true, user };
+  return { ok: false, message: "Something went wrong. Please try again." };
 }
 
-/** `POST /api/auth/register` */
-export async function signUp({ fullName, email }: SignUpInput): Promise<AuthResult> {
-  await delay(600);
-
-  const normalizedEmail = email.trim().toLowerCase();
-  if (db.users.some((item) => item.email.toLowerCase() === normalizedEmail)) {
-    return { ok: false, message: "An account with this email already exists." };
+/** `POST /api/auth/login` */
+export async function signIn({ email, password }: Credentials): Promise<AuthResult> {
+  try {
+    const login = await api<ApiLogin>("/api/auth/login", {
+      method: "POST",
+      body: { email: email.trim(), password },
+    });
+    setToken(login.accessToken, login.expiresAt);
+    // EN: The login answer has no join date; the profile page shows one. / VI: Kết quả đăng nhập không có ngày tham gia; trang hồ sơ cần nó.
+    const me = await api<ApiUser>("/api/users/me");
+    const user = toUser(me);
+    sessionStore.setState({ user, hydrated: true });
+    return { ok: true, user };
+  } catch (error) {
+    return failure(error);
   }
+}
 
-  const user: User = {
-    id: `user-${Date.now().toString(36)}`,
-    fullName: fullName.trim(),
-    email: normalizedEmail,
-    displayName: `${fullName.trim().slice(0, 3).toLowerCase()}***`,
-    roles: ["BUYER"],
-    status: "ACTIVE",
-    createdAt: new Date().toISOString(),
-  };
-
-  db.users.push(user);
-  sessionStore.setState({ user, hydrated: true });
-  persist(user);
-  return { ok: true, user };
+/** `POST /api/auth/register`, then signs straight in. */
+export async function signUp({ fullName, email, password }: SignUpInput): Promise<AuthResult> {
+  try {
+    await api<ApiUser>("/api/auth/register", {
+      method: "POST",
+      body: { fullName: fullName.trim(), email: email.trim(), password },
+    });
+  } catch (error) {
+    return failure(error);
+  }
+  return signIn({ email, password });
 }
 
 export function signOut(): void {
+  clearToken();
   sessionStore.setState({ user: null, hydrated: true });
-  persist(null);
+}
+
+/** EN: Re-reads the account, e.g. after renaming it. / VI: Đọc lại tài khoản, ví dụ sau khi đổi tên. */
+export function applyAccount(me: ApiUser): User {
+  const user = toUser(me);
+  sessionStore.setState({ user, hydrated: true });
+  return user;
 }

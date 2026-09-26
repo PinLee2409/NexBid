@@ -150,13 +150,18 @@ export type BidRejectionCode =
       | "SELLER_CANNOT_BID"
       | "BID_TOO_LOW"
       | "ACCOUNT_BLOCKED"
+      | "BID_CONFLICT"
+      | "BID_RATE_LIMITED"
+      | "AUTO_BID_INVALID"
     >
-  | "BID_EMPTY";
+  | "BID_EMPTY"
+  /** Anything else the server answered; shown as a generic failure. */
+  | "BID_FAILED";
 
 export type BidRejection = {
   ok: false;
   code: BidRejectionCode;
-  /** Present for `BID_TOO_LOW`, so the message can name the floor. */
+  /** Present for `BID_TOO_LOW` and `AUTO_BID_INVALID`, so the message can name the floor. */
   minimumAmount?: number;
 };
 

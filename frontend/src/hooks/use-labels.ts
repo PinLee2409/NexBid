@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 
 import type { BidRejection } from "@/lib/auction-rules";
 import { formatCurrency } from "@/lib/format";
+import { ApiError } from "@/services/api/http";
 import type {
   AuctionStatus,
   AuditAction,
@@ -39,28 +40,20 @@ export function useEnumLabels() {
 }
 
 /**
- * Category names come from the catalogue (and will come from the API), but
- * their display copy is translated by slug.
+ * Category names come from the API, but the seeded ones have translated
+ * display copy keyed by slug. A category an admin adds later has none, so it
+ * is shown as the server sent it.
  */
 export function useCategoryLabels() {
   const t = useTranslations("categories");
 
   return {
-    name: (category: Pick<Category, "slug" | "name">) => {
-      try {
-        return t(`${category.slug}.name`);
-      } catch {
-        // Unknown slug from the API: fall back to whatever the server sent.
-        return category.name;
-      }
-    },
-    description: (category: Pick<Category, "slug" | "description">) => {
-      try {
-        return t(`${category.slug}.description`);
-      } catch {
-        return category.description;
-      }
-    },
+    name: (category: Pick<Category, "slug" | "name">) =>
+      t.has(`${category.slug}.name`) ? t(`${category.slug}.name`) : category.name,
+    description: (category: Pick<Category, "slug" | "description">) =>
+      t.has(`${category.slug}.description`)
+        ? t(`${category.slug}.description`)
+        : category.description,
   };
 }
 
@@ -69,11 +62,24 @@ export function useBidRejectionMessage() {
   const t = useTranslations("bidErrors");
 
   return (rejection: BidRejection): string => {
-    if (rejection.code === "BID_TOO_LOW") {
-      return t("BID_TOO_LOW", {
+    if (rejection.code === "BID_TOO_LOW" || rejection.code === "AUTO_BID_INVALID") {
+      return t(rejection.code, {
         amount: formatCurrency(rejection.minimumAmount ?? 0),
       });
     }
     return t(rejection.code);
+  };
+}
+
+/**
+ * Localised text for any refusal from the API. The code is the contract; the
+ * server's own message is for developers and never shown.
+ */
+export function useApiErrorMessage() {
+  const t = useTranslations("apiErrors");
+
+  return (error: unknown): string => {
+    const code = error instanceof ApiError ? error.code : "INTERNAL_ERROR";
+    return t.has(code) ? t(code) : t("INTERNAL_ERROR");
   };
 }

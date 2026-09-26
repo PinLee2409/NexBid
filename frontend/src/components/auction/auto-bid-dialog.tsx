@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useBidRejectionMessage } from "@/hooks/use-labels";
+import { useApiErrorMessage, useBidRejectionMessage } from "@/hooks/use-labels";
 import { CURRENCY, formatCurrency, parseCurrencyInput } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { removeAutoBid, saveAutoBid } from "@/services/bid-service";
@@ -26,6 +26,8 @@ interface AutoBidDialogProps {
   auctionId: string;
   minimumNextBid: number;
   autoBid: AutoBid | null;
+  /** Called after the auto bid is saved or removed, so the caller can re-read it. */
+  onChange?: () => void;
   disabled?: boolean;
   /** Lets the terminal drop the trigger straight into its own grid. */
   triggerClassName?: string;
@@ -39,6 +41,7 @@ export function AutoBidDialog({
   auctionId,
   minimumNextBid,
   autoBid,
+  onChange,
   disabled = false,
   triggerClassName,
 }: AutoBidDialogProps) {
@@ -52,6 +55,7 @@ export function AutoBidDialog({
   );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const errorMessage = useApiErrorMessage();
 
   function handleSave() {
     const amount = parseCurrencyInput(value);
@@ -66,6 +70,7 @@ export function AutoBidDialog({
 
       setError(null);
       setOpen(false);
+      onChange?.();
       toast.success(t("autoBidSaved"), {
         description: t("autoBidActive", {
           amount: formatCurrency(response.autoBid.maxAmount),
@@ -76,8 +81,14 @@ export function AutoBidDialog({
 
   function handleRemove() {
     startTransition(async () => {
-      await removeAutoBid(auctionId);
+      try {
+        await removeAutoBid(auctionId);
+      } catch (failure) {
+        setError(errorMessage(failure));
+        return;
+      }
       setOpen(false);
+      onChange?.();
       toast.success(t("autoBidRemoved"));
     });
   }

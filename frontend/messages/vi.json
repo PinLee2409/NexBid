@@ -1,6 +1,7 @@
 {
   "common": {
     "appName": "NexBid",
+    "noPhoto": "Chưa có ảnh",
     "tagline": "Đấu giá trực tuyến thời gian thực",
     "description": "Khám phá những sản phẩm độc đáo và tranh tài trong các phiên đấu giá trực tiếp.",
     "loading": "Đang tải",
@@ -74,7 +75,8 @@
     "hoursAgo": "{count} giờ trước",
     "daysAgo": "{count} ngày trước",
     "language": "Ngôn ngữ",
-    "changeLanguage": "Đổi ngôn ngữ"
+    "changeLanguage": "Đổi ngôn ngữ",
+    "somethingWentWrong": "Đã có lỗi xảy ra. Vui lòng thử lại."
   },
   "nav": {
     "auctions": "Đấu giá",
@@ -269,7 +271,9 @@
     "BID_TOO_LOW": "Giá phải tối thiểu {amount}.",
     "BID_EMPTY": "Nhập số tiền muốn trả.",
     "BID_CONFLICT": "Có người trả giá cùng lúc. Xem lại giá mới và thử lại.",
-    "BID_RATE_LIMITED": "Quá nhiều lượt trả giá trong thời gian ngắn. Đợi một chút rồi thử lại."
+    "BID_RATE_LIMITED": "Quá nhiều lượt trả giá trong thời gian ngắn. Đợi một chút rồi thử lại.",
+    "AUTO_BID_INVALID": "Mức tối đa phải từ {amount} trở lên.",
+    "BID_FAILED": "Không đặt được giá. Vui lòng thử lại."
   },
   "auth": {
     "loginTitle": "Chào mừng trở lại",
@@ -315,7 +319,7 @@
     "profileSubtitle": "Thông tin của bạn và cách bạn hiển thị với người khác.",
     "personalDetails": "Thông tin cá nhân",
     "publicHandle": "Tên hiển thị công khai",
-    "publicHandleHint": "Hiển thị trong lịch sử trả giá thay cho tên thật.",
+    "publicHandleHint": "Hiển thị trong lịch sử trả giá thay cho họ tên đầy đủ. Được tạo tự động từ tên của bạn.",
     "memberSince": "Tham gia từ",
     "roles": "Vai trò",
     "accountStatus": "Trạng thái tài khoản",
@@ -650,7 +654,8 @@
       "AUCTION_EXTENDED": "Kéo dài phiên",
       "AUCTION_ENDED": "Kết thúc phiên",
       "PAYMENT_SUCCESS": "Thanh toán thành công",
-      "USER_BLOCKED": "Khoá người dùng"
+      "USER_BLOCKED": "Khoá người dùng",
+      "USER_UNBLOCKED": "Mở khoá người dùng"
     },
     "role": {
       "BUYER": "Người mua",
@@ -728,7 +733,7 @@
   },
   "rooms": {
     "title": "Các gian",
-    "lead": "Bảy bộ sưu tập. Mọi sản phẩm đều được duyệt trước khi mở phiên.",
+    "lead": "{count} bộ sưu tập. Mọi sản phẩm đều được duyệt trước khi mở phiên.",
     "lotsLive": "{count} sản phẩm"
   },
   "schedule": {
@@ -822,5 +827,46 @@
     "dark": "Tối",
     "system": "Theo hệ thống",
     "toggle": "Đổi giao diện"
+  },
+  "apiErrors": {
+    "USER_NOT_FOUND": "Tài khoản không tồn tại.",
+    "EMAIL_ALREADY_EXISTS": "Email này đã được đăng ký.",
+    "INVALID_CREDENTIALS": "Email hoặc mật khẩu không đúng.",
+    "ACCOUNT_BLOCKED": "Tài khoản này đang bị khoá.",
+    "PRODUCT_NOT_FOUND": "Sản phẩm không còn tồn tại.",
+    "CATEGORY_NOT_FOUND": "Danh mục không còn tồn tại.",
+    "CATEGORY_ALREADY_EXISTS": "Đã có danh mục trùng tên.",
+    "IMAGE_NOT_FOUND": "Ảnh không còn tồn tại.",
+    "IMAGE_INVALID": "File không phải ảnh được hỗ trợ. Hãy dùng JPEG, PNG hoặc WebP.",
+    "IMAGE_TOO_LARGE": "Ảnh quá lớn.",
+    "IMAGE_LIMIT_REACHED": "Sản phẩm đã đủ số ảnh tối đa.",
+    "PRODUCT_NOT_EDITABLE": "Sản phẩm đang được đấu giá nên không sửa được nữa.",
+    "PRODUCT_NOT_SELLABLE": "Chỉ sản phẩm đã đăng và chưa bán mới được đưa lên đấu giá.",
+    "PRODUCT_ALREADY_IN_AUCTION": "Sản phẩm này đã nằm trong một phiên đấu giá.",
+    "AUCTION_NOT_FOUND": "Phiên đấu giá không còn tồn tại.",
+    "AUCTION_NOT_ACTIVE": "Phiên này không nhận lượt trả giá.",
+    "AUCTION_ALREADY_ENDED": "Phiên đấu giá đã kết thúc.",
+    "AUCTION_NOT_EDITABLE": "Phiên đấu giá này không thể thay đổi nữa.",
+    "AUCTION_SCHEDULE_INVALID": "Kiểm tra lịch: giờ kết thúc phải sau giờ bắt đầu và ở trong tương lai.",
+    "AUCTION_NOT_PENDING": "Phiên này không còn chờ duyệt.",
+    "SELLER_CANNOT_BID": "Bạn không thể trả giá cho sản phẩm của chính mình.",
+    "BID_TOO_LOW": "Giá thấp hơn mức tối thiểu.",
+    "BID_CONFLICT": "Có người trả giá cùng lúc. Vui lòng thử lại.",
+    "BID_RATE_LIMITED": "Thao tác quá nhiều trong thời gian ngắn. Đợi một chút rồi thử lại.",
+    "AUTO_BID_INVALID": "Mức tối đa của auto bid không hợp lệ.",
+    "AUTO_BID_EXISTS": "Bạn đã có auto bid cho lô này.",
+    "AUTO_BID_NOT_FOUND": "Bạn chưa có auto bid cho lô này.",
+    "PAYMENT_NOT_FOUND": "Khoản thanh toán không tồn tại.",
+    "PAYMENT_EXPIRED": "Đã hết hạn thanh toán.",
+    "PAYMENT_ALREADY_PAID": "Khoản này đã được thanh toán.",
+    "ORDER_NOT_FOUND": "Đơn hàng không tồn tại.",
+    "NOTIFICATION_NOT_FOUND": "Thông báo không còn tồn tại.",
+    "ACCESS_DENIED": "Bạn không có quyền thực hiện thao tác này.",
+    "NOT_AUTHENTICATED": "Vui lòng đăng nhập để tiếp tục.",
+    "VALIDATION_ERROR": "Một số thông tin còn thiếu hoặc không hợp lệ.",
+    "NOT_FOUND": "Không tìm thấy.",
+    "METHOD_NOT_ALLOWED": "Thao tác này không được hỗ trợ.",
+    "UNSUPPORTED_MEDIA_TYPE": "Loại file này không được hỗ trợ.",
+    "INTERNAL_ERROR": "Đã có lỗi xảy ra. Vui lòng thử lại."
   }
 }

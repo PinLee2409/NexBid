@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { PRODUCT_CONDITIONS } from "@/constants/auction";
-import { useCategoryLabels, useEnumLabels } from "@/hooks/use-labels";
+import { useApiErrorMessage, useCategoryLabels, useEnumLabels } from "@/hooks/use-labels";
 import { createProduct, updateProduct } from "@/services/seller-service";
 import type { Category, Product, ProductCondition } from "@/types";
 
@@ -56,6 +56,7 @@ export function ProductForm({ categories, product }: ProductFormProps) {
 
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isPending, startTransition] = useTransition();
+  const errorMessage = useApiErrorMessage();
 
   function validate(): FieldErrors {
     const next: FieldErrors = {};
@@ -82,9 +83,15 @@ export function ProductForm({ categories, product }: ProductFormProps) {
         imageUrls: images,
       };
 
-      const saved = product
-        ? await updateProduct(product.id, input)
-        : await createProduct(input);
+      let saved;
+      try {
+        saved = product
+          ? await updateProduct(product.id, input)
+          : await createProduct(input);
+      } catch (error) {
+        toast.error(errorMessage(error));
+        return;
+      }
 
       toast.success(t("productSaved"), {
         description: t("productSavedBody", { name: saved?.name ?? name }),

@@ -2,12 +2,14 @@ package com.nexbid.auction;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -199,7 +201,9 @@ public class AuctionService {
                 request.extensionSeconds() == null ? 120 : request.extensionSeconds());
 
         try {
-            Auction saved = auctions.save(auction);
+            // EN: Flushed here so the unique index answers inside this try, and the lot number comes back.
+            // VI: Flush ngay tại đây để index duy nhất trả lời bên trong khối try này, và lấy được số lô.
+            Auction saved = auctions.saveAndFlush(auction);
             events.publishEvent(new AuctionAuditEvent(
                     AuctionAuditEvent.Action.CREATED, saved.getId(), sellerId, null, saved.getStatus()));
             return toView(saved);
@@ -285,6 +289,8 @@ public class AuctionService {
      */
     public PageView<AuctionSummaryView> browse(AuctionQuery query) {
         boolean filterByCategory = query.category() != null && !query.category().isEmpty();
+        boolean filterByName = query.q() != null && !query.q().isBlank();
+        boolean filterByCondition = query.condition() != null && !query.condition().isEmpty();
 
         Specification<Auction> spec = AuctionSpecifications.allOf(
                 AuctionSpecifications.publiclyVisible(),
@@ -295,6 +301,12 @@ public class AuctionService {
                         Boolean.TRUE.equals(query.endingSoon()), Instant.now(), ENDING_SOON_SECONDS),
                 filterByCategory
                         ? AuctionSpecifications.productIn(products.idsInCategorySlugs(query.category()))
+                        : null,
+                filterByName
+                        ? AuctionSpecifications.productIn(products.idsWithNameContaining(query.q()))
+                        : null,
+                filterByCondition
+                        ? AuctionSpecifications.productIn(products.idsInConditions(query.condition()))
                         : null);
 
         var page = auctions.findAll(
@@ -402,6 +414,21 @@ public class AuctionService {
     }
 
     /**
+     * EN: Where this person stands on each lot. The leader is never shown publicly, but a bidder may know
+     *     whether it is them.
+     * VI: Vị thế của người này trên từng lô. Người dẫn đầu không bao giờ được công khai, nhưng người trả
+     *     giá được biết đó có phải là mình hay không.
+     */
+    public Map<UUID, BidStanding> standingsOf(UUID bidderId, Collection<UUID> auctionIds) {
+        return auctions.findAllById(auctionIds).stream().collect(Collectors.toMap(Auction::getId, auction ->
+                switch (auction.getStatus()) {
+                    case ENDED, COMPLETED, CANCELLED ->
+                            bidderId.equals(auction.getWinnerId()) ? BidStanding.WON : BidStanding.LOST;
+                    default -> bidderId.equals(auction.getLeadingBidderId()) ? BidStanding.WINNING : BidStanding.OUTBID;
+                }));
+    }
+
+    /**
      * EN: Cards for lots the caller took part in, whatever their status now — a winner still needs to see
      *     the lot behind a payment after it was cancelled. Only ever call it with such lots.
      * VI: Thẻ cho các lô mà người gọi có tham gia, bất kể trạng thái hiện tại — người thắng vẫn cần thấy lô
@@ -439,7 +466,8 @@ public class AuctionService {
                     new AuctionSummaryView.Product(
                             auction.getProductId(),
                             card == null ? "Unknown item" : card.name(),
-                            card == null ? null : card.coverImageUrl()),
+                            card == null ? null : card.coverImageUrl(),
+                            card == null ? null : card.condition()),
                     card == null ? null : card.category(),
                     new AuctionSummaryView.Seller(
                             auction.getSellerId(),
@@ -453,8 +481,9 @@ public class AuctionService {
      * VI: Áp một lượt trả giá vào lô (guide §20). Mọi luật guide liệt kê đều kiểm ở đây theo đúng thứ tự,
      *     và chỉ phiên đấu giá thay đổi — bản ghi lượt trả giá thuộc về module bid.
      */
+    @Transactional
     public AcceptedBid acceptBid(UUID auctionId, UUID bidderId, BigDecimal amount) {
-        return acceptBid(auctionId, bidderId, amount, Instant.now());
+        return accept(auctionId, bidderId, amount, Instant::now);
     }
 
     /**
@@ -465,6 +494,10 @@ public class AuctionService {
      */
     @Transactional
     public AcceptedBid acceptBid(UUID auctionId, UUID bidderId, BigDecimal amount, Instant at) {
+        return accept(auctionId, bidderId, amount, () -> at);
+    }
+
+    private AcceptedBid accept(UUID auctionId, UUID bidderId, BigDecimal amount, Supplier<Instant> clock) {
         // EN: Locked, not merely read (guide §21). Reading the price and writing the new one must be one
         //     indivisible step, or two bidders both read 10m and both think they won at 10.5m.
         // VI: Đọc kèm khoá chứ không chỉ đọc (guide §21). Đọc giá rồi ghi giá mới phải là một bước không
@@ -473,7 +506,9 @@ public class AuctionService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
 
-        Instant now = at;
+        // EN: Read only once the lock is held, so bids on a lot are stamped in the order they were accepted.
+        // VI: Chỉ đọc giờ khi đã giữ khoá, để các lượt trên một lô được đóng dấu đúng thứ tự được nhận.
+        Instant now = clock.get();
 
         // EN: Ended first, so a lot whose clock ran out says so rather than "not active".
         // VI: Kiểm hết giờ trước, để lô đã hết thời gian nói đúng điều đó thay vì "chưa mở".
@@ -633,6 +668,19 @@ public class AuctionService {
         return toView(auctions.save(auction));
     }
 
+    /**
+     * EN: Lots in the given statuses for the admin console's tabs, most recently changed first. Unlike the
+     *     public list it reaches drafts and rejections, and shows the winner.
+     * VI: Các lô theo trạng thái cho các tab của trang quản trị, lô vừa thay đổi gần nhất lên trước. Khác danh
+     *     sách công khai, nó thấy cả bản nháp và lô bị từ chối, và hiện người thắng.
+     */
+    public PageView<AuctionSummaryView> listForAdmin(List<AuctionStatus> statuses, int page, int size) {
+        var found = auctions.findAll(
+                AuctionSpecifications.statusIn(statuses),
+                PageRequest.of(Math.max(0, page - 1), Math.clamp(size, 1, 100), Sort.by(Sort.Direction.DESC, "updatedAt")));
+        return PageView.of(found, summarize(found.getContent(), AuctionService::toView));
+    }
+
     /** EN: Waiting for a decision (guide §16). / VI: Đang chờ quyết định (guide §16). */
     public List<AuctionView> listPendingApproval() {
         return auctions.findByStatusOrderByCreatedAtAsc(AuctionStatus.PENDING_APPROVAL).stream()
@@ -786,6 +834,7 @@ public class AuctionService {
     private static AuctionView toView(Auction auction, UUID winnerShown) {
         return new AuctionView(
                 auction.getId(),
+                auction.getLotNumber(),
                 auction.getProductId(),
                 auction.getSellerId(),
                 auction.getStartingPrice(),

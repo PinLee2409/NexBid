@@ -1,11 +1,10 @@
 import { useFormatter, useTranslations } from "next-intl";
-import Image from "next/image";
 import Link from "next/link";
 
+import { ProductPhoto } from "@/components/common/product-photo";
 import { formatLot } from "@/components/nexbid/lot-number";
 import { SectionHead } from "@/components/nexbid/section-head";
 import { formatCurrency } from "@/lib/format";
-import { isLocalImage } from "@/lib/images";
 import type { AuctionSummary } from "@/types";
 
 interface ScheduleSectionProps {
@@ -42,16 +41,12 @@ export function ScheduleSection({ auctions }: ScheduleSectionProps) {
               className="group block"
             >
               <div className="on-media bg-surface relative aspect-[3/4] overflow-hidden">
-                {cover ? (
-                  <Image
-                    unoptimized={isLocalImage(cover.url)}
-                    src={cover.url}
-                    alt={cover.alt}
-                    fill
-                    sizes="(max-width: 640px) 100vw, 25vw"
-                    className="object-cover opacity-80 transition-all duration-[900ms] group-hover:scale-105 group-hover:opacity-100"
-                  />
-                ) : null}
+                <ProductPhoto
+                  src={cover?.url}
+                  alt={cover?.alt}
+                  sizes="(max-width: 640px) 100vw, 25vw"
+                  className="object-cover opacity-80 transition-all duration-[900ms] group-hover:scale-105 group-hover:opacity-100"
+                />
                 <span
                   className="display over-image text-foreground/70 group-hover:text-signal-text absolute top-4 left-4 text-2xl transition-colors"
                   aria-hidden="true"

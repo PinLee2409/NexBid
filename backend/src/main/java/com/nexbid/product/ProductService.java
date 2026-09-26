@@ -98,6 +98,20 @@ public class ProductService {
     }
 
     /**
+     * EN: Product ids whose name contains the words, ignoring case; `%` and `_` match themselves.
+     * VI: Id sản phẩm có tên chứa từ khoá, không phân biệt hoa thường; `%` và `_` chỉ khớp chính nó.
+     */
+    public List<UUID> idsWithNameContaining(String words) {
+        String literal = words.trim().replace("!", "!!").replace("%", "!%").replace("_", "!_");
+        return products.findIdsByNameLike("%" + literal + "%");
+    }
+
+    /** EN: Product ids in the given conditions. / VI: Id sản phẩm thuộc các tình trạng đã cho. */
+    public List<UUID> idsInConditions(java.util.Collection<ProductCondition> conditions) {
+        return products.findIdsByConditionIn(conditions);
+    }
+
+    /**
      * EN: Several products at once, keyed by id — so a list of auctions resolves its items in one query.
      * VI: Lấy nhiều sản phẩm một lần, đánh theo id — để một danh sách phiên phân giải món hàng trong một truy vấn.
      */

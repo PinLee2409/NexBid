@@ -19,4 +19,12 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     @Query("select p.id from Product p where p.category.id in ?1")
     List<UUID> findIdsByCategoryIdIn(java.util.Collection<UUID> categoryIds);
+
+    // EN: The pattern escapes %, _ and ! with "!", so what the user typed matches literally.
+    // VI: Mẫu tìm đã thoát %, _ và ! bằng "!", để thứ người dùng gõ được khớp đúng nguyên văn.
+    @Query("select p.id from Product p where lower(p.name) like lower(?1) escape '!'")
+    List<UUID> findIdsByNameLike(String pattern);
+
+    @Query("select p.id from Product p where p.condition in ?1")
+    List<UUID> findIdsByConditionIn(java.util.Collection<com.nexbid.product.ProductCondition> conditions);
 }

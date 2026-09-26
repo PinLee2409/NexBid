@@ -63,7 +63,7 @@ export function BidTerminal({
     currentPrice: room.currentPrice,
     bidCount: room.bidCount,
     endTime: room.endTime,
-    status: room.ended ? ("ENDED" as const) : auction.status,
+    status: room.ended ? ("ENDED" as const) : room.status,
   };
 
   const minimumNextBid = getMinimumNextBid(liveAuction);
@@ -131,6 +131,7 @@ export function BidTerminal({
       setTouched(false);
       setSucceeded(true);
       room.dismissOutbid();
+      room.refreshViewer();
       toast.success(t("bidAccepted"), {
         description: formatCurrency(amount),
       });
@@ -145,7 +146,7 @@ export function BidTerminal({
   }, [succeeded]);
 
   const canBid = validation.ok && !room.ended;
-  const isOpen = auction.status === "ACTIVE" && !room.ended;
+  const isOpen = room.status === "ACTIVE" && !room.ended;
 
   return (
     <section
@@ -373,6 +374,7 @@ export function BidTerminal({
             <button
               type="button"
               onClick={() => toggleWatch(auction.id)}
+              disabled={!user}
               aria-pressed={watched}
               className={cn(
                 "label border-line hover:text-foreground border-r py-4 transition-colors",
@@ -385,7 +387,8 @@ export function BidTerminal({
             <AutoBidDialog
               auctionId={auction.id}
               minimumNextBid={minimumNextBid}
-              autoBid={auction.viewerState?.autoBid ?? null}
+              autoBid={room.autoBid}
+              onChange={room.refreshViewer}
               disabled={isSeller || !user}
             />
           </div>
@@ -400,13 +403,15 @@ export function BidTerminal({
             {String(room.bidCount).padStart(2, "0")}
           </span>
         </span>
-        <span className="text-right">
-          <span className="label-sm text-dim mb-1.5 block">{t("activity")}</span>
-          <span className="mono-figure inline-flex items-center gap-1.5 text-lg">
-            <Eye className="size-3.5" aria-hidden="true" />
-            {formatCompactNumber(room.viewerCount)}
+        {room.viewerCount !== undefined ? (
+          <span className="text-right">
+            <span className="label-sm text-dim mb-1.5 block">{t("activity")}</span>
+            <span className="mono-figure inline-flex items-center gap-1.5 text-lg">
+              <Eye className="size-3.5" aria-hidden="true" />
+              {formatCompactNumber(room.viewerCount)}
+            </span>
           </span>
-        </span>
+        ) : null}
       </div>
 
       {auction.antiSniping.enabled && isOpen ? (

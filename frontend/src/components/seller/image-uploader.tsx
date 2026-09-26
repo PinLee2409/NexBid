@@ -4,6 +4,7 @@ import { ImagePlus, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type DragEvent } from "react";
 
+import { forgetLocalFile, rememberLocalFile } from "@/lib/local-files";
 import { cn } from "@/lib/utils";
 
 interface ImageUploaderProps {
@@ -16,9 +17,8 @@ interface ImageUploaderProps {
 const MAX_IMAGES = 6;
 
 /**
- * Mock uploader. Files never leave the browser: each becomes an object URL
- * that the rest of the app renders unoptimised (`isLocalImage`). Swapping in a
- * real upload endpoint means replacing `filesToUrls` and nothing else.
+ * Picks photos. Each file becomes an object URL for the preview, and is
+ * remembered (`rememberLocalFile`) so saving the product uploads the file itself.
  */
 export function ImageUploader({ value, onChange, error, id }: ImageUploaderProps) {
   const t = useTranslations("seller");
@@ -30,7 +30,10 @@ export function ImageUploader({ value, onChange, error, id }: ImageUploaderProps
   useEffect(() => {
     const created = createdRef.current;
     return () => {
-      for (const url of created) URL.revokeObjectURL(url);
+      for (const url of created) {
+        URL.revokeObjectURL(url);
+        forgetLocalFile(url);
+      }
     };
   }, []);
 
@@ -43,6 +46,7 @@ export function ImageUploader({ value, onChange, error, id }: ImageUploaderProps
       .map((file) => {
         const url = URL.createObjectURL(file);
         createdRef.current.push(url);
+        rememberLocalFile(url, file);
         return url;
       });
 
