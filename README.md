@@ -11,7 +11,7 @@ anti-sniping extensions, one winner per lot.
 | | |
 | --- | --- |
 | Frontend | Complete, running on mock data |
-| Backend | Function 35 of 40 — accounts, products, auctions and bidding, safe under concurrent load. Realtime price updates over WebSocket. Lots open and close on schedule, last-second bids extend the close, auto bids answer for their owners, and the top bidder wins. Watchlists, notifications, and a mock payment for the winner that completes the sale as an order. Lot details cached in Redis, bidding rate limited per user, and domain events published to Kafka through a transactional outbox. Important actions are recorded in an admin-only audit log |
+| Backend | Function 37 of 40 — accounts, products, auctions and bidding, safe under concurrent load. Realtime price updates over WebSocket. Lots open and close on schedule, last-second bids extend the close, auto bids answer for their owners, and the top bidder wins. Watchlists, notifications, and a mock payment for the winner that completes the sale as an order. Lot details cached in Redis, bidding rate limited per user, and domain events published to Kafka through a transactional outbox. Important actions are recorded in an admin-only audit log. An end-to-end test drives a lot from listing to paid order, and a hundred simultaneous bids over HTTP produce exactly one winner |
 
 The frontend does not call the backend yet. The mock services mirror the REST
 contract, so switching to the real API changes service bodies and nothing else.
@@ -29,6 +29,21 @@ WebSocket, PostgreSQL 17, Redis 7, Kafka 4.
 ---
 
 ## Run
+
+### Everything in Docker
+
+```bash
+docker compose up
+```
+
+Frontend at http://localhost:3000, backend at http://localhost:8080/api/health. The first run builds
+both images and takes a few minutes; after changing code, run `docker compose up --build`. Postgres,
+Redis and Kafka stay inside the compose network. If a dev server already holds 3000 or 8080, set
+`NEXBID_FRONTEND_PORT` / `NEXBID_BACKEND_PORT`. To make an account admin, register it, then restart
+the backend with `NEXBID_ADMIN_EMAILS=you@example.com docker compose up -d backend` and sign in again —
+a token only carries the roles held when it was issued.
+
+### Development
 
 ```bash
 docker compose -f docker/compose.yaml up -d
@@ -110,7 +125,10 @@ cd backend && ./mvnw test
 cd frontend && npm run build
 ```
 
-The backend suite needs the database running.
+The backend suite needs Docker, not the dev services: each test context starts its own Postgres, Redis
+and Kafka in containers. `AuctionFlowIntegrationTest` drives one lot through the whole flow — listing,
+approval, bids, the scheduler closing it, the winner paying — over real HTTP and WebSocket.
+`ConcurrentBidHttpTest` sends a hundred bids of 21m at once against a 20m price: exactly one wins.
 
 ---
 

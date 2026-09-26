@@ -13,8 +13,11 @@ import java.util.UUID;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -40,6 +43,7 @@ import tools.jackson.databind.ObjectMapper;
 @SpringBootTest(properties = "nexbid.scheduler.enabled=false")
 @AutoConfigureMockMvc
 @Import(TestInfrastructure.class)
+@ExtendWith(OutputCaptureExtension.class)
 class NotificationConsumerTest {
 
     @Autowired
@@ -97,8 +101,11 @@ class NotificationConsumerTest {
     // EN: Keyed by lot like the real events, so one lot's deliveries share a partition and keep their order.
     // VI: Khoá theo lô giống sự kiện thật, để các lần giao của một lô chung partition và giữ đúng thứ tự.
     private void deliver(UUID lot, UUID eventId, String type, Object event) {
-        ProducerRecord<String, String> record = new ProducerRecord<>(
-                "nexbid.payments", lot.toString(), objectMapper.writeValueAsString(event));
+        deliverRaw(lot, eventId, type, objectMapper.writeValueAsString(event));
+    }
+
+    private void deliverRaw(UUID lot, UUID eventId, String type, String body) {
+        ProducerRecord<String, String> record = new ProducerRecord<>("nexbid.payments", lot.toString(), body);
         record.headers().add(EventHeaders.ID, eventId.toString().getBytes(StandardCharsets.UTF_8));
         record.headers().add(EventHeaders.TYPE, type.getBytes(StandardCharsets.UTF_8));
         kafka.send(record).join();
@@ -150,6 +157,25 @@ class NotificationConsumerTest {
                 .isZero();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM consumed_events WHERE event_id = ?", Integer.class, marker))
                 .isEqualTo(1);
+    }
+
+    @Test
+    void anEventThatCannotBeReadIsSkippedInsteadOfHoldingUpTheOnesBehindIt(CapturedOutput output) throws Exception {
+        UUID buyer = register("consumer.unreadable@nexbid.com", "Unreadable Buyer", RoleName.BUYER);
+        UUID lot = someLot("unreadable");
+        UUID broken = UUID.randomUUID();
+        String type = EventHeaders.typeName(PaymentEvents.Succeeded.class);
+
+        // EN: Same key, so the good event sits right behind the broken one on the same partition.
+        // VI: Cùng khoá, nên sự kiện hợp lệ nằm ngay sau sự kiện hỏng trên cùng partition.
+        deliverRaw(lot, broken, type, "{\"paymentId\": not json");
+        deliver(lot, UUID.randomUUID(), type,
+                new PaymentEvents.Succeeded(UUID.randomUUID(), lot, buyer, new BigDecimal("12000000"), Instant.now()));
+
+        await().atMost(Duration.ofSeconds(15)).until(() -> paymentNotices(buyer) == 1);
+        assertThat(output).contains("Skipping an event that cannot be read: PaymentEvents.Succeeded at nexbid.payments-");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM consumed_events WHERE event_id = ?", Integer.class, broken))
+                .isZero();
     }
 
     @Test

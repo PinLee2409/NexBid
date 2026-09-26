@@ -1,0 +1,11 @@
+# EN: Only the sources and the Maven wrapper go into the build; outputs, uploads and IDE files stay out.
+# VI: Chỉ mã nguồn và Maven wrapper vào bước build; kết quả build, ảnh tải lên và file IDE ở ngoài.
+target/
+var/
+*.log
+.idea/
+.vscode/
+*.iml
+.mvn/wrapper/maven-wrapper.jar
+Dockerfile
+.dockerignore
