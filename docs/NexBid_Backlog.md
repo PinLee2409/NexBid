@@ -114,4 +114,5 @@ Thứ tự gợi ý: 1 → 2 → 3 (người dùng thấy ngay), rồi 4 → 5 (
 
 - DB dev (`nexbid` trên cổng 55432) còn user và lô tạo ra khi kiểm thử các chức năng trước. Nếu muốn sạch:
   `docker compose -f docker/compose.yaml down -v` rồi `up -d` (mất **toàn bộ** dữ liệu dev, Flyway tạo lại
-  schema khi backend khởi động).
+  schema khi backend khởi động), xoá ảnh cũ trong `backend/var/images/`, rồi chạy `node docs/demo/seed.mjs`
+  để có bộ dữ liệu demo (README → Demo data).

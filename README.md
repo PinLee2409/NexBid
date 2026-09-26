@@ -1,5 +1,7 @@
 # NexBid
 
+[![CI/CD](https://github.com/PinLee2409/NexBid/actions/workflows/ci.yml/badge.svg)](https://github.com/PinLee2409/NexBid/actions/workflows/ci.yml)
+
 Real-time online auction platform. Sellers list lots, an admin approves them, buyers bid against a
 server-owned clock, and the server decides everything that matters — the price, the close, the winner.
 The interesting part is not the number of screens but getting the hard problems right: concurrent bids,
@@ -307,6 +309,36 @@ endpoint, so roles are granted at startup from configuration:
 NEXBID_ADMIN_EMAILS=you@example.com ./mvnw spring-boot:run
 ```
 
+### Demo data
+
+With the backend running on an empty database:
+
+```bash
+node docs/demo/seed.mjs
+```
+
+[`docs/demo/seed.mjs`](docs/demo/seed.mjs) builds a catalogue of 18 lots with real photos (downloaded from
+Unsplash): nine live lots mid-bidding, lots opening later, an approval queue, a rejection, a draft, and two
+lots that close while it runs — one paid, one waiting for payment. It takes about a minute. Everything goes
+through the API, so bids, auto bids, notifications, payments and the audit log are real; only the SELLER
+and ADMIN roles are granted in SQL. Against the Docker stack, run it with `STACK=docker`.
+
+Every account's password is `nexbid-demo`. Sign in as **pin@nexbid.test** (bids, an auto bid, wins,
+watchlist and own listings) or **admin@nexbid.test** (approvals, users, audit log). Sellers are
+`atelier@`, `vault@` and `lumen@nexbid.test`; `alex@`, `john@`, `mika@`, `sara@` and `dmitri@` bid
+against you.
+
+To start over, stop the backend, wipe the dev services and uploaded photos, start the backend again (Flyway
+recreates the schema), then seed:
+
+```bash
+docker compose -f docker/compose.yaml down -v && docker compose -f docker/compose.yaml up -d
+```
+
+```bash
+rm -f backend/var/images/*
+```
+
 ---
 
 ## Testing
@@ -329,6 +361,25 @@ and Kafka in containers. Highlights:
   hundred simultaneous bids produce exactly one winner and no lost update.
 - Kafka outage, Redis outage, duplicate delivery and rollback each have a test, and each test was checked
   by breaking the code it guards and watching it fail.
+
+### CI/CD
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request: the full
+backend suite (`./mvnw verify`, with Testcontainers on the runner's Docker), then `tsc`, ESLint and
+`next build` for the frontend, then both Docker images are built. A push to `main` publishes the images
+once everything above passed:
+
+```bash
+docker pull ghcr.io/pinlee2409/nexbid-backend:latest
+```
+
+```bash
+docker pull ghcr.io/pinlee2409/nexbid-frontend:latest
+```
+
+Images are tagged `latest` and with the commit (`sha-<short>`). The frontend image is built for the
+Compose stack: pages reach the backend at `http://backend:8080` and the browser opens the socket on
+`ws://localhost:8080/ws`.
 
 ---
 
