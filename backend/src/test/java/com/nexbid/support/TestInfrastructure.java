@@ -33,11 +33,13 @@ public class TestInfrastructure {
         return new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
     }
 
-    // EN: The native build starts in about a second, which matters with one broker per test context.
-    // VI: Bản native khởi động trong khoảng một giây, quan trọng khi mỗi test context có một broker riêng.
+    // EN: The native build starts in about a second, which matters with one broker per test context. With
+    //     several contexts' containers alive it occasionally exits during startup, so it gets three tries.
+    // VI: Bản native khởi động trong khoảng một giây, quan trọng khi mỗi test context có một broker riêng. Khi
+    //     container của nhiều context cùng chạy, nó thỉnh thoảng thoát ngay lúc khởi động, nên được thử ba lần.
     @Bean
     @ServiceConnection
     KafkaContainer kafka() {
-        return new KafkaContainer("apache/kafka-native:4.2.1");
+        return new KafkaContainer("apache/kafka-native:4.2.1").withStartupAttempts(3);
     }
 }

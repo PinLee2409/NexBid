@@ -4,19 +4,23 @@ import { Client, type IMessage, type StompSubscription } from "@stomp/stompjs";
 
 import type { AuctionEvent, Unsubscribe } from "@/types";
 
-import type { ApiAuctionMessage } from "./api/dto";
+import type { ApiAuctionMessage, ApiNotification } from "./api/dto";
+import { getToken, onTokenChange } from "./api/token-store";
 
 /**
- * Realtime transport: STOMP over WebSocket to `/topic/auctions/{id}` (spec §10).
+ * Realtime transport: STOMP over WebSocket (spec §10, §18).
  *
- * EN: One connection is shared by every open lot page; each lot is a subscription on it. Messages are
- *     translated into the `AuctionEvent` union the UI already understands.
- * VI: Một kết nối dùng chung cho mọi trang lô đang mở; mỗi lô là một subscription trên kết nối đó. Bản tin
- *     được dịch sang union `AuctionEvent` mà UI vốn đã hiểu.
+ * EN: One connection is shared by every open lot page and by the bell. Each lot is a subscription on
+ *     `/topic/auctions/{id}`; a signed-in browser also listens on its own `/user/queue/notifications`.
+ *     The token travels with CONNECT, so signing in or out reconnects under the new identity.
+ * VI: Một kết nối dùng chung cho mọi trang lô đang mở và cho cái chuông. Mỗi lô là một subscription trên
+ *     `/topic/auctions/{id}`; trình duyệt đã đăng nhập còn nghe hộp thư riêng `/user/queue/notifications`.
+ *     Token đi kèm CONNECT, nên đăng nhập hay đăng xuất sẽ kết nối lại dưới danh tính mới.
  */
 
 // EN: Straight to the backend: the Next.js rewrites only carry HTTP. / VI: Nối thẳng tới backend: rewrite của Next.js chỉ chuyển HTTP.
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8080/ws";
+const INBOX = "/user/queue/notifications";
 
 type Listener = (event: AuctionEvent) => void;
 
@@ -25,8 +29,25 @@ interface Room {
   subscription: StompSubscription | null;
 }
 
+/** EN: What the bell needs from the socket. / VI: Những gì cái chuông cần từ socket. */
+export interface InboxListener {
+  /** EN: A notice was just written for the signed-in user. / VI: Một thông báo vừa được ghi cho người đang đăng nhập. */
+  onNotice: (notice: ApiNotification) => void;
+  /** EN: The inbox is live again; re-read whatever arrived while it was not. / VI: Hộp thư sống lại; đọc lại những gì tới trong lúc mất kết nối. */
+  onReady: () => void;
+}
+
 const rooms = new Map<string, Room>();
+const inboxListeners = new Set<InboxListener>();
 let client: Client | null = null;
+let inbox: StompSubscription | null = null;
+// EN: The token the current connection carried — only with one is there an inbox to join.
+// VI: Token mà kết nối hiện tại mang theo — chỉ khi có token thì mới có hộp thư để vào.
+let connectedAs: string | null = null;
+// EN: A token whose inbox the server refused (e.g. a blocked account): not retried until the token changes.
+// VI: Token bị server từ chối hộp thư (ví dụ tài khoản bị khoá): không thử lại cho tới khi token đổi.
+let refusedToken: string | null = null;
+let followingToken = false;
 
 function toEvent(message: ApiAuctionMessage): AuctionEvent | null {
   switch (message.type) {
@@ -58,6 +79,8 @@ function toEvent(message: ApiAuctionMessage): AuctionEvent | null {
       // EN: The winner is never broadcast; the price is whatever the page last saw.
       // VI: Người thắng không bao giờ được phát công khai; giá là mức trang thấy gần nhất.
       return { type: "AUCTION_ENDED", auctionId: message.auctionId, winnerId: null, finalPrice: 0, serverTime: message.serverTime };
+    case "VIEWER_COUNT":
+      return { type: "VIEWERS_CHANGED", auctionId: message.auctionId, viewerCount: message.viewerCount, serverTime: new Date().toISOString() };
     default:
       return null;
   }
@@ -79,24 +102,71 @@ function subscribeRoom(auctionId: string): StompSubscription | null {
   return client.subscribe(`/topic/auctions/${auctionId}`, (message) => deliver(auctionId, message));
 }
 
+function joinInbox(): void {
+  if (inbox || !client?.connected || !connectedAs || connectedAs === refusedToken || inboxListeners.size === 0) {
+    return;
+  }
+  inbox = client.subscribe(INBOX, (message) => {
+    let notice: ApiNotification;
+    try {
+      notice = JSON.parse(message.body) as ApiNotification;
+    } catch {
+      return;
+    }
+    for (const listener of inboxListeners) listener.onNotice(notice);
+  });
+  for (const listener of inboxListeners) listener.onReady();
+}
+
+/** EN: Connects again right away, e.g. after signing in. / VI: Kết nối lại ngay, ví dụ sau khi đăng nhập. */
+async function reconnect(): Promise<void> {
+  const current = client;
+  if (!current) return;
+  await current.deactivate();
+  if (client === current) current.activate();
+}
+
 function ensureClient(): void {
   if (client) return;
-  client = new Client({
+  if (!followingToken) {
+    followingToken = true;
+    onTokenChange(() => void reconnect());
+  }
+
+  const instance = new Client({
     brokerURL: WS_URL,
     reconnectDelay: 5_000,
     heartbeatIncoming: 10_000,
     heartbeatOutgoing: 10_000,
-    // EN: On every (re)connect, re-join the rooms still open. / VI: Mỗi lần (kết nối lại), vào lại các phòng còn mở.
+    beforeConnect: (self) => {
+      connectedAs = getToken();
+      self.connectHeaders = connectedAs ? { Authorization: `Bearer ${connectedAs}` } : {};
+    },
+    // EN: On every (re)connect, re-join the rooms still open and the inbox. / VI: Mỗi lần (kết nối lại), vào lại các phòng còn mở và hộp thư.
     onConnect: () => {
+      inbox = null;
       for (const [auctionId, room] of rooms) room.subscription = subscribeRoom(auctionId);
+      joinInbox();
+    },
+    onStompError: () => {
+      if (inbox) refusedToken = connectedAs;
     },
   });
-  client.activate();
+  client = instance;
+  instance.activate();
+}
+
+/** EN: The last listener leaving closes the socket. / VI: Người nghe cuối cùng rời đi thì đóng socket. */
+function closeIfIdle(): void {
+  if (rooms.size === 0 && inboxListeners.size === 0 && client) {
+    void client.deactivate();
+    client = null;
+  }
 }
 
 /**
- * Joins an auction room. Returns an unsubscribe function — the last room
- * closing also closes the socket.
+ * Joins an auction room. Returns an unsubscribe function — the last listener
+ * leaving also closes the socket.
  */
 export function subscribeToAuction(auctionId: string, listener: Listener): Unsubscribe {
   let room = rooms.get(auctionId);
@@ -116,9 +186,25 @@ export function subscribeToAuction(auctionId: string, listener: Listener): Unsub
 
     current.subscription?.unsubscribe();
     rooms.delete(auctionId);
-    if (rooms.size === 0 && client) {
-      void client.deactivate();
-      client = null;
+    closeIfIdle();
+  };
+}
+
+/**
+ * EN: Listens to the signed-in user's notices (spec §18). Signed out, nothing arrives until someone signs in.
+ * VI: Nghe thông báo của người đang đăng nhập (spec §18). Khi chưa đăng nhập thì không có gì tới cho tới khi có người đăng nhập.
+ */
+export function subscribeToInbox(listener: InboxListener): Unsubscribe {
+  inboxListeners.add(listener);
+  ensureClient();
+  joinInbox();
+
+  return () => {
+    inboxListeners.delete(listener);
+    if (inboxListeners.size === 0) {
+      inbox?.unsubscribe();
+      inbox = null;
     }
+    closeIfIdle();
   };
 }

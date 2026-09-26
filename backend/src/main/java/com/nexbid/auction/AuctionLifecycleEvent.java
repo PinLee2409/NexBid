@@ -22,9 +22,12 @@ public record AuctionLifecycleEvent(
         Instant startTime,
         Instant endTime,
         BigDecimal currentPrice,
-        // EN: For listeners inside the server only; the public broadcast never copies it.
-        // VI: Chỉ dành cho listener bên trong server; bản tin công khai không bao giờ chép trường này.
-        UUID winnerId) {
+        // EN: For listeners inside the server only; the public broadcast never copies these two.
+        // VI: Chỉ dành cho listener bên trong server; bản tin công khai không bao giờ chép hai trường này.
+        UUID winnerId,
+        // EN: Who leads right now — on an extension, the bidder whose last-minute bid caused it.
+        // VI: Ai đang dẫn đầu lúc này — khi gia hạn, đó là người có lượt trả giá phút chót gây ra nó.
+        UUID leaderId) {
 
     public static final String STARTED = "AUCTION_STARTED";
     public static final String ENDED = "AUCTION_ENDED";
@@ -46,6 +49,6 @@ public record AuctionLifecycleEvent(
         return new AuctionLifecycleEvent(
                 type, auction.getId(), auction.getStatus(),
                 auction.getStartTime(), auction.getEndTime(),
-                auction.getCurrentPrice(), auction.getWinnerId());
+                auction.getCurrentPrice(), auction.getWinnerId(), auction.getLeadingBidderId());
     }
 }

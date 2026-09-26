@@ -9,10 +9,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * EN: Asks for heads-up notices on its own clock. Slower than the auction clock on purpose: "soon" is
- *     measured in minutes, and every run re-reads the lots in the window.
- * VI: Hỏi gửi thông báo nhắc trước theo nhịp riêng. Cố ý chậm hơn đồng hồ đấu giá: "sắp" tính bằng phút,
- *     và mỗi lượt chạy đều đọc lại các lô trong khoảng thời gian đó.
+ * EN: Asks for heads-up notices and payment reminders on its own clock. Slower than the auction clock on
+ *     purpose: "soon" is measured in minutes, and every run re-reads what falls in the window.
+ * VI: Hỏi gửi thông báo nhắc trước và lời nhắc thanh toán theo nhịp riêng. Cố ý chậm hơn đồng hồ đấu giá:
+ *     "sắp" tính bằng phút, và mỗi lượt chạy đều đọc lại những gì rơi vào khoảng thời gian đó.
  */
 @Component
 @ConditionalOnProperty(name = "nexbid.scheduler.enabled", havingValue = "true", matchIfMissing = true)
@@ -28,10 +28,12 @@ class HeadsUpScheduler {
 
     @Scheduled(fixedDelayString = "${nexbid.notification.heads-up-interval}")
     void tick() {
-        int sent = triggers.sendHeadsUps(Instant.now());
+        Instant now = Instant.now();
+        int headsUps = triggers.sendHeadsUps(now);
+        int reminders = triggers.sendPaymentReminders(now);
 
-        if (sent > 0) {
-            log.info("Sent {} heads-up notification(s)", sent);
+        if (headsUps > 0 || reminders > 0) {
+            log.info("Sent {} heads-up notification(s) and {} payment reminder(s)", headsUps, reminders);
         }
     }
 }

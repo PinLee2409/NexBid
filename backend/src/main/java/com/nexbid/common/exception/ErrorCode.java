@@ -67,6 +67,8 @@ public enum ErrorCode {
     // EN: Already settled — paying twice would charge twice. / VI: Đã thanh toán rồi — trả lần nữa là trừ tiền hai lần.
     PAYMENT_ALREADY_PAID(HttpStatus.CONFLICT),
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND),
+    // EN: A step out of order, e.g. confirming receipt of an order never shipped. / VI: Sai thứ tự bước, ví dụ xác nhận đã nhận một đơn chưa gửi.
+    ORDER_STATUS_INVALID(HttpStatus.CONFLICT),
 
     /* --- Notifications / Thông báo ------------------------------------ */
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND),

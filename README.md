@@ -190,9 +190,12 @@ measured against `GET /api/server-time`, not the browser's clock.
 
 Lot topics are public, so an event never says who is leading from the reader's side. After each
 `BID_PLACED` the page re-reads the lot's recent bids with the reader's token, and the `mine` flag on each
-bid decides between "You're leading" and "You've been outbid". Personal notifications (outbid, won,
-payment due) are polled every 30 seconds; a per-user socket channel is on the
-[backlog](docs/NexBid_Backlog.md).
+bid decides between "You're leading" and "You've been outbid".
+
+A signed-in browser sends its token with STOMP `CONNECT` and listens on its own
+`/user/queue/notifications`; each notice is pushed there after it commits, and an anonymous socket asking
+for that queue is refused. Each lot page also hears `VIEWER_COUNT` at most once a second — one Redis set per
+lot, one member per open socket subscription (spec §20.3).
 
 ---
 
@@ -243,10 +246,10 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | Auth | `POST /api/auth/register`, `POST /api/auth/login` (JWT, 2 hours) |
 | Catalogue | `GET /api/auctions`, `GET /api/auctions/{id}`, `GET /api/categories`, `GET /api/server-time` — public |
 | Bidding | `POST /api/auctions/{id}/bids`, `GET /api/auctions/{id}/bids`, `/api/auctions/{id}/auto-bid` |
-| Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders`, `…/me/watchlist`, `/api/notifications` |
-| Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions` |
-| Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users`, `/api/admin/users/{id}/block`, `/api/admin/audit-logs` |
-| Realtime | STOMP at `/ws`, topic `/topic/auctions/{id}` |
+| Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders` (`…/{id}/received`), `…/me/watchlist`, `/api/notifications` |
+| Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions`, `/api/seller/orders` (`…/{id}/ship`) |
+| Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users`, `/api/admin/users/{id}/block`, `/api/admin/orders` (`…/{id}/refund`), `/api/admin/audit-logs` |
+| Realtime | STOMP at `/ws`: `/topic/auctions/{id}` for everyone, `/user/queue/notifications` for the signed-in user |
 
 `/api/admin/**` needs the ADMIN role and `/api/seller/**` needs SELLER. The frontend hides those menus
 too, but that is decoration — the server is what refuses.

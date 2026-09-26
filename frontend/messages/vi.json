@@ -392,7 +392,10 @@
     "paymentAmount": "Số tiền phải trả",
     "paymentTotalDue": "Tổng còn nợ",
     "paymentExpiredNotice": "Thời hạn thanh toán đã kết thúc. Lô hàng có thể được chuyển cho người trả giá kế tiếp.",
-    "viewOrder": "Xem đơn hàng"
+    "viewOrder": "Xem đơn hàng",
+    "confirmReceipt": "Xác nhận đã nhận",
+    "receiptConfirmed": "Đơn đã hoàn tất",
+    "receiptConfirmedBody": "Cảm ơn bạn — đơn hàng đã đóng."
   },
   "seller": {
     "workspace": "Khu vực người bán",
@@ -492,7 +495,14 @@
       "descriptionRequired": "Thêm mô tả.",
       "categoryRequired": "Chọn danh mục.",
       "imagesRequired": "Thêm ít nhất một ảnh."
-    }
+    },
+    "ordersTitle": "Đơn hàng",
+    "ordersSubtitle": "Các lô bạn đã bán. Gửi hàng cho đơn đã thanh toán; người mua xác nhận đã nhận.",
+    "ordersEmptyTitle": "Chưa có đơn hàng",
+    "ordersEmptyBody": "Lô bạn bán sẽ hiện ở đây khi người thắng có đơn hàng.",
+    "markShipped": "Đánh dấu đã gửi",
+    "shipped": "Đã đánh dấu gửi hàng",
+    "shippedBody": "Người mua giờ có thể xác nhận đã nhận."
   },
   "admin": {
     "console": "Bảng quản trị",
@@ -544,7 +554,18 @@
     "auditIp": "Địa chỉ IP",
     "auditEmptyTitle": "Chưa có bản ghi nào",
     "auditEmptyBody": "Các hành động như duyệt, trả giá và khoá tài khoản được ghi ở đây.",
-    "system": "Hệ thống"
+    "system": "Hệ thống",
+    "ordersTitle": "Đơn hàng",
+    "ordersSubtitle": "Mọi giao dịch, từ thanh toán tới giao hàng. Hoàn tiền cho đơn đã trả mà người mua chưa nhận.",
+    "ordersEmptyTitle": "Không có đơn nào",
+    "ordersEmptyBody": "Các đơn ở trạng thái này sẽ hiện ở đây.",
+    "tabAllOrders": "Tất cả",
+    "refund": "Hoàn tiền",
+    "refundTitle": "Hoàn tiền đơn này?",
+    "refundBody": "Đơn sẽ bị huỷ và khoản thanh toán được đánh dấu đã hoàn. Không thể hoàn tác.",
+    "refunded": "Đã hoàn tiền",
+    "refundedBody": "Khoản thanh toán đã được đánh dấu hoàn tiền.",
+    "confirmRefund": "Hoàn tiền"
   },
   "howItWorks": {
     "title": "NexBid hoạt động thế nào",
@@ -655,7 +676,10 @@
       "AUCTION_ENDED": "Kết thúc phiên",
       "PAYMENT_SUCCESS": "Thanh toán thành công",
       "USER_BLOCKED": "Khoá người dùng",
-      "USER_UNBLOCKED": "Mở khoá người dùng"
+      "USER_UNBLOCKED": "Mở khoá người dùng",
+      "PAYMENT_REFUNDED": "Hoàn tiền",
+      "ORDER_SHIPPED": "Gửi hàng",
+      "ORDER_COMPLETED": "Hoàn tất đơn"
     },
     "role": {
       "BUYER": "Người mua",
@@ -867,6 +891,7 @@
     "NOT_FOUND": "Không tìm thấy.",
     "METHOD_NOT_ALLOWED": "Thao tác này không được hỗ trợ.",
     "UNSUPPORTED_MEDIA_TYPE": "Loại file này không được hỗ trợ.",
-    "INTERNAL_ERROR": "Đã có lỗi xảy ra. Vui lòng thử lại."
+    "INTERNAL_ERROR": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+    "ORDER_STATUS_INVALID": "Đơn hàng không ở bước này."
   }
 }

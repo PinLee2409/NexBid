@@ -84,6 +84,7 @@ export async function getAuction(auctionId: string): Promise<AuctionDetail | nul
     },
     category,
     seller: { id: detail.seller.id, displayName: detail.seller.displayName },
+    viewerCount: detail.viewerCount ?? undefined,
     watched: false,
     recentBids: bids.items.map((bid) => toBid(bid, null)),
   };
@@ -128,7 +129,8 @@ export async function getHomeFeed(): Promise<HomeFeed> {
     getServerTime(),
   ]);
 
-  const showcase = featured.items[0] ?? null;
+  // EN: The showcase is read in full for its live viewer count. / VI: Lô trưng bày được đọc đầy đủ để lấy số người đang xem.
+  const showcase = featured.items[0] ? ((await getAuction(featured.items[0].id)) ?? featured.items[0]) : null;
   // The editorial spread quotes the description, which cards do not carry. It must not repeat the showcase.
   const spread = live.items.find((auction) => auction.id !== showcase?.id);
   const editorial = spread ? ((await getAuction(spread.id)) ?? spread) : null;

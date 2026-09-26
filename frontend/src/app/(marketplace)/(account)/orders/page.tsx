@@ -1,14 +1,13 @@
 "use client";
 
-import { CreditCard, Loader2, Receipt } from "lucide-react";
-import { useFormatter, useTranslations } from "next-intl";
-import Link from "next/link";
+import { CreditCard, Loader2, PackageCheck, Receipt } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import { ProductPhoto } from "@/components/common/product-photo";
 import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
+import { OrderRow } from "@/components/common/order-row";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,10 +19,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAsyncData } from "@/hooks/use-async-data";
-import { useEnumLabels } from "@/hooks/use-labels";
+import { useApiErrorMessage } from "@/hooks/use-labels";
 import { formatCurrency } from "@/lib/format";
-import { cn } from "@/lib/utils";
-import { listOrders, type OrderEntry } from "@/services/order-service";
+import { confirmReceipt, listOrders, type OrderEntry } from "@/services/order-service";
 import { payPayment } from "@/services/payment-service";
 
 export default function OrdersPage() {
@@ -64,7 +62,13 @@ export default function OrdersPage() {
               <OrderRow
                 key={entry.order.id}
                 entry={entry}
-                onPay={() => setPayingFor(entry)}
+                action={
+                  <OrderActions
+                    entry={entry}
+                    onPay={() => setPayingFor(entry)}
+                    onReceived={refresh}
+                  />
+                }
               />
             ))}
           </ul>
@@ -80,93 +84,51 @@ export default function OrdersPage() {
   );
 }
 
-function OrderRow({
+function OrderActions({
   entry,
   onPay,
+  onReceived,
 }: {
   entry: OrderEntry;
   onPay: () => void;
+  onReceived: () => void;
 }) {
   const t = useTranslations("account");
-  const tc = useTranslations("common");
-  const labels = useEnumLabels();
-  const format = useFormatter();
+  const errorMessage = useApiErrorMessage();
+  const [isPending, startTransition] = useTransition();
 
-  const cover = entry.auction?.product.images[0];
-  const needsPayment =
-    entry.payment?.status === "PENDING" || entry.payment?.status === "FAILED";
+  const needsPayment = entry.payment?.status === "PENDING" || entry.payment?.status === "FAILED";
+
+  if (needsPayment) {
+    return (
+      <Button size="sm" onClick={onPay}>
+        <CreditCard className="size-4" />
+        {t("payNow")}
+      </Button>
+    );
+  }
+
+  if (entry.order.status !== "PROCESSING") return null;
+
+  // EN: The seller has shipped; only the buyer can say it arrived. / VI: Người bán đã gửi; chỉ người mua mới xác nhận được là đã nhận.
+  function confirm() {
+    startTransition(async () => {
+      try {
+        await confirmReceipt(entry.order.id);
+      } catch (error) {
+        toast.error(errorMessage(error));
+        return;
+      }
+      toast.success(t("receiptConfirmed"), { description: t("receiptConfirmedBody") });
+      onReceived();
+    });
+  }
 
   return (
-    <li
-      className={cn(
-        "border-line flex flex-wrap items-center gap-x-6 gap-y-4 border-t py-5 last:border-b",
-      )}
-    >
-      <div className="on-media bg-surface relative size-16 shrink-0 overflow-hidden">
-        <ProductPhoto
-          src={cover?.url}
-          alt={cover?.alt}
-          sizes="64px"
-          className="object-cover"
-          fallback="icon"
-        />
-      </div>
-
-      <div className="min-w-[10rem] flex-1">
-        <p className="mono-figure text-dim text-[11px]">
-          {t("orderNumber", { id: entry.order.id.slice(-8).toUpperCase() })}
-        </p>
-        <h3 className="display mt-1 text-lg sm:text-xl">
-          {entry.auction ? (
-            <Link
-              href={`/auctions/${entry.auction.id}`}
-              className="hover:text-signal-text transition-colors"
-            >
-              {entry.auction.product.name}
-            </Link>
-          ) : (
-            "—"
-          )}
-        </h3>
-        <p className="mono-figure text-dim mt-1.5 text-[11px]">
-          {t("orderPlaced", {
-            date: format.dateTime(new Date(entry.order.createdAt), {
-              dateStyle: "medium",
-            }),
-          })}
-        </p>
-      </div>
-
-      <div className="shrink-0">
-        <p className="label-sm text-dim mb-1">{t("orderTotal")}</p>
-        <p className="figure text-lg">
-          {formatCurrency(entry.order.amount)}
-        </p>
-      </div>
-
-      <div className="shrink-0">
-        <p className="label-sm text-dim mb-1">{tc("status")}</p>
-        <p
-          className={cn(
-            "label",
-            entry.order.status === "COMPLETED" || entry.order.status === "PAID"
-              ? "text-success"
-              : needsPayment
-                ? "text-danger-text"
-                : undefined,
-          )}
-        >
-          {labels.orderStatus(entry.order.status)}
-        </p>
-      </div>
-
-      {needsPayment ? (
-        <Button size="sm" onClick={onPay}>
-          <CreditCard className="size-4" />
-          {t("payNow")}
-        </Button>
-      ) : null}
-    </li>
+    <Button size="sm" variant="outline" onClick={confirm} disabled={isPending}>
+      {isPending ? <Loader2 className="size-4 animate-spin" /> : <PackageCheck className="size-4" />}
+      {t("confirmReceipt")}
+    </Button>
   );
 }
 

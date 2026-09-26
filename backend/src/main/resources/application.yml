@@ -151,6 +151,9 @@ nexbid:
     # VI: Người theo dõi được báo "sắp mở" / "sắp đóng" trước bao lâu — đúng như "sắp đóng" của danh mục.
     heads-up: ${NEXBID_HEADS_UP:1h}
     heads-up-interval: ${NEXBID_HEADS_UP_INTERVAL_MS:60000}
+    # EN: How long before the payment deadline an unpaid winner is reminded (PAYMENT_REQUIRED).
+    # VI: Người thắng chưa trả được nhắc (PAYMENT_REQUIRED) trước hạn thanh toán bao lâu.
+    payment-reminder: ${NEXBID_PAYMENT_REMINDER:12h}
 
   payment:
     # EN: How long a winner has to pay, counted from the close. Matches the frontend's demo data.

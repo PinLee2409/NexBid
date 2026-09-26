@@ -19,7 +19,7 @@ export interface OrderEntry {
   auction: AuctionSummary | null;
 }
 
-function toEntry(view: ApiOrder): OrderEntry {
+export function toEntry(view: ApiOrder): OrderEntry {
   return {
     order: toOrder(view.order),
     payment: view.payment ? toPayment(view.payment) : null,
@@ -31,6 +31,11 @@ function toEntry(view: ApiOrder): OrderEntry {
 export async function listOrders(): Promise<OrderEntry[]> {
   const orders = await api<ApiOrder[]>("/api/users/me/orders");
   return orders.map(toEntry);
+}
+
+/** `POST /api/users/me/orders/{id}/received` — the buyer confirms the goods arrived. */
+export async function confirmReceipt(orderId: string): Promise<OrderEntry> {
+  return toEntry(await api<ApiOrder>(`/api/users/me/orders/${orderId}/received`, { method: "POST" }));
 }
 
 /** `GET /api/users/me/orders/{id}` */

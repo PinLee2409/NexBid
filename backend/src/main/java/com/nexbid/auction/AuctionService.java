@@ -60,6 +60,7 @@ public class AuctionService {
     private final UserService users;
     private final ApplicationEventPublisher events;
     private final LotCache cards;
+    private final LotViewers viewers;
 
     AuctionService(
             AuctionRepository auctions,
@@ -67,13 +68,15 @@ public class AuctionService {
             ProductImageService images,
             UserService users,
             ApplicationEventPublisher events,
-            LotCache cards) {
+            LotCache cards,
+            LotViewers viewers) {
         this.auctions = auctions;
         this.products = products;
         this.images = images;
         this.users = users;
         this.events = events;
         this.cards = cards;
+        this.viewers = viewers;
     }
 
     /**
@@ -605,9 +608,9 @@ public class AuctionService {
                         ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
 
         // EN: The card (product, photos, seller) may come from Redis; the auction row above is always fresh,
-        //     and the two time-dependent fields below are worked out per request, never cached.
-        // VI: Thẻ (sản phẩm, ảnh, người bán) có thể lấy từ Redis; dòng auction ở trên luôn mới, và hai trường
-        //     phụ thuộc thời gian bên dưới được tính cho từng request, không bao giờ cache.
+        //     and the live fields below (bidding open, viewers) are worked out per request, never cached.
+        // VI: Thẻ (sản phẩm, ảnh, người bán) có thể lấy từ Redis; dòng auction ở trên luôn mới, và các trường
+        //     sống bên dưới (đang mở trả giá, người xem) được tính cho từng request, không bao giờ cache.
         LotCard card = cards.cardsFor(List.of(auction)).get(auction.getId());
         if (card == null) {
             throw new ResourceNotFoundException(
@@ -624,6 +627,7 @@ public class AuctionService {
                 new AuctionDetailPublicView.Seller(auction.getSellerId(), card.sellerName()),
                 AuctionRules.minimumNextBid(auction),
                 AuctionRules.isOpenForBidding(auction, now),
+                viewers.countOf(auction.getId()),
                 now);
     }
 

@@ -92,6 +92,8 @@ export interface ApiAuctionDetail {
   seller: { id: string; displayName: string };
   minimumNextBid: number;
   openForBidding: boolean;
+  /** EN: Null when the server cannot count right now. / VI: Null khi server tạm thời không đếm được. */
+  viewerCount: number | null;
   serverTime: IsoDateString;
 }
 
@@ -224,4 +226,5 @@ export type ApiAuctionMessage =
       startTime: IsoDateString;
       endTime: IsoDateString;
       serverTime: IsoDateString;
-    };
+    }
+  | { type: "VIEWER_COUNT"; auctionId: string; viewerCount: number };

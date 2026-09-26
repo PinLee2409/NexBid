@@ -27,6 +27,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import com.nexbid.auction.AuctionService;
 import com.nexbid.bid.BidService;
+import com.nexbid.payment.PaymentService;
 import com.nexbid.support.TestInfrastructure;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserService;
@@ -54,6 +55,9 @@ class NotificationApiTest {
 
     @Autowired
     private NotificationTriggers triggers;
+
+    @Autowired
+    private PaymentService payments;
 
     @Autowired
     private UserService users;
@@ -444,6 +448,117 @@ class NotificationApiTest {
         String alexInbox = mockMvc.perform(get("/api/notifications").header("Authorization", "Bearer " + alex))
                 .andReturn().getResponse().getContentAsString();
         assertThat(alexInbox).doesNotContain(pinsNotice);
+    }
+
+    /** EN: How many notices of one type someone has. / VI: Một người có bao nhiêu thông báo thuộc một loại. */
+    private int countOf(String token, String type) throws Exception {
+        return jdbc.queryForObject("SELECT count(*) FROM notifications WHERE user_id = ? AND type = ?",
+                Integer.class, idOf(token), type);
+    }
+
+    /** EN: Puts the lot inside its anti-sniping window, so the next bid extends it. / VI: Đưa lô vào khung anti-sniping, để lượt trả giá kế tiếp gia hạn nó. */
+    private void intoLastMinute(String auctionId) {
+        jdbc.update("""
+                UPDATE auctions SET anti_sniping_enabled = TRUE, anti_sniping_window_seconds = 30,
+                       end_time = now() + interval '10 seconds' WHERE id = ?::uuid
+                """, auctionId);
+    }
+
+    @Test
+    void anExtensionTellsBiddersAndWatchersButNotWhoeverCausedIt() throws Exception {
+        String seller = tokenFor("ntf.ext.seller@nexbid.com", "Ext Seller", RoleName.SELLER);
+        String admin = tokenFor("ntf.ext.admin@nexbid.com", "Ext Admin", RoleName.ADMIN);
+        String anna = tokenFor("ntf.ext.anna@nexbid.com", "Anna Early", RoleName.BUYER);
+        String wendy = tokenFor("ntf.ext.wendy@nexbid.com", "Wendy Watcher", RoleName.BUYER);
+        String carl = tokenFor("ntf.ext.carl@nexbid.com", "Carl Late", RoleName.BUYER);
+        String lot = activeLot(seller, admin, "Extended lot");
+
+        bid(lot, anna, "10000000");
+        watch(wendy, lot);
+        intoLastMinute(lot);
+        bid(lot, carl, "10500000");
+
+        eventually(() -> {
+            assertThat(countOf(anna, "AUCTION_EXTENDED")).isEqualTo(1);
+            assertThat(countOf(wendy, "AUCTION_EXTENDED")).isEqualTo(1);
+        });
+        assertThat(countOf(carl, "AUCTION_EXTENDED")).isZero();
+        assertThat(countOf(seller, "AUCTION_EXTENDED")).isZero();
+    }
+
+    @Test
+    void aLotExtendedAgainRingsEachPersonOnceUntilTheyRead() throws Exception {
+        String seller = tokenFor("ntf.ext2.seller@nexbid.com", "Ext2 Seller", RoleName.SELLER);
+        String admin = tokenFor("ntf.ext2.admin@nexbid.com", "Ext2 Admin", RoleName.ADMIN);
+        String anna = tokenFor("ntf.ext2.anna@nexbid.com", "Anna Again", RoleName.BUYER);
+        String wendy = tokenFor("ntf.ext2.wendy@nexbid.com", "Wendy Again", RoleName.BUYER);
+        String lot = activeLot(seller, admin, "Extended twice");
+        watch(wendy, lot);
+
+        intoLastMinute(lot);
+        bid(lot, anna, "10000000");
+        eventually(() -> assertThat(countOf(wendy, "AUCTION_EXTENDED")).isEqualTo(1));
+
+        // EN: Still unread, so the second extension is not news. / VI: Vẫn chưa đọc, nên lần gia hạn thứ hai không phải tin mới.
+        intoLastMinute(lot);
+        bid(lot, anna, "10500000");
+        await().during(Duration.ofMillis(800)).atMost(Duration.ofSeconds(3))
+                .until(() -> countOf(wendy, "AUCTION_EXTENDED") == 1);
+
+        mockMvc.perform(patch("/api/notifications/read-all").header("Authorization", "Bearer " + wendy))
+                .andExpect(status().isOk());
+        intoLastMinute(lot);
+        bid(lot, anna, "11000000");
+        eventually(() -> assertThat(countOf(wendy, "AUCTION_EXTENDED")).isEqualTo(2));
+    }
+
+    @Test
+    void aWinnerWhoHasNotPaidIsRemindedOnceBeforeTheDeadline() throws Exception {
+        String seller = tokenFor("ntf.due.seller@nexbid.com", "Due Seller", RoleName.SELLER);
+        String admin = tokenFor("ntf.due.admin@nexbid.com", "Due Admin", RoleName.ADMIN);
+        String late = tokenFor("ntf.due.late@nexbid.com", "Late Payer", RoleName.BUYER);
+        String early = tokenFor("ntf.due.early@nexbid.com", "Early Days", RoleName.BUYER);
+        String soon = activeLot(seller, admin, "Due soon");
+        String later = activeLot(seller, admin, "Due later");
+        bid(soon, late, "10000000");
+        bid(later, early, "10000000");
+        close(soon);
+        close(later);
+
+        // EN: One deadline inside the 12-hour reminder window, one well outside it.
+        // VI: Một hạn chót nằm trong khoảng nhắc 12 giờ, một hạn nằm ngoài xa.
+        jdbc.update("UPDATE payments SET expired_at = now() + interval '6 hours' WHERE auction_id = ?::uuid", soon);
+        jdbc.update("UPDATE payments SET expired_at = now() + interval '30 hours' WHERE auction_id = ?::uuid", later);
+
+        triggers.sendPaymentReminders(Instant.now());
+        triggers.sendPaymentReminders(Instant.now());
+
+        assertThat(countOf(late, "PAYMENT_REQUIRED")).isEqualTo(1);
+        assertThat(countOf(early, "PAYMENT_REQUIRED")).isZero();
+        assertThat(jdbc.queryForObject("SELECT message FROM notifications WHERE user_id = ? AND type = 'PAYMENT_REQUIRED'",
+                String.class, idOf(late))).contains("10,000,000 VND");
+    }
+
+    @Test
+    void anUnpaidSaleIsCancelledForTheSellerAndTheWinner() throws Exception {
+        String seller = tokenFor("ntf.cxl.seller@nexbid.com", "Cancel Seller", RoleName.SELLER);
+        String admin = tokenFor("ntf.cxl.admin@nexbid.com", "Cancel Admin", RoleName.ADMIN);
+        String winner = tokenFor("ntf.cxl.winner@nexbid.com", "Never Paid", RoleName.BUYER);
+        String runnerUp = tokenFor("ntf.cxl.runner@nexbid.com", "Runner Up", RoleName.BUYER);
+        String lot = activeLot(seller, admin, "Cancelled sale");
+        bid(lot, runnerUp, "10000000");
+        bid(lot, winner, "10500000");
+        close(lot);
+
+        jdbc.update("UPDATE payments SET expired_at = now() - interval '1 second' WHERE auction_id = ?::uuid", lot);
+        payments.expireOverdue(Instant.now(), 100);
+
+        eventually(() -> {
+            assertThat(countOf(winner, "PAYMENT_EXPIRED")).isEqualTo(1);
+            assertThat(countOf(winner, "AUCTION_CANCELLED")).isEqualTo(1);
+            assertThat(countOf(seller, "AUCTION_CANCELLED")).isEqualTo(1);
+        });
+        assertThat(countOf(runnerUp, "AUCTION_CANCELLED")).isZero();
     }
 
     @Test

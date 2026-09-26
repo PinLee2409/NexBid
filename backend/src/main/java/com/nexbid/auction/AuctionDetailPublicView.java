@@ -25,6 +25,9 @@ public record AuctionDetailPublicView(
         Seller seller,
         BigDecimal minimumNextBid,
         boolean openForBidding,
+        // EN: People on the lot's page right now (spec §20.3); null when it cannot be counted.
+        // VI: Số người đang ở trang của lô (spec §20.3); null khi không đếm được.
+        Integer viewerCount,
         Instant serverTime) {
 
     public record Product(UUID id, String name, String description, String condition) {
