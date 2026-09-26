@@ -1,0 +1,9 @@
+# EN: node_modules is reinstalled for Linux inside the image; build output and local files stay out.
+# VI: node_modules được cài lại cho Linux bên trong image; kết quả build và file cục bộ ở ngoài.
+node_modules
+.next
+*.log
+*.tsbuildinfo
+.claude
+Dockerfile
+.dockerignore

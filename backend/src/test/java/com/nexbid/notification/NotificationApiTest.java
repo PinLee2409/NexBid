@@ -27,7 +27,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import com.nexbid.auction.AuctionService;
 import com.nexbid.bid.BidService;
-import com.nexbid.support.PostgresTestcontainer;
+import com.nexbid.support.TestInfrastructure;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserService;
 
@@ -40,7 +40,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @SpringBootTest(properties = "nexbid.scheduler.enabled=false")
 @AutoConfigureMockMvc
-@Import(PostgresTestcontainer.class)
+@Import(TestInfrastructure.class)
 class NotificationApiTest {
 
     @Autowired

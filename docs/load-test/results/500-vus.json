@@ -1,0 +1,31 @@
+{
+  "vus": 500,
+  "seconds": 75,
+  "rps": 637,
+  "bid_rps": 301.9,
+  "error_rate": 0,
+  "bids_accepted": 2277,
+  "bids_outbid": 20364,
+  "bid": {
+    "count": 22641,
+    "p50_ms": 3,
+    "p95_ms": 11.5,
+    "p99_ms": 19.4,
+    "max_ms": 58.8
+  },
+  "detail": {
+    "count": 22641,
+    "p50_ms": 1.7,
+    "p95_ms": 3.5,
+    "p99_ms": 9.4,
+    "max_ms": 41.1
+  },
+  "list": {
+    "count": 2490,
+    "p50_ms": 2.9,
+    "p95_ms": 6.1,
+    "p99_ms": 12.5,
+    "max_ms": 28.4
+  },
+  "thresholds_passed": true
+}

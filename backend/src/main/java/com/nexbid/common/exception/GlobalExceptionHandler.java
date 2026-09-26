@@ -67,6 +67,19 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * EN: 429 with Retry-After in whole seconds, rounded up so a client that obeys it is never early.
+     * VI: 429 kèm Retry-After tính bằng giây, làm tròn lên để client làm theo không bao giờ gọi sớm.
+     */
+    @ExceptionHandler(RateLimitedException.class)
+    public ResponseEntity<ErrorResponse> handleRateLimited(RateLimitedException ex) {
+        long seconds = Math.max(1, (ex.retryAfter().toMillis() + 999) / 1000);
+        return ResponseEntity
+                .status(ex.code().status())
+                .header("Retry-After", Long.toString(seconds))
+                .body(ErrorResponse.of(ex.code(), ex.getMessage(), null));
+    }
+
+    /**
      * EN: Any domain refusal. The status comes from the code, so a new rule cannot invent a new status.
      * VI: Mọi từ chối từ nghiệp vụ. Status lấy từ mã lỗi, nên thêm luật mới không đẻ ra status mới.
      */

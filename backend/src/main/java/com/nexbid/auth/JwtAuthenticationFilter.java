@@ -11,6 +11,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.nexbid.auth.jwt.JwtService;
+import com.nexbid.user.UserService;
+import com.nexbid.user.UserStatus;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -30,9 +32,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String PREFIX = "Bearer ";
 
     private final JwtService jwtService;
+    private final UserService users;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(JwtService jwtService, UserService users) {
         this.jwtService = jwtService;
+        this.users = users;
     }
 
     @Override
@@ -44,7 +48,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String header = request.getHeader("Authorization");
 
         if (header != null && header.startsWith(PREFIX)) {
-            jwtService.read(header.substring(PREFIX.length())).ifPresent(user -> {
+            jwtService.read(header.substring(PREFIX.length()))
+                    .filter(user -> users.findById(user.id())
+                            .map(account -> account.status() == UserStatus.ACTIVE)
+                            .orElse(false))
+                    .ifPresent(user -> {
                 // EN: Spring expects ROLE_ prefixed authorities for hasRole(...) to match.
                 // VI: Spring cần authority có tiền tố ROLE_ thì hasRole(...) mới khớp.
                 List<SimpleGrantedAuthority> authorities = user.roles().stream()
@@ -53,7 +61,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 var authentication = new UsernamePasswordAuthenticationToken(user, null, authorities);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-            });
+                    });
         }
 
         // EN: A missing or bad token is not an error here — the request simply stays anonymous and

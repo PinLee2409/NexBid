@@ -9,9 +9,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import com.nexbid.auction.dto.RejectAuctionRequest;
 import com.nexbid.common.response.ApiResponse;
+import com.nexbid.common.security.CurrentUser;
 
 import jakarta.validation.Valid;
 
@@ -48,14 +50,15 @@ public class AdminAuctionController {
      * VI: Cho lô đi tiếp. Từ đây nó công khai, và sản phẩm bị khoá vào phiên này.
      */
     @PostMapping("/{id}/approve")
-    public ApiResponse<AuctionView> approve(@PathVariable UUID id) {
-        return ApiResponse.of(auctions.approve(id), "Auction approved");
+    public ApiResponse<AuctionView> approve(@AuthenticationPrincipal CurrentUser admin, @PathVariable UUID id) {
+        return ApiResponse.of(auctions.approve(id, admin.id()), "Auction approved");
     }
 
     @PostMapping("/{id}/reject")
     public ApiResponse<AuctionView> reject(
+            @AuthenticationPrincipal CurrentUser admin,
             @PathVariable UUID id, @Valid @RequestBody RejectAuctionRequest request) {
 
-        return ApiResponse.of(auctions.reject(id, request.reason()), "Auction rejected");
+        return ApiResponse.of(auctions.reject(id, admin.id(), request.reason()), "Auction rejected");
     }
 }

@@ -1,0 +1,139 @@
+# EN: The whole of NexBid in one command (guide §40, spec §35):
+#
+#       docker compose up
+#
+#     The first run builds both images (a few minutes); after changing code, add --build.
+#     Frontend on http://localhost:3000, backend on http://localhost:8080. Postgres, Redis and Kafka are
+#     reachable only from inside, so this stack runs alongside the development services in
+#     docker/compose.yaml without a port clash. Set NEXBID_FRONTEND_PORT / NEXBID_BACKEND_PORT when 3000
+#     or 8080 are taken by a dev server.
+# VI: Toàn bộ NexBid trong một lệnh (guide §40, spec §35). Frontend ở cổng 3000, backend ở 8080. Postgres,
+#     Redis và Kafka chỉ truy cập được từ bên trong, nên stack này chạy song song với các service dev trong
+#     docker/compose.yaml mà không tranh cổng. Đặt NEXBID_FRONTEND_PORT / NEXBID_BACKEND_PORT khi 3000 hoặc
+#     8080 đang bị dev server chiếm.
+#
+#   docker compose down        # keeps data / giữ dữ liệu
+#   docker compose down -v     # drops data / xoá luôn dữ liệu
+name: nexbid
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nexbid
+      POSTGRES_USER: nexbid
+      POSTGRES_PASSWORD: nexbid
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexbid -d nexbid"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  # EN: A cache, not a store (spec §20). / VI: Là cache, không phải kho lưu trữ (spec §20).
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # EN: One KRaft node. Only the backend talks to it, over the compose network.
+  # VI: Một node KRaft. Chỉ backend nói chuyện với nó, qua mạng của compose.
+  kafka:
+    image: apache/kafka-native:4.2.1
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9092"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    # EN: Flyway needs the database at startup; Redis and Kafka are waited for so the first minute is
+    #     not spent in retries, though the app would survive either being late.
+    # VI: Flyway cần database ngay lúc khởi động; Redis và Kafka cũng được chờ để phút đầu không phải
+    #     thử lại liên tục, dù app vẫn sống được nếu hai thứ này tới muộn.
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      NEXBID_DB_URL: jdbc:postgresql://postgres:5432/nexbid
+      NEXBID_DB_USER: nexbid
+      NEXBID_DB_PASSWORD: nexbid
+      NEXBID_REDIS_HOST: redis
+      NEXBID_REDIS_PORT: 6379
+      NEXBID_KAFKA_SERVERS: kafka:9092
+      NEXBID_IMAGES_DIR: /app/var/images
+      # EN: The browser page that may open the realtime socket. / VI: Trang trên trình duyệt được phép mở socket realtime.
+      NEXBID_ALLOWED_ORIGINS: http://localhost:${NEXBID_FRONTEND_PORT:-3000}
+      # EN: A demo default. Anything reachable by others must pass its own 32+ byte secret.
+      # VI: Giá trị mặc định cho demo. Bất cứ nơi nào người khác truy cập được phải truyền secret riêng từ 32 byte.
+      NEXBID_JWT_SECRET: ${NEXBID_JWT_SECRET:-nexbid-docker-demo-secret-key-change-me}
+      NEXBID_ADMIN_EMAILS: ${NEXBID_ADMIN_EMAILS:-}
+      NEXBID_SELLER_EMAILS: ${NEXBID_SELLER_EMAILS:-}
+      NEXBID_LOG_LEVEL: INFO
+    ports:
+      - "${NEXBID_BACKEND_PORT:-8080}:8080"
+    volumes:
+      - product-images:/app/var/images
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
+  # EN: Runs on mock data for now (see README), so it does not wait for the backend.
+  # VI: Hiện chạy trên dữ liệu giả (xem README), nên không cần chờ backend.
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "${NEXBID_FRONTEND_PORT:-3000}:3000"
+
+  # EN: The load test (guide §41). `up` never starts it; see docs/load-test/README.md.
+  # VI: Load test (guide §41). `up` không bao giờ khởi động nó; xem docs/load-test/README.md.
+  k6:
+    image: grafana/k6:2.3.0
+    profiles: ["load-test"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      BASE_URL: http://backend:8080
+    volumes:
+      - ./docs/load-test:/scripts
+    command: ["run", "--quiet", "/scripts/bid-load.js"]
+
+volumes:
+  postgres-data:
+  # EN: Uploaded product photos survive a rebuild of the backend image.
+  # VI: Ảnh sản phẩm đã tải lên vẫn còn khi build lại image backend.
+  product-images:

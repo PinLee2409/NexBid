@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -18,7 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.nexbid.support.PostgresTestcontainer;
+import com.nexbid.support.TestInfrastructure;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserService;
 
@@ -32,7 +33,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import(PostgresTestcontainer.class)
+@Import(TestInfrastructure.class)
 class BidHistoryApiTest {
 
     @Autowired
@@ -216,11 +217,18 @@ class BidHistoryApiTest {
     void theListIsPagedSoOneLotCannotReturnTheWholeTable() throws Exception {
         String seller = tokenFor("hist.seller6@nexbid.com", "Sixth Seller", RoleName.SELLER);
         String admin = tokenFor("hist.admin6@nexbid.com", "Sixth Admin", RoleName.ADMIN);
-        String buyer = tokenFor("hist.buyer6@nexbid.com", "Sixth Buyer", RoleName.BUYER);
+        // EN: Three bidders taking turns: one person placing 25 bids in a few seconds is exactly what the
+        //     bid rate limit (guide §35) stops, and this test is about paging, not about that.
+        // VI: Ba người thay phiên nhau: một người đặt 25 lượt trong vài giây chính là thứ giới hạn tần suất
+        //     (guide §35) chặn lại, mà test này nói về phân trang chứ không phải chuyện đó.
+        List<String> buyers = List.of(
+                tokenFor("hist.buyer6a@nexbid.com", "Sixth Buyer A", RoleName.BUYER),
+                tokenFor("hist.buyer6b@nexbid.com", "Sixth Buyer B", RoleName.BUYER),
+                tokenFor("hist.buyer6c@nexbid.com", "Sixth Buyer C", RoleName.BUYER));
         String auction = openLot(seller, admin, "Long lot");
 
         for (int i = 0; i < 25; i++) {
-            bid(auction, buyer, String.valueOf(10000000 + i * 500000L));
+            bid(auction, buyers.get(i % 3), String.valueOf(10000000 + i * 500000L));
         }
 
         mockMvc.perform(get("/api/auctions/" + auction + "/bids"))

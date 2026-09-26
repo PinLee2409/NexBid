@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
@@ -55,7 +56,8 @@ public class PaymentService {
      */
     @Transactional
     void openFor(UUID auctionId, UUID winnerId, BigDecimal amount, Instant closedAt) {
-        payments.save(new Payment(auctionId, winnerId, amount, closedAt.plus(window)));
+        Payment payment = payments.saveAndFlush(new Payment(auctionId, winnerId, amount, closedAt.plus(window)));
+        events.publishEvent(new PaymentEvents.Opened(payment.getId(), auctionId, winnerId, amount));
     }
 
     public List<PaymentView> listFor(UUID userId) {
@@ -65,6 +67,18 @@ public class PaymentService {
 
         Instant now = Instant.now();
         return mine.stream().map(payment -> view(payment, lots.get(payment.getAuctionId()), now)).toList();
+    }
+
+    /**
+     * EN: The payments behind a list of the caller's own records, for pages that show both side by side.
+     * VI: Các khoản thanh toán đứng sau một danh sách bản ghi của chính người gọi, cho trang hiện cả hai cạnh nhau.
+     */
+    public Map<UUID, PaymentView.Details> detailsFor(UUID userId, List<UUID> paymentIds) {
+        Instant now = Instant.now();
+        return payments.findAllById(paymentIds).stream()
+                .filter(payment -> payment.getUserId().equals(userId))
+                .collect(Collectors.toMap(
+                        Payment::getId, payment -> view(payment, null, now).payment()));
     }
 
     public PaymentView get(UUID userId, UUID paymentId) {

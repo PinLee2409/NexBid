@@ -1,9 +1,11 @@
 package com.nexbid.notification;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -25,7 +27,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.nexbid.auction.AuctionService;
-import com.nexbid.support.PostgresTestcontainer;
+import com.nexbid.support.TestInfrastructure;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserService;
 
@@ -39,7 +41,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @SpringBootTest(properties = "nexbid.scheduler.enabled=false")
 @AutoConfigureMockMvc
-@Import(PostgresTestcontainer.class)
+@Import(TestInfrastructure.class)
 class NotificationFailureIsolationTest {
 
     @Autowired
@@ -142,5 +144,14 @@ class NotificationFailureIsolationTest {
         // VI: Và lỗi thật sự đã xảy ra — cả thông báo bị vượt giá lẫn thông báo thắng đều đã được thử ghi.
         verify(notifications, timeout(10_000).atLeast(2)).notify(any(), any(), any(), any(), any(), any());
         assertThat(jdbc.queryForObject("SELECT count(*) FROM notifications", Integer.class)).isZero();
+
+        // EN: Let the failure outlast the old finite retry window, then restore the store. Kafka must
+        //     redeliver the same events, not acknowledge and discard them.
+        // VI: Giữ lỗi lâu hơn cửa sổ thử lại hữu hạn trước đây, rồi phục hồi nơi lưu. Kafka phải giao lại
+        //     chính các sự kiện đó, không được xác nhận rồi bỏ chúng.
+        Thread.sleep(6_000);
+        reset(notifications);
+        await().atMost(Duration.ofSeconds(15)).untilAsserted(() ->
+                assertThat(jdbc.queryForObject("SELECT count(*) FROM notifications", Integer.class)).isEqualTo(3));
     }
 }

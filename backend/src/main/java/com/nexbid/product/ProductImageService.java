@@ -3,6 +3,7 @@ package com.nexbid.product;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -35,18 +36,28 @@ public class ProductImageService {
     private final ProductRepository products;
     private final ProductImageRepository images;
     private final ImageStorage storage;
+    private final ApplicationEventPublisher events;
 
     public ProductImageService(
-            ProductRepository products, ProductImageRepository images, ImageStorage storage) {
+            ProductRepository products,
+            ProductImageRepository images,
+            ImageStorage storage,
+            ApplicationEventPublisher events) {
         this.products = products;
         this.images = images;
         this.storage = storage;
+        this.events = events;
     }
 
     /**
-     * EN: Images of any product, with no ownership check — for the admin review and the public lot page.
-     * VI: Ảnh của bất kỳ sản phẩm nào, không kiểm quyền sở hữu — dành cho màn admin duyệt và trang lô công khai.
+     * EN: Tells whoever shows these photos elsewhere (the cached lot card) that they changed.
+     * VI: Báo cho nơi nào đang hiển thị các ảnh này ở chỗ khác (thẻ lô trong cache) rằng chúng đã đổi.
      */
+    private List<ProductImageView> changed(UUID productId) {
+        events.publishEvent(new ProductImagesChanged(productId));
+        return toViews(productId);
+    }
+
     /**
      * EN: Cover image url per product, in one query — a grid of cards would otherwise ask per card.
      * VI: Ảnh bìa của từng sản phẩm trong một truy vấn — nếu không, lưới thẻ sẽ hỏi từng thẻ một.
@@ -63,8 +74,28 @@ public class ProductImageService {
         return covers;
     }
 
+    /**
+     * EN: Images of any product, with no ownership check — for the admin review and the public lot page.
+     * VI: Ảnh của bất kỳ sản phẩm nào, không kiểm quyền sở hữu — dành cho màn admin duyệt và trang lô công khai.
+     */
     public List<ProductImageView> listPublic(UUID productId) {
         return toViews(productId);
+    }
+
+    /**
+     * EN: The same for many products in one query, grouped by product, in display order.
+     * VI: Như trên cho nhiều sản phẩm trong một truy vấn, gom theo sản phẩm, đúng thứ tự hiển thị.
+     */
+    public java.util.Map<UUID, List<ProductImageView>> listPublic(java.util.Collection<UUID> productIds) {
+        if (productIds.isEmpty()) {
+            return java.util.Map.of();
+        }
+
+        java.util.Map<UUID, List<ProductImageView>> grouped = new java.util.HashMap<>();
+        for (var image : images.findByProductIdInOrderBySortOrderAsc(productIds)) {
+            grouped.computeIfAbsent(image.getProduct().getId(), id -> new java.util.ArrayList<>()).add(toView(image));
+        }
+        return grouped;
     }
 
     public List<ProductImageView> list(UUID sellerId, UUID productId) {
@@ -98,7 +129,7 @@ public class ProductImageService {
             images.save(new ProductImage(product, url, altText, nextOrder++));
         }
 
-        return toViews(productId);
+        return changed(productId);
     }
 
     /**
@@ -123,7 +154,7 @@ public class ProductImageService {
         // VI: Xoá dòng dữ liệu trước; file xoá sau, và nếu xoá file thất bại thì cũng chỉ là rác thừa.
         storage.deleteQuietly(url);
 
-        return toViews(productId);
+        return changed(productId);
     }
 
     /**
@@ -161,7 +192,7 @@ public class ProductImageService {
             }
         }
 
-        return toViews(productId);
+        return changed(productId);
     }
 
     private void reindex(UUID productId) {
@@ -191,9 +222,10 @@ public class ProductImageService {
     }
 
     private List<ProductImageView> toViews(UUID productId) {
-        return images.findByProductIdOrderBySortOrderAsc(productId).stream()
-                .map(image -> new ProductImageView(
-                        image.getId(), image.getImageUrl(), image.getAltText(), image.getSortOrder()))
-                .toList();
+        return images.findByProductIdOrderBySortOrderAsc(productId).stream().map(ProductImageService::toView).toList();
+    }
+
+    private static ProductImageView toView(ProductImage image) {
+        return new ProductImageView(image.getId(), image.getImageUrl(), image.getAltText(), image.getSortOrder());
     }
 }

@@ -4,6 +4,9 @@ import type { NextConfig } from "next";
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
+  // A self-contained server in .next/standalone, so the Docker image ships
+  // without a full node_modules. `next dev` is unaffected.
+  output: "standalone",
   images: {
     // Product imagery is served from a remote host while the platform runs on
     // mock data. Swap/extend this list when the real media service lands.

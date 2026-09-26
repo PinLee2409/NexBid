@@ -4,6 +4,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 
 import com.nexbid.common.exception.ErrorCode;
 import com.nexbid.common.exception.ResourceNotFoundException;
@@ -23,10 +24,12 @@ public class UserService {
 
     private final UserRepository users;
     private final RoleRepository roles;
+    private final ApplicationEventPublisher events;
 
-    public UserService(UserRepository users, RoleRepository roles) {
+    public UserService(UserRepository users, RoleRepository roles, ApplicationEventPublisher events) {
         this.users = users;
         this.roles = roles;
+        this.events = events;
     }
 
     public boolean emailTaken(String email) {
@@ -112,6 +115,22 @@ public class UserService {
 
         user.addRole(role);
         return toAccount(users.save(user));
+    }
+
+    /** EN: A status change and its audit event commit together. / VI: Đổi trạng thái và audit commit cùng nhau. */
+    @Transactional
+    public UserAccount setBlocked(java.util.UUID id, java.util.UUID adminId, boolean blocked) {
+        User user = users.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.USER_NOT_FOUND, "No account with id " + id));
+        UserStatus next = blocked ? UserStatus.BLOCKED : UserStatus.ACTIVE;
+        UserStatus before = user.getStatus();
+        if (before != next) {
+            user.setStatus(next);
+            users.save(user);
+            events.publishEvent(new UserStatusChangedEvent(id, adminId, before, next));
+        }
+        return toAccount(user);
     }
 
     private static UserAccount toAccount(User user) {
