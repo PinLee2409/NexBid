@@ -118,6 +118,20 @@ services:
     ports:
       - "${NEXBID_FRONTEND_PORT:-3000}:3000"
 
+  # EN: The load test (guide §41). `up` never starts it; see docs/load-test/README.md.
+  # VI: Load test (guide §41). `up` không bao giờ khởi động nó; xem docs/load-test/README.md.
+  k6:
+    image: grafana/k6:2.3.0
+    profiles: ["load-test"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      BASE_URL: http://backend:8080
+    volumes:
+      - ./docs/load-test:/scripts
+    command: ["run", "--quiet", "/scripts/bid-load.js"]
+
 volumes:
   postgres-data:
   # EN: Uploaded product photos survive a rebuild of the backend image.

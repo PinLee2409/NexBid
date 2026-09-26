@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 440" width="800" height="440" role="img" aria-labelledby="title desc" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <title id="title">Bid latency under load</title>
+  <desc id="desc">POST /api/auctions/{id}/bids latency by concurrent users. p50 stays near 3 to 11 ms at every level. p95 and p99 stay under 20 ms up to 500 users, then rise to 200 ms and 413 ms at 1000 users, still under the 500 ms p95 target.</desc>
+  <style>
+    svg { --surface: #fcfcfb; --ink-1: #0b0b0b; --ink-2: #52514e; --ink-3: #8a8984; --grid: #e7e6e2; --axis: #b9b8b2;
+          --c1: #86b6ef; --c2: #2a78d6; --c3: #104281; }
+    @media (prefers-color-scheme: dark) {
+      svg { --surface: #1a1a19; --ink-1: #ffffff; --ink-2: #c3c2b7; --ink-3: #8f8e86; --grid: #2c2c2a; --axis: #4a4a46;
+            --c1: #1c5cab; --c2: #5598e7; --c3: #b7d3f6; }
+    }
+    .surface { fill: var(--surface); }
+    .ink-1 { fill: var(--ink-1); }
+    .ink-2 { fill: var(--ink-2); }
+    .ink-3 { fill: var(--ink-3); }
+    .grid { stroke: var(--grid); stroke-width: 1; }
+    .axis { stroke: var(--axis); stroke-width: 1; }
+    .target { stroke: var(--ink-3); stroke-width: 1.5; stroke-dasharray: 6 5; }
+    .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+    .line.s1 { stroke: var(--c1); } .line.s2 { stroke: var(--c2); } .line.s3 { stroke: var(--c3); }
+    .dot { stroke: var(--surface); stroke-width: 2; paint-order: stroke; }
+    .dot.s1 { fill: var(--c1); } .dot.s2 { fill: var(--c2); } .dot.s3 { fill: var(--c3); }
+  </style>
+
+  <rect class="surface" x="0" y="0" width="800" height="440" rx="8"/>
+
+  <text class="ink-1" x="32" y="40" font-size="18" font-weight="600">Bid latency under load</text>
+  <text class="ink-2" x="32" y="62" font-size="13">POST /api/auctions/{id}/bids · one backend container · 10 lots shared by all users</text>
+
+  <!-- Legend -->
+  <g font-size="12" class="ink-2">
+    <line class="line s1" x1="530" y1="36" x2="552" y2="36"/><text x="558" y="40">p50</text>
+    <line class="line s2" x1="598" y1="36" x2="620" y2="36"/><text x="626" y="40">p95</text>
+    <line class="line s3" x1="666" y1="36" x2="688" y2="36"/><text x="694" y="40">p99</text>
+  </g>
+
+  <!-- Grid: 0..500 ms, y = 360 - v * 0.52 -->
+  <g>
+    <line class="grid" x1="90" y1="308" x2="640" y2="308"/>
+    <line class="grid" x1="90" y1="256" x2="640" y2="256"/>
+    <line class="grid" x1="90" y1="204" x2="640" y2="204"/>
+    <line class="grid" x1="90" y1="152" x2="640" y2="152"/>
+    <line class="axis" x1="90" y1="360" x2="640" y2="360"/>
+  </g>
+  <g font-size="11" class="ink-3" text-anchor="end">
+    <text x="80" y="364">0 ms</text>
+    <text x="80" y="312">100</text>
+    <text x="80" y="260">200</text>
+    <text x="80" y="208">300</text>
+    <text x="80" y="156">400</text>
+    <text x="80" y="104">500</text>
+  </g>
+
+  <!-- Spec §31 target for the bid endpoint -->
+  <line class="target" x1="90" y1="100" x2="640" y2="100"/>
+  <text class="ink-2" x="640" y="92" font-size="11" text-anchor="end">spec §31 target: p95 &lt; 500 ms</text>
+
+  <!-- X axis: concurrent users -->
+  <g font-size="12" class="ink-2" text-anchor="middle">
+    <text x="110" y="382">10</text>
+    <text x="283" y="382">100</text>
+    <text x="456" y="382">500</text>
+    <text x="629" y="382">1000</text>
+  </g>
+  <text class="ink-3" x="370" y="406" font-size="11" text-anchor="middle">concurrent users</text>
+
+  <!-- Series. x: 110, 283, 456, 629 -->
+  <polyline class="line s1" points="110,354.3 283,358.1 456,358.4 629,358.4"/>
+  <polyline class="line s2" points="110,352.6 283,353.7 456,354.0 629,255.8"/>
+  <polyline class="line s3" points="110,351.2 283,351.2 456,349.9 629,145.1"/>
+
+  <circle class="dot s1" cx="629" cy="358.4" r="4"/>
+  <circle class="dot s2" cx="629" cy="255.8" r="4"/>
+  <circle class="dot s3" cx="629" cy="145.1" r="4"/>
+
+  <!-- Direct labels at the right end -->
+  <g font-size="12">
+    <text class="ink-1" x="646" y="149" font-weight="600">p99 413 ms</text>
+    <text class="ink-1" x="646" y="260" font-weight="600">p95 200 ms</text>
+    <text class="ink-2" x="646" y="362">p50 3 ms</text>
+  </g>
+
+  <!-- The flat part -->
+  <text class="ink-2" x="283" y="336" font-size="11" text-anchor="middle">under 20 ms at p99 up to 500 users</text>
+</svg>

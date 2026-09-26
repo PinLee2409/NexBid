@@ -58,7 +58,10 @@ public class SecurityConfig {
             "/media/**",
             // EN: The realtime channel carries only what the public page already shows.
             // VI: Kênh realtime chỉ chở những thứ trang công khai vốn đã hiển thị.
-            "/ws", "/ws/**"
+            "/ws", "/ws/**",
+            // EN: The API description and Swagger UI. They list the endpoints, which the frontend already reveals.
+            // VI: Mô tả API và Swagger UI. Chúng liệt kê các endpoint, thứ mà frontend vốn đã để lộ.
+            "/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**"
     };
 
     @Bean

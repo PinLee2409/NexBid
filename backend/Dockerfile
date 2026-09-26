@@ -14,7 +14,7 @@ COPY mvnw pom.xml ./
 COPY src/ src/
 
 RUN --mount=type=cache,target=/root/.m2 \
-    ./mvnw -B -q -DskipTests package \
+    ./mvnw -B -q -Dmaven.test.skip=true package \
     && java -Djarmode=tools -jar target/nexbid-*.jar extract --layers --launcher --destination extracted
 
 # EN: Runtime stage: a JRE only, the app unpacked into layers from least to most often changed, so a code
