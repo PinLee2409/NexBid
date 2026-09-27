@@ -82,3 +82,19 @@ Hiện không còn mục nào đang chờ.
 - **Test:** `accessibility.spec.ts` (axe trên mọi trang, mọi vai trò, cả hai giao diện), `mobile.spec.ts` (không
   trang nào rộng hơn màn hình, axe ở khổ điện thoại, trả giá từ điện thoại), và mọi test giờ trượt nếu trang có lỗi
   console, lệch hydration hay exception. Mỗi kiểm tra đã được thử bằng cách cố tình làm hỏng code nó canh.
+
+## Đã làm (27/09/2026) — đợt 5: refresh token (spec §7.2)
+
+- Theo quyết định đã chốt: access token 15 phút; refresh token 7 ngày, tính lại từ lần dùng cuối; "Remember me"
+  có tác dụng thật (bỏ tick thì cookie chỉ sống tới khi đóng trình duyệt); khoá tài khoản thu hồi mọi phiên của
+  người đó.
+- Refresh token nằm trong cookie `HttpOnly; Secure; SameSite=Strict` chỉ gửi tới `/api/auth`; DB chỉ lưu SHA-256
+  (`refresh_tokens`, V18). Mỗi token dùng một lần; token đã bị thay mà quay lại thì cả họ token bị thu hồi.
+  Endpoint mới: `POST /api/auth/refresh`, `POST /api/auth/logout`. Token hết hạn được dọn định kỳ.
+- Frontend gia hạn trước khi hết hạn một phút, thử lại một lần sau 401, dùng Web Lock để các tab không gia hạn
+  cùng lúc, và chỉ kết nối lại socket khi người đăng nhập thay đổi. Đăng xuất gọi server.
+- Sửa kèm: trên desktop trước đây không có nút đăng xuất (nút chỉ nằm trong menu điện thoại); giờ có ở cột tài
+  khoản.
+- Test: `RefreshTokenApiTest` (cookie, xoay vòng, dùng lại, đăng xuất theo thiết bị, khoá tài khoản, hết hạn,
+  chỉ lưu hash) và `session.spec.ts` (phiên sống qua lúc access token hết hạn, "Remember me", đăng xuất).
+

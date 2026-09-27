@@ -331,7 +331,7 @@ function MobileMenu({
         {signedIn ? (
           <button
             type="button"
-            onClick={() => signOut()}
+            onClick={() => void signOut()}
             className="label border-line hover:border-foreground w-full border py-3 transition-colors"
           >
             {tc("signOut")}

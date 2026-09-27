@@ -8,5 +8,12 @@ import jakarta.validation.constraints.NotBlank;
  */
 public record LoginRequest(
         @NotBlank(message = "Email is required") String email,
-        @NotBlank(message = "Password is required") String password) {
+        @NotBlank(message = "Password is required") String password,
+        // EN: "Remember me". Absent means yes, so clients that predate it keep their long sessions.
+        // VI: "Remember me". Không gửi nghĩa là có, để các client cũ vẫn giữ phiên dài như trước.
+        Boolean rememberMe) {
+
+    public boolean remember() {
+        return rememberMe == null || rememberMe;
+    }
 }

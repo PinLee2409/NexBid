@@ -16,6 +16,7 @@ import com.nexbid.auth.dto.RegisterRequest;
 import com.nexbid.auth.dto.RegisterResponse;
 import com.nexbid.auth.jwt.JwtProperties;
 import com.nexbid.auth.jwt.JwtService;
+import com.nexbid.auth.refresh.RefreshTokenService;
 import com.nexbid.common.exception.BusinessException;
 import com.nexbid.common.exception.ErrorCode;
 import java.time.Instant;
@@ -38,6 +39,14 @@ public class AuthService {
     private final JwtProperties jwtProperties;
     private final AuthenticationManager authenticationManager;
     private final ApplicationEventPublisher events;
+    private final RefreshTokenService refreshTokens;
+
+    /**
+     * EN: What a sign-in or a renewal hands back: the access token in the body, the refresh token for the cookie.
+     * VI: Thứ mà đăng nhập hoặc gia hạn trả về: access token trong body, refresh token để đặt vào cookie.
+     */
+    public record Session(LoginResponse response, RefreshTokenService.Issued refresh) {
+    }
 
     public AuthService(
             UserService users,
@@ -45,13 +54,15 @@ public class AuthService {
             JwtService jwtService,
             JwtProperties jwtProperties,
             AuthenticationManager authenticationManager,
-            ApplicationEventPublisher events) {
+            ApplicationEventPublisher events,
+            RefreshTokenService refreshTokens) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.jwtProperties = jwtProperties;
         this.authenticationManager = authenticationManager;
         this.events = events;
+        this.refreshTokens = refreshTokens;
     }
 
     public RegisterResponse register(RegisterRequest request) {
@@ -86,7 +97,7 @@ public class AuthService {
      * VI: Đăng nhập (guide §7). Spring chạy các bước kiểm tra; hàm này chỉ dịch kết quả sang mã lỗi của mình.
      */
     @Transactional
-    public LoginResponse login(LoginRequest request) {
+    public Session login(LoginRequest request) {
         String email = request.email().trim();
 
         try {
@@ -94,10 +105,9 @@ public class AuthService {
                     new UsernamePasswordAuthenticationToken(email, request.password()));
 
             UserCredentials user = ((NexbidUserDetails) authentication.getPrincipal()).credentials();
-            String token = jwtService.issue(user);
             events.publishEvent(new SuccessfulLoginEvent(user.id()));
 
-            return LoginResponse.of(token, Instant.now().plus(jwtProperties.expiry()), user);
+            return new Session(accessFor(user), refreshTokens.start(user.id(), request.remember()));
 
         } catch (LockedException ex) {
             throw new BusinessException(ErrorCode.ACCOUNT_BLOCKED, "This account has been blocked");
@@ -109,5 +119,31 @@ public class AuthService {
             //     này thành công cụ dò xem địa chỉ nào đã có tài khoản.
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS, "Email or password is incorrect");
         }
+    }
+
+    /**
+     * EN: Renews a session from its refresh token (spec §7.2). Deliberately outside a transaction: the family of a
+     *     replayed token is revoked and committed before this refuses the request.
+     * VI: Gia hạn phiên từ refresh token của nó (spec §7.2). Cố ý nằm ngoài transaction: họ của token bị dùng lại
+     *     được thu hồi và commit trước khi hàm này từ chối request.
+     */
+    public Session refresh(String presentedToken) {
+        RefreshTokenService.Renewal renewal = refreshTokens.renew(presentedToken)
+                .orElseThrow(AuthService::signInAgain);
+        UserCredentials user = users.findCredentialsById(renewal.userId()).orElseThrow(AuthService::signInAgain);
+        return new Session(accessFor(user), renewal.next());
+    }
+
+    /** EN: Signs out this device: its refresh token stops working. / VI: Đăng xuất thiết bị này: refresh token của nó hết dùng được. */
+    public void logout(String presentedToken) {
+        refreshTokens.end(presentedToken);
+    }
+
+    private LoginResponse accessFor(UserCredentials user) {
+        return LoginResponse.of(jwtService.issue(user), Instant.now().plus(jwtProperties.expiry()), user);
+    }
+
+    private static BusinessException signInAgain() {
+        return new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID, "The session has ended; sign in again");
     }
 }

@@ -111,6 +111,14 @@ nexbid:
     # VI: Câu trả lời "tài khoản đang hoạt động" được dùng lại bao lâu trước khi hỏi lại database. Khoá tài khoản
     #     có hiệu lực ngay trên server này; server khác sẽ thấy trong khoảng thời gian này.
     status-cache-ttl: ${NEXBID_STATUS_CACHE_TTL:10s}
+    refresh:
+      # EN: A session lasts this long after its last use: each refresh starts the clock again.
+      # VI: Một phiên đăng nhập sống chừng này kể từ lần dùng cuối: mỗi lần refresh tính lại từ đầu.
+      ttl: ${NEXBID_REFRESH_TTL:7d}
+      # EN: Cookie sent over HTTPS only. Browsers accept it on http://localhost; set false only for a plain-HTTP host.
+      # VI: Cookie chỉ gửi qua HTTPS. Trình duyệt vẫn nhận nó trên http://localhost; chỉ đặt false cho host HTTP thường.
+      secure-cookie: ${NEXBID_REFRESH_COOKIE_SECURE:true}
+      prune-interval: ${NEXBID_REFRESH_PRUNE_INTERVAL:1h}
 
   cache:
     # EN: How long a lot's unchanging details stay cached. Nothing that bidding changes is ever cached.
@@ -192,9 +200,9 @@ nexbid:
     # EN: Development default only. Any real deployment must pass NEXBID_JWT_SECRET; HMAC-SHA256 needs 32+ bytes.
     # VI: Chỉ là giá trị mặc định cho dev. Môi trường thật bắt buộc truyền NEXBID_JWT_SECRET; HMAC-SHA256 cần từ 32 byte.
     secret: ${NEXBID_JWT_SECRET:nexbid-local-development-secret-key-change-me}
-    # EN: Short enough to limit a stolen token, long enough not to interrupt a bidding session.
-    # VI: Đủ ngắn để hạn chế thiệt hại nếu token bị lấy, đủ dài để không cắt ngang một phiên đấu giá.
-    expiry: ${NEXBID_JWT_EXPIRY:2h}
+    # EN: Short, so a stolen token is soon useless; the refresh token (nexbid.auth.refresh) keeps the session going.
+    # VI: Ngắn, để token bị lấy mất sớm vô dụng; refresh token (nexbid.auth.refresh) giữ cho phiên tiếp tục.
+    expiry: ${NEXBID_JWT_EXPIRY:15m}
     issuer: nexbid
 
 logging:

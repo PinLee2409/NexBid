@@ -55,7 +55,7 @@ export function LoginForm() {
     if (Object.keys(nextErrors).length > 0) return;
 
     startTransition(async () => {
-      const result = await signIn({ email, password });
+      const result = await signIn({ email, password, remember });
 
       if (!result.ok) {
         setFormError(result.message);

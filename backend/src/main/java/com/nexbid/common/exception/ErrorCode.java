@@ -15,6 +15,8 @@ public enum ErrorCode {
     ACCOUNT_BLOCKED(HttpStatus.FORBIDDEN),
     // EN: Admins cannot block an admin — not another one, not themselves. / VI: Admin không khoá được admin — kể cả chính mình.
     ADMIN_NOT_BLOCKABLE(HttpStatus.CONFLICT),
+    // EN: Missing, expired, signed out, or replayed after it was replaced. / VI: Thiếu, hết hạn, đã đăng xuất, hoặc bị dùng lại sau khi đã được thay.
+    REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED),
 
     /* --- Catalogue / Sản phẩm ---------------------------------------- */
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND),

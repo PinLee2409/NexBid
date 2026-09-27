@@ -59,6 +59,17 @@ public class UserService {
                 roleNames(user)));
     }
 
+    /** EN: As above, by id: for renewing a session. / VI: Như trên, theo id: dùng khi gia hạn phiên đăng nhập. */
+    public Optional<UserCredentials> findCredentialsById(java.util.UUID id) {
+        return users.findById(id).map(user -> new UserCredentials(
+                user.getId(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getPassword(),
+                user.getStatus(),
+                roleNames(user)));
+    }
+
     /**
      * EN: Creates an account with the given role. The caller hashes the password; this module never sees the plain text.
      * VI: Tạo tài khoản với vai trò cho trước. Bên gọi tự hash mật khẩu; module này không bao giờ thấy chuỗi gốc.

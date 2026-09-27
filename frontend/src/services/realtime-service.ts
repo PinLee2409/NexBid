@@ -5,7 +5,7 @@ import { Client, type IMessage, type StompSubscription } from "@stomp/stompjs";
 import type { AuctionEvent, Unsubscribe } from "@/types";
 
 import type { ApiAuctionMessage, ApiNotification } from "./api/dto";
-import { getToken, onTokenChange } from "./api/token-store";
+import { getToken, onTokenChange, subjectOf } from "./api/token-store";
 
 /**
  * Realtime transport: STOMP over WebSocket (spec §10, §18).
@@ -130,7 +130,11 @@ function ensureClient(): void {
   if (client) return;
   if (!followingToken) {
     followingToken = true;
-    onTokenChange(() => void reconnect());
+    // EN: Only a change of who is signed in: a renewed token for the same person keeps the socket.
+    // VI: Chỉ khi người đăng nhập thay đổi: token được gia hạn cho cùng một người thì giữ nguyên socket.
+    onTokenChange(() => {
+      if (subjectOf(connectedAs) !== subjectOf(getToken())) void reconnect();
+    });
   }
 
   const instance = new Client({

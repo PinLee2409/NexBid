@@ -208,6 +208,32 @@ lot, one member per open socket subscription (spec §20.3).
 
 ---
 
+## Sessions
+
+A signed-in browser holds two tokens:
+- an **access token** (JWT, 15 minutes) in localStorage, sent as `Authorization: Bearer` and with the
+  socket's `CONNECT`;
+- a **refresh token** in an `HttpOnly; Secure; SameSite=Strict` cookie scoped to `/api/auth`. Page scripts
+  cannot read it, and other sites cannot make the browser send it.
+
+`POST /api/auth/refresh` trades the cookie for a new access token and a new cookie. Each refresh token works
+once: only its SHA-256 is stored, and a renewal replaces it with a new token of the same family. If a
+replaced token ever comes back, a copy is loose, so the whole family is revoked and whoever holds it must
+sign in again. A session lasts 7 days from its last use; without "Remember me" the cookie is dropped when
+the browser closes. Signing out revokes that device's session. Blocking an account revokes all of its
+sessions, in the same transaction as the block.
+
+The frontend renews a minute before expiry, and retries a request once after a 401. Renewals run one at a
+time across tabs (a Web Lock), so two tabs never present the same cookie; the new token reaches the other
+tabs through the `storage` event. The socket reconnects only when the signed-in user changes, not on each
+renewal.
+
+Settings: `NEXBID_JWT_EXPIRY` (15m), `NEXBID_REFRESH_TTL` (7d), `NEXBID_REFRESH_COOKIE_SECURE` (true;
+browsers accept a secure cookie on `http://localhost`, so set it to false only when serving plain HTTP on
+another host).
+
+---
+
 ## Redis
 
 Two jobs, neither of them the source of truth:
@@ -262,7 +288,7 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 
 | Area | Endpoints |
 | --- | --- |
-| Auth | `POST /api/auth/register`, `POST /api/auth/login` (JWT, 2 hours) |
+| Auth | `POST /api/auth/register`, `POST /api/auth/login` (JWT for 15 minutes + refresh cookie), `POST /api/auth/refresh`, `POST /api/auth/logout` |
 | Catalogue | `GET /api/auctions`, `GET /api/auctions/{id}`, `GET /api/categories`, `GET /api/server-time` — public |
 | Bidding | `POST /api/auctions/{id}/bids`, `GET /api/auctions/{id}/bids`, `/api/auctions/{id}/auto-bid` |
 | Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders` (`…/{id}/received`), `…/me/watchlist`, `/api/notifications` |
@@ -302,8 +328,8 @@ Frontend at http://localhost:3000, backend at http://localhost:8080/api/health. 
 both images and takes a few minutes; after changing code, run `docker compose up --build`. Postgres,
 Redis and Kafka stay inside the compose network. If a dev server already holds 3000 or 8080, set
 `NEXBID_FRONTEND_PORT` / `NEXBID_BACKEND_PORT`. To make an account admin, register it, then restart
-the backend with `NEXBID_ADMIN_EMAILS=you@example.com docker compose up -d backend` and sign in again —
-a token only carries the roles held when it was issued.
+the backend with `NEXBID_ADMIN_EMAILS=you@example.com docker compose up -d backend` and sign in again (or
+wait for the next token renewal, at most 15 minutes) — a token only carries the roles held when it was issued.
 
 ### Development
 
