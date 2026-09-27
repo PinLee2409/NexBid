@@ -16,12 +16,21 @@ realtime updates, scheduling, caching, rate limiting and event delivery.
 
 ## Screenshots
 
+Taken from the Docker stack with the [demo data](#demo-data) loaded.
+
+![Two buyers bidding on the same lot: each bid reaches the other browser over the socket](docs/screenshots/live-bidding.gif)
+
+Two signed-in buyers on the same lot. Each bid reaches the other browser over the socket straight
+away: the price, the bid feed, and the "You've been outbid" banner all update without a reload.
+
 | | |
 | --- | --- |
 | ![Home](docs/screenshots/home.png) | ![Lot page with the live bid feed](docs/screenshots/auction-detail.png) |
 | Home | Lot page — current price, countdown, live bid feed |
 | ![Seller dashboard](docs/screenshots/seller-dashboard.png) | ![Admin approval queue](docs/screenshots/admin-approval.png) |
 | Seller dashboard | Admin approval queue |
+| ![Admin overview with hourly activity](docs/screenshots/admin-overview.png) | ![Grafana dashboard during a load test](docs/screenshots/grafana.png) |
+| Admin overview — hourly activity from the analytics consumer | Grafana during a k6 run at 200 users |
 | ![Swagger UI](docs/screenshots/swagger.png) | ![Bid latency under load](docs/load-test/bid-latency.svg) |
 | Swagger UI | Load test — bid latency from 10 to 1000 users |
 
