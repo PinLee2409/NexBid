@@ -109,7 +109,7 @@ export async function api<T>(path: string, options: RequestOptions = {}, retried
     // VI: Token mà server không còn chấp nhận được gia hạn một lần và thử lại một lần; nếu không gia hạn được
     //     (đã đăng xuất ở nơi khác, tài khoản bị khoá) thì người dùng bị đăng xuất.
     if (response.status === 401 && token && !authCall) {
-      if (!retried && (await refreshSession())) return api<T>(path, options, true);
+      if (!retried && (await refreshSession(token))) return api<T>(path, options, true);
       clearToken();
     }
     const retryAfter = Number(response.headers.get("Retry-After"));

@@ -54,9 +54,13 @@ export function formatCompactNumber(value: number): string {
   }).format(value);
 }
 
-/** Parses user input like `19,000,000` or `₫19,000,000` back into a number. */
+/**
+ * Parses user input like `19,000,000`, `₫19,000,000` or `19.000.000` back
+ * into a number. VND has no minor unit, so every separator is grouping,
+ * whichever locale typed it.
+ */
 export function parseCurrencyInput(value: string): number | null {
-  const normalized = value.replace(/[^0-9.]/g, "");
+  const normalized = value.replace(/[^0-9]/g, "");
   if (normalized === "") return null;
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;

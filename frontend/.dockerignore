@@ -7,6 +7,8 @@ node_modules
 .claude
 e2e
 playwright.config.ts
+**/*.test.ts
+vitest.config.mts
 test-results
 playwright-report
 Dockerfile

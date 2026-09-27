@@ -98,3 +98,20 @@ Hiện không còn mục nào đang chờ.
 - Test: `RefreshTokenApiTest` (cookie, xoay vòng, dùng lại, đăng xuất theo thiết bị, khoá tài khoản, hết hạn,
   chỉ lưu hash) và `session.spec.ts` (phiên sống qua lúc access token hết hạn, "Remember me", đăng xuất).
 
+## Đã làm (27/09/2026) — đợt 6: unit test cho frontend
+
+- Vitest (`npm test`), test nằm cạnh code (`src/**/*.test.ts`), chạy trong CI trước bước build: luật trả giá phía
+  client (mức tối thiểu, thứ tự kiểm tra, auto bid, anti-sniping), định dạng tiền và đồng hồ, bộ lọc trên URL, che
+  tên người trả giá, và phần phiên đăng nhập (gia hạn trước khi hết hạn, thử lại một lần sau 401, không lặp vô hạn,
+  một lần gia hạn cho nhiều request, bỏ qua khi tab khác đã gia hạn).
+- Lỗi tìm ra nhờ test, đã sửa:
+  - Sau một 401, client thấy token "còn hạn" nên bỏ qua bước gia hạn và thử lại bằng đúng token vừa bị từ chối,
+    rồi đăng xuất người dùng. Giờ token bị từ chối luôn được thay.
+  - Tab nào bắt đầu bằng việc đăng nhập thì không theo được tab khác (listener `storage` chỉ gắn ở lần đọc đầu
+    tiên). Giờ gắn ở bất kỳ lần truy cập đầu tiên nào.
+  - Ô auto bid đọc "95.000.000" (cách nhóm số tiếng Việt) thành rỗng. VND không có phần lẻ nên mọi dấu phân cách
+    giờ đều là dấu nhóm.
+  - `getQuickBidAmounts` tính sai (1x/2x/5x thành min, min+2x, min+10x). Hàm này chưa được dùng ở đâu, nhưng giờ
+    đã đúng như chú thích.
+- `@types/node` nâng từ 20 lên 22 cho khớp Node 22 mà CI và image Docker đang chạy (Vitest 5 cần).
+

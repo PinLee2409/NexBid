@@ -32,19 +32,27 @@ function read(): StoredToken | null {
   }
 }
 
+/**
+ * EN: Another tab renewed, signed in or signed out: follow it. Started by whichever function this tab calls
+ *     first — a tab that begins by signing in must follow the others too.
+ * VI: Tab khác vừa gia hạn, đăng nhập hay đăng xuất: làm theo. Được bật bởi bất kỳ hàm nào tab này gọi đầu
+ *     tiên — tab bắt đầu bằng việc đăng nhập cũng phải theo được các tab khác.
+ */
+function watchOtherTabs(): void {
+  if (watchingOtherTabs || typeof window === "undefined") return;
+  watchingOtherTabs = true;
+  window.addEventListener("storage", (event) => {
+    if (event.key !== STORAGE_KEY && event.key !== null) return;
+    current = read();
+    notify();
+  });
+}
+
 function load(): void {
+  watchOtherTabs();
   if (loaded || typeof window === "undefined") return;
   loaded = true;
   current = read();
-  if (!watchingOtherTabs) {
-    watchingOtherTabs = true;
-    // EN: Another tab renewed, signed in or signed out: follow it. / VI: Tab khác vừa gia hạn, đăng nhập hay đăng xuất: làm theo.
-    window.addEventListener("storage", (event) => {
-      if (event.key !== STORAGE_KEY && event.key !== null) return;
-      current = read();
-      notify();
-    });
-  }
 }
 
 /** EN: The token, or null when absent or expired. / VI: Token, hoặc null khi không có hay đã hết hạn. */
@@ -74,6 +82,7 @@ export function tokenExpiresIn(): number {
 /** EN: Re-reads storage, where another tab may have put a newer token. / VI: Đọc lại bộ nhớ, nơi tab khác có thể đã để token mới hơn. */
 export function reloadToken(): void {
   if (typeof window === "undefined") return;
+  watchOtherTabs();
   loaded = true;
   const stored = read();
   if (stored?.token === current?.token) return;
@@ -93,6 +102,7 @@ export function subjectOf(token: string | null): string | null {
 }
 
 export function setToken(token: string, expiresAt: string): void {
+  watchOtherTabs();
   current = { token, expiresAt };
   loaded = true;
   try {
@@ -104,6 +114,7 @@ export function setToken(token: string, expiresAt: string): void {
 }
 
 export function clearToken(): void {
+  watchOtherTabs();
   const had = current !== null;
   current = null;
   loaded = true;
@@ -117,6 +128,7 @@ export function clearToken(): void {
 
 /** EN: Called whenever the token appears, changes or goes away. / VI: Được gọi mỗi khi token xuất hiện, đổi hoặc mất đi. */
 export function onTokenChange(listener: () => void): () => void {
+  watchOtherTabs();
   listeners.add(listener);
   return () => {
     listeners.delete(listener);

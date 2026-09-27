@@ -409,7 +409,7 @@ cd backend && ./mvnw test
 ```
 
 ```bash
-cd frontend && npm run build
+cd frontend && npm test
 ```
 
 The backend suite needs Docker, not the dev services: each test context starts its own Postgres, Redis
@@ -422,6 +422,14 @@ and Kafka in containers. Highlights:
   hundred simultaneous bids produce exactly one winner and no lost update.
 - Kafka outage, Redis outage, duplicate delivery and rollback each have a test, and each test was checked
   by breaking the code it guards and watching it fail.
+
+### Frontend unit tests
+
+[Vitest](https://vitest.dev) covers the frontend's own logic, next to the code it checks (`src/**/*.test.ts`):
+the bid rules the panel applies before a request is sent (spec §7.8, §8, §13, §14), prices and countdowns,
+the browse filters kept in the URL, name masking, and the session code — when the HTTP client renews the
+access token, retries once after a 401, or gives up and signs the user out. They run in about a second and
+need no backend.
 
 ### End-to-end tests
 
@@ -456,8 +464,8 @@ instead of downloading Chromium.
 ### CI/CD
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request: the full
-backend suite (`./mvnw verify`, with Testcontainers on the runner's Docker); `tsc`, ESLint and
-`next build` for the frontend; the end-to-end tests against `docker compose up`; then both Docker images are
+backend suite (`./mvnw verify`, with Testcontainers on the runner's Docker); `tsc`, ESLint, the unit
+tests and `next build` for the frontend; the end-to-end tests against `docker compose up`; then both Docker images are
 built. A push to `main` publishes the images once everything above passed:
 
 ```bash

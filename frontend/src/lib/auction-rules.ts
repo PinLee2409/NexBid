@@ -32,7 +32,10 @@ export function getMinimumNextBid(
   return auction.currentPrice + auction.minimumIncrement;
 }
 
-/** Suggested amounts offered next to the bid input (1x / 2x / 5x increment). */
+/**
+ * Suggested amounts offered next to the bid input: 1x / 2x / 5x the increment,
+ * counted so that 1x is exactly the minimum next bid.
+ */
 export function getQuickBidAmounts(
   auction: Pick<
     Auction,
@@ -41,7 +44,7 @@ export function getQuickBidAmounts(
 ): number[] {
   const minimum = getMinimumNextBid(auction);
   return AUCTION_CONFIG.quickIncrements.map(
-    (multiplier, index) => minimum + index * auction.minimumIncrement * multiplier,
+    (multiplier) => minimum + (multiplier - 1) * auction.minimumIncrement,
   );
 }
 

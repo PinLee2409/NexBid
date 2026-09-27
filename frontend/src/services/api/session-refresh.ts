@@ -1,5 +1,5 @@
 import type { ApiLogin } from "./dto";
-import { clearToken, hasSession, onTokenChange, reloadToken, setToken, tokenExpiresIn } from "./token-store";
+import { clearToken, getToken, hasSession, onTokenChange, reloadToken, setToken, tokenExpiresIn } from "./token-store";
 
 /**
  * EN: Renews the 15-minute access token with the refresh cookie (`POST /api/auth/refresh`). The server
@@ -17,23 +17,29 @@ const LOCK_NAME = "nexbid-session-refresh";
 
 let inFlight: Promise<boolean> | null = null;
 
-/** EN: True once a fresh token is stored; false when there is no session to renew. / VI: True khi đã có token mới; false khi không còn phiên để gia hạn. */
-export function refreshSession(): Promise<boolean> {
-  inFlight ??= withLock().finally(() => {
+/**
+ * EN: True once a fresh token is stored; false when there is no session to renew. `refused` is a token the
+ *     server just turned down: it must be replaced even though its clock has not run out.
+ * VI: True khi đã có token mới; false khi không còn phiên để gia hạn. `refused` là token server vừa từ chối:
+ *     nó phải được thay dù chưa tới giờ hết hạn.
+ */
+export function refreshSession(refused?: string): Promise<boolean> {
+  inFlight ??= withLock(refused).finally(() => {
     inFlight = null;
   });
   return inFlight;
 }
 
-async function withLock(): Promise<boolean> {
+async function withLock(refused?: string): Promise<boolean> {
   const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
-  return locks ? await locks.request(LOCK_NAME, renewUnlessDone) : renewUnlessDone();
+  const renew = () => renewUnlessDone(refused);
+  return locks ? await locks.request(LOCK_NAME, renew) : renew();
 }
 
-async function renewUnlessDone(): Promise<boolean> {
+async function renewUnlessDone(refused?: string): Promise<boolean> {
   // EN: A tab that held the lock before this one may already have renewed. / VI: Tab giữ khoá trước tab này có thể đã gia hạn rồi.
   reloadToken();
-  if (tokenExpiresIn() > RENEW_BEFORE_MS) return true;
+  if (tokenExpiresIn() > RENEW_BEFORE_MS && getToken() !== refused) return true;
 
   let response: Response;
   try {
