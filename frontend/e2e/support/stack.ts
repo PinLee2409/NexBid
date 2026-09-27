@@ -54,6 +54,20 @@ export async function login(email: string): Promise<Session> {
   return { token: data.accessToken, expiresAt: data.expiresAt };
 }
 
+/**
+ * EN: Clears the sign-in limiter, so runs of the suite in quick succession do not add up to the per-address limit.
+ * VI: Xoá bộ đếm đăng nhập, để các lần chạy test liền nhau không cộng dồn tới giới hạn theo địa chỉ.
+ */
+export function resetSignInLimits(): void {
+  execFileSync(
+    "docker",
+    ["compose", "-f", COMPOSE_FILE, "exec", "-T", "redis", "redis-cli", "EVAL",
+      "for _, key in ipairs(redis.call('KEYS', ARGV[1])) do redis.call('DEL', key) end return 1",
+      "0", "rate:login:*"],
+    { stdio: ["ignore", "ignore", "inherit"] },
+  );
+}
+
 /** EN: Grants roles in SQL, as the demo seed does. / VI: Cấp vai trò bằng SQL, như script seed demo. */
 export function grantRoles(grants: Array<[email: string, role: string]>): void {
   const pairs = grants.map(([email, role]) => `('${email}', '${role}')`).join(", ");

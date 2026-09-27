@@ -1,4 +1,4 @@
-import { grantRoles, register } from "./support/stack";
+import { grantRoles, register, resetSignInLimits } from "./support/stack";
 import type { E2EData } from "./support/test";
 
 /**
@@ -8,6 +8,7 @@ import type { E2EData } from "./support/test";
  *     lại bắt đầu sạch. Mã lần chạy trong mọi email giữ các lần chạy tách biệt trên cùng database.
  */
 export default async function globalSetup(): Promise<void> {
+  resetSignInLimits();
   const run = Date.now().toString(36);
   const email = (who: string) => `e2e-${run}-${who}@nexbid.test`;
   const users = {

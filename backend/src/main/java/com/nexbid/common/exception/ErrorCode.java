@@ -17,6 +17,8 @@ public enum ErrorCode {
     ADMIN_NOT_BLOCKABLE(HttpStatus.CONFLICT),
     // EN: Missing, expired, signed out, or replayed after it was replaced. / VI: Thiếu, hết hạn, đã đăng xuất, hoặc bị dùng lại sau khi đã được thay.
     REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED),
+    // EN: Too many wrong passwords; Retry-After says when to try again. / VI: Sai mật khẩu quá nhiều lần; Retry-After cho biết khi nào thử lại.
+    LOGIN_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS),
 
     /* --- Catalogue / Sản phẩm ---------------------------------------- */
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND),

@@ -17,6 +17,7 @@ import com.nexbid.auth.refresh.RefreshCookies;
 import com.nexbid.common.exception.BusinessException;
 import com.nexbid.common.response.ApiResponse;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
@@ -44,8 +45,12 @@ public class AuthController {
 
     /** EN: The access token in the body; the refresh token in an HttpOnly cookie. / VI: Access token trong body; refresh token trong cookie HttpOnly. */
     @PostMapping("/login")
-    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
-        AuthService.Session session = authService.login(request);
+    public ApiResponse<LoginResponse> login(
+            @Valid @RequestBody LoginRequest request, HttpServletRequest http, HttpServletResponse response) {
+
+        // EN: The client's own address, even behind the frontend's proxy (server.forward-headers-strategy).
+        // VI: Địa chỉ của chính client, kể cả khi đứng sau proxy của frontend (server.forward-headers-strategy).
+        AuthService.Session session = authService.login(request, http.getRemoteAddr());
         response.addHeader(HttpHeaders.SET_COOKIE, cookies.issue(session.refresh()).toString());
         return ApiResponse.of(session.response(), "Signed in");
     }

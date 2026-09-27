@@ -1,0 +1,10 @@
+# EN: Production switches, on top of application.yml: SPRING_PROFILES_ACTIVE=prod. Also turns on ProductionGuard,
+#     which refuses to start with a development JWT secret or an insecure refresh cookie.
+# VI: Các công tắc cho production, chồng lên application.yml: SPRING_PROFILES_ACTIVE=prod. Đồng thời bật
+#     ProductionGuard, vốn từ chối khởi động với JWT secret của dev hoặc cookie refresh không an toàn.
+springdoc:
+  # EN: No public map of the API in production. / VI: Production không công khai bản đồ của API.
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

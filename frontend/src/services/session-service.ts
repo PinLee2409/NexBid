@@ -121,6 +121,10 @@ function failure(error: unknown): AuthResult {
         const first = error.details ? Object.values(error.details)[0] : undefined;
         return { ok: false, message: first ?? error.message };
       }
+      case "LOGIN_RATE_LIMITED": {
+        const minutes = Math.max(1, Math.ceil((error.retryAfterSeconds ?? 60) / 60));
+        return { ok: false, message: `Too many failed sign-ins. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.` };
+      }
       case "BID_RATE_LIMITED":
         return { ok: false, message: "Too many attempts. Wait a moment and try again." };
       default:

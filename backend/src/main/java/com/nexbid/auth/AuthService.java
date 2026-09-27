@@ -40,6 +40,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final ApplicationEventPublisher events;
     private final RefreshTokenService refreshTokens;
+    private final LoginAttempts attempts;
 
     /**
      * EN: What a sign-in or a renewal hands back: the access token in the body, the refresh token for the cookie.
@@ -55,7 +56,8 @@ public class AuthService {
             JwtProperties jwtProperties,
             AuthenticationManager authenticationManager,
             ApplicationEventPublisher events,
-            RefreshTokenService refreshTokens) {
+            RefreshTokenService refreshTokens,
+            LoginAttempts attempts) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -63,6 +65,7 @@ public class AuthService {
         this.authenticationManager = authenticationManager;
         this.events = events;
         this.refreshTokens = refreshTokens;
+        this.attempts = attempts;
     }
 
     public RegisterResponse register(RegisterRequest request) {
@@ -97,14 +100,18 @@ public class AuthService {
      * VI: Đăng nhập (guide §7). Spring chạy các bước kiểm tra; hàm này chỉ dịch kết quả sang mã lỗi của mình.
      */
     @Transactional
-    public Session login(LoginRequest request) {
+    public Session login(LoginRequest request, String clientAddress) {
         String email = request.email().trim();
+        // EN: Checked first: someone over the limit learns nothing, not even whether the password was right.
+        // VI: Kiểm tra trước tiên: ai đã vượt giới hạn thì không biết được gì, kể cả mật khẩu có đúng hay không.
+        attempts.checkAllowed(email, clientAddress);
 
         try {
             var authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(email, request.password()));
 
             UserCredentials user = ((NexbidUserDetails) authentication.getPrincipal()).credentials();
+            attempts.clear(email, clientAddress);
             events.publishEvent(new SuccessfulLoginEvent(user.id()));
 
             return new Session(accessFor(user), refreshTokens.start(user.id(), request.remember()));
@@ -113,6 +120,7 @@ public class AuthService {
             throw new BusinessException(ErrorCode.ACCOUNT_BLOCKED, "This account has been blocked");
 
         } catch (AuthenticationException ex) {
+            attempts.recordFailure(email, clientAddress);
             // EN: Unknown email and wrong password answer identically on purpose — otherwise this endpoint
             //     becomes a way to discover which addresses have accounts.
             // VI: Email không tồn tại và sai mật khẩu trả lời giống hệt nhau là có chủ ý — nếu không, endpoint

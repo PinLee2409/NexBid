@@ -234,6 +234,30 @@ another host).
 
 ---
 
+## Security
+
+- **Password guessing is slowed down.** Wrong passwords are counted in Redis over a sliding 15 minutes: 5 per
+  email from one address, 20 per address across all emails. Past either, sign-in answers
+  `429 LOGIN_RATE_LIMITED` with `Retry-After` — even to the right password, so the answer reveals nothing. A
+  correct password clears its email-and-address count, and because the address is part of that count, nobody
+  can lock someone else out from elsewhere. The client's address comes from `X-Forwarded-For`, trusted only
+  from private addresses. Next.js passes that header on but never sets it, so in production the site must sit
+  behind a reverse proxy (which HTTPS needs anyway) that does; without one — as with `docker compose up` on
+  localhost — every browser looks like the frontend's own address.
+- **Pages run only their own scripts.** Every page is served with a Content Security Policy carrying a fresh
+  nonce (`src/proxy.ts`): scripts without it do not run, inline event handlers do not run, the page cannot be
+  framed by another site, and it may connect only to itself and the realtime socket. Pages also send
+  `nosniff`, `X-Frame-Options: DENY`, a strict `Referrer-Policy`, a `Permissions-Policy` and HSTS; the
+  backend's answers carry Spring Security's equivalents.
+- **Production refuses unsafe settings.** With `SPRING_PROFILES_ACTIVE=prod` the backend will not start on a
+  JWT secret shipped in this repository or shorter than 32 bytes, or with a refresh cookie allowed over plain
+  HTTP, and it stops publishing Swagger UI and `/v3/api-docs`. Without the profile — `docker compose up`, the
+  dev setup — nothing needs configuring.
+
+Settings: `NEXBID_LOGIN_ACCOUNT_LIMIT` (5), `NEXBID_LOGIN_ADDRESS_LIMIT` (20), `NEXBID_LOGIN_WINDOW` (15m).
+
+---
+
 ## Redis
 
 Two jobs, neither of them the source of truth:

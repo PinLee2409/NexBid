@@ -75,6 +75,11 @@ spring:
 
 server:
   port: ${NEXBID_PORT:8080}
+  # EN: Behind the frontend's proxy every request comes from the proxy; X-Forwarded-For names the real client.
+  #     Only trusted from private addresses (Tomcat's internal proxies), so a caller cannot claim another address.
+  # VI: Đứng sau proxy của frontend thì mọi request đều từ proxy tới; X-Forwarded-For mới cho biết client thật.
+  #     Chỉ tin header này từ địa chỉ nội bộ (internal proxies của Tomcat), để không ai tự nhận địa chỉ khác.
+  forward-headers-strategy: ${NEXBID_FORWARD_HEADERS:native}
   error:
     # EN: Error bodies are the contract in spec §28; Tomcat's own page must never show through.
     # VI: Body lỗi là hợp đồng ở spec §28; không được để trang lỗi mặc định của Tomcat lọt ra.
@@ -129,6 +134,12 @@ nexbid:
     retry-after: 10s
 
   rate-limit:
+    login:
+      # EN: Wrong passwords per email from one address, and per address across all emails, in any sliding window.
+      # VI: Số lần sai mật khẩu cho mỗi email từ một địa chỉ, và cho mỗi địa chỉ trên mọi email, trong khung trượt.
+      account-limit: ${NEXBID_LOGIN_ACCOUNT_LIMIT:5}
+      address-limit: ${NEXBID_LOGIN_ADDRESS_LIMIT:20}
+      window: ${NEXBID_LOGIN_WINDOW:15m}
     bids:
       # EN: Spec §20.2: 10 bid requests per 10 seconds per person, in any sliding 10-second window.
       # VI: Spec §20.2: 10 request trả giá mỗi 10 giây mỗi người, trong bất kỳ khung trượt 10 giây nào.

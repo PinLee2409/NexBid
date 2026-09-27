@@ -115,3 +115,18 @@ Hiện không còn mục nào đang chờ.
     đã đúng như chú thích.
 - `@types/node` nâng từ 20 lên 22 cho khớp Node 22 mà CI và image Docker đang chạy (Vitest 5 cần).
 
+## Đã làm (27/09/2026) — đợt 7: bảo mật
+
+- **Giới hạn đăng nhập sai**, theo quyết định đã chốt: 5 lần sai trong 15 phút cho mỗi cặp email + địa chỉ, và 20
+  lần cho mỗi địa chỉ; vượt thì trả `429 LOGIN_RATE_LIMITED` kèm `Retry-After`, kể cả khi mật khẩu đúng. Mật khẩu
+  đúng thì xoá bộ đếm của cặp đó. Đếm trong Redis (khung trượt, Redis sập thì cho qua). Địa chỉ client lấy từ
+  `X-Forwarded-For`, chỉ tin khi đến từ địa chỉ nội bộ (`server.forward-headers-strategy: native`). Đã kiểm tra
+  trên stack Docker: Next.js chuyển tiếp header này nhưng không tự đặt nó, nên khi deploy phải có reverse proxy
+  (vốn cần cho HTTPS) đặt header; không có thì mọi trình duyệt trông như cùng một địa chỉ của frontend.
+- **Content Security Policy** cho mọi trang, nonce mới mỗi request (`src/proxy.ts`), kèm nosniff, X-Frame-Options,
+  Referrer-Policy, Permissions-Policy, HSTS; bỏ header `X-Powered-By`.
+- **Profile `prod`**, theo quyết định đã chốt: không khởi động nếu JWT secret là giá trị mặc định trong repo hoặc
+  ngắn hơn 32 byte, hay cookie refresh không bắt buộc HTTPS; tắt Swagger UI và `/v3/api-docs`.
+- Test: `LoginRateLimitTest`, `ProductionGuardTest`, `ProductionProfileTest`, `security.spec.ts` (CSP và nonce,
+  chặn handler inline bị chèn vào trang, form đăng nhập báo giới hạn).
+
