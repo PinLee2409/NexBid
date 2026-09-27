@@ -79,11 +79,9 @@ export function AuctionPriceTicker({
   }
 
   return (
-    <span
-      className={cn("figure relative inline-flex items-start leading-none", className)}
-      // The rolling digits are decorative; assistive tech reads the value.
-      aria-label={`${CURRENCY.symbol}${formatted}`}
-    >
+    <span className={cn("figure relative inline-flex items-start leading-none", className)}>
+      {/* The rolling digits are decorative; assistive tech reads this instead. */}
+      <span className="sr-only">{`${CURRENCY.symbol}${formatted}`}</span>
       {flashOnChange && flashKey > 0 ? (
         <span
           key={flashKey}

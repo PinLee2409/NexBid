@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage } from "@/hooks/use-labels";
@@ -60,7 +60,7 @@ export default function AdminAuctionsPage() {
       <Tabs
         value={tab}
         onValueChange={(value) => setTab(value as ReviewTab)}
-        className="mt-6"
+        className="mt-6 block"
       >
         <TabsList>
           {(Object.keys(TAB_KEYS) as ReviewTab[]).map((key) => (
@@ -69,41 +69,41 @@ export default function AdminAuctionsPage() {
             </TabsTrigger>
           ))}
         </TabsList>
-      </Tabs>
 
-      <div className="mt-10">
-        {state.status === "loading" ? (
-          <div>
-            {Array.from({ length: 2 }).map((_, index) => (
-              <AuctionListRowSkeleton key={index} />
-            ))}
-          </div>
-        ) : state.status === "error" ? (
-          <EmptyState
-            tone="error"
-            icon={Gavel}
-            title={tc("tryAgain")}
-            description={state.error.message}
-          />
-        ) : state.data.length === 0 ? (
-          <EmptyState
-            icon={Gavel}
-            title={t("pendingEmptyTitle")}
-            description={t("pendingEmptyBody")}
-          />
-        ) : (
-          <ul>
-            {state.data.map((auction) => (
-              <ReviewCard
-                key={auction.id}
-                auction={auction}
-                onApproved={refresh}
-                onRejectRequested={() => setRejecting(auction)}
-              />
-            ))}
-          </ul>
-        )}
-      </div>
+        <TabsContent value={tab} className="mt-10">
+          {state.status === "loading" ? (
+            <div>
+              {Array.from({ length: 2 }).map((_, index) => (
+                <AuctionListRowSkeleton key={index} />
+              ))}
+            </div>
+          ) : state.status === "error" ? (
+            <EmptyState
+              tone="error"
+              icon={Gavel}
+              title={tc("tryAgain")}
+              description={state.error.message}
+            />
+          ) : state.data.length === 0 ? (
+            <EmptyState
+              icon={Gavel}
+              title={t("pendingEmptyTitle")}
+              description={t("pendingEmptyBody")}
+            />
+          ) : (
+            <ul>
+              {state.data.map((auction) => (
+                <ReviewCard
+                  key={auction.id}
+                  auction={auction}
+                  onApproved={refresh}
+                  onRejectRequested={() => setRejecting(auction)}
+                />
+              ))}
+            </ul>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <RejectDialog
         auction={rejecting}

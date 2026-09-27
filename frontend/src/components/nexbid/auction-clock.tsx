@@ -86,8 +86,6 @@ export function AuctionClock({
   if (variant === "hero") {
     return (
       <span
-        suppressHydrationWarning
-        aria-label={label}
         className={cn(
           "display figure block tabular-nums transition-all duration-500",
           critical
@@ -96,9 +94,12 @@ export function AuctionClock({
           className,
         )}
       >
-        {segments[0]}
-        <span className="text-dim mx-[0.12em]">:</span>
-        {segments[1]}
+        <span suppressHydrationWarning className="sr-only">{label}</span>
+        <span suppressHydrationWarning aria-hidden="true">
+          {segments[0]}
+          <span className="text-dim mx-[0.12em]">:</span>
+          {segments[1]}
+        </span>
       </span>
     );
   }
@@ -106,8 +107,6 @@ export function AuctionClock({
   if (variant === "terminal") {
     return (
       <span
-        suppressHydrationWarning
-        aria-label={label}
         className={cn(
           "mono-figure block leading-none font-medium transition-all duration-500",
           tone,
@@ -115,20 +114,22 @@ export function AuctionClock({
           className,
         )}
       >
-        {segments[0]}
-        <span className="text-dim mx-1.5">:</span>
-        {segments[1]}
+        <span suppressHydrationWarning className="sr-only">{label}</span>
+        <span suppressHydrationWarning aria-hidden="true">
+          {segments[0]}
+          <span className="text-dim mx-1.5">:</span>
+          {segments[1]}
+        </span>
       </span>
     );
   }
 
   return (
-    <span
-      suppressHydrationWarning
-      aria-label={label}
-      className={cn("mono-figure text-sm", tone, className)}
-    >
-      {segments[0]}:{segments[1]}
+    <span className={cn("mono-figure text-sm", tone, className)}>
+      <span suppressHydrationWarning className="sr-only">{label}</span>
+      <span suppressHydrationWarning aria-hidden="true">
+        {segments[0]}:{segments[1]}
+      </span>
     </span>
   );
 }

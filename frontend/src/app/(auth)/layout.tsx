@@ -44,23 +44,23 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
             {t("sideBody")}
           </p>
 
-          <dl className="mt-10 space-y-6">
+          <ul className="mt-10 space-y-6">
             {pillars.map((pillar) => (
-              <div key={pillar.key} className="flex gap-3.5">
+              <li key={pillar.key} className="flex gap-3.5">
                 <span className="text-signal-text flex size-9 shrink-0 items-center justify-center">
                   <pillar.icon className="size-4" aria-hidden="true" />
                 </span>
                 <div>
-                  <dt className="label">
+                  <p className="label">
                     {th(`${pillar.key}Title`)}
-                  </dt>
-                  <dd className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
                     {th(`${pillar.key}Body`)}
-                  </dd>
+                  </p>
                 </div>
-              </div>
+              </li>
             ))}
-          </dl>
+          </ul>
         </div>
       </aside>
     </div>

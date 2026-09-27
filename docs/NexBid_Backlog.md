@@ -68,3 +68,17 @@ Hiện không còn mục nào đang chờ.
   lộ thương hiệu khác.
 - **Gợi ý tài khoản demo ở trang đăng nhập:** câu cũ từ thời dữ liệu giả ("pin@nexbid.com với mật khẩu bất
   kỳ") không còn đúng với backend thật; giờ chỉ đúng tài khoản của seed demo (`pin@nexbid.test` / `nexbid-demo`).
+
+## Đã làm (27/09/2026) — đợt 4: chất lượng giao diện
+
+- **Accessibility (WCAG 2.1 AA, kiểm bằng axe):** sửa độ tương phản của chữ phụ ở cả hai giao diện (`--dim`,
+  `--muted-foreground`: tối thiểu 4.5:1 trên mọi nền); tab lọc giờ có tab panel thật (hết `aria-controls` trỏ vào
+  hư không); giá và đồng hồ đọc qua chữ ẩn thay vì `aria-label` trên thẻ span; ô chọn ảnh có nhãn; bảng cuộn ngang
+  trên điện thoại dùng bàn phím được; khung bên của trang đăng nhập/đăng ký dùng danh sách đúng chuẩn; số lô chìm
+  làm nền được đánh dấu là trang trí.
+- **Mobile (375 px):** các trang tài khoản không còn rộng 663 px (cột grid giờ bằng màn hình, thanh tab tự cuộn
+  ngang); thanh tab nào dài hơn màn hình cũng tự cuộn; ô tìm kiếm ở trang Discover chiếm cả dòng trên điện thoại.
+- **Chữ trên ảnh bìa trang chủ:** dòng "Opening lot · …" có đổ bóng như tiêu đề, nên vẫn đọc được trên ảnh sáng.
+- **Test:** `accessibility.spec.ts` (axe trên mọi trang, mọi vai trò, cả hai giao diện), `mobile.spec.ts` (không
+  trang nào rộng hơn màn hình, axe ở khổ điện thoại, trả giá từ điện thoại), và mọi test giờ trượt nếu trang có lỗi
+  console, lệch hydration hay exception. Mỗi kiểm tra đã được thử bằng cách cố tình làm hỏng code nó canh.

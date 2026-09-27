@@ -1,10 +1,10 @@
 import { API_URL } from "./support/stack";
 import { data, expect, grouped, newLot, signIn, test } from "./support/test";
 
-test("a bid reaches the other bidder's page without a reload", async ({ browser }) => {
+test("a bid reaches the other bidder's page without a reload", async ({ openContext }) => {
   const lot = await newLot("Bidding lot", true);
-  const alexContext = await browser.newContext();
-  const saraContext = await browser.newContext();
+  const alexContext = await openContext();
+  const saraContext = await openContext();
   await signIn(alexContext, data.users.alex);
   await signIn(saraContext, data.users.sara);
   const alex = await alexContext.newPage();
@@ -37,8 +37,6 @@ test("a bid reaches the other bidder's page without a reload", async ({ browser 
   await expect(alexPanel).toContainText("You've been outbid.");
   await expect(alexPanel.getByRole("button", { name: "Bid again" })).toBeVisible();
 
-  await alexContext.close();
-  await saraContext.close();
 });
 
 test("a bid under the minimum is stopped before it is sent", async ({ context, page }) => {

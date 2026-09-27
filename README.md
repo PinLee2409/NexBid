@@ -405,7 +405,11 @@ and Kafka in containers. Highlights:
 - two buyers on the same lot, each seeing the other's bid and the "outbid" banner without a reload;
 - the minimum-bid check;
 - an admin approving a lot;
-- times shown in the reader's own time zone.
+- times shown in the reader's own time zone;
+- every page, for every role, checked with [axe](https://github.com/dequelabs/axe-core) against WCAG 2.1 AA in
+  both themes;
+- every page at 375 px wide: nothing wider than the screen, and a bid placed from a phone;
+- no test passes if a page it opened logged a console error, a hydration mismatch or an uncaught exception.
 
 Each run creates its own accounts and lots, with a run id in every name, so it can run again on the same
 database.

@@ -119,8 +119,9 @@ export function AuctionToolbar({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+        {/* Full width on a phone, with sort on the next line; side by side from sm up. */}
         <SearchBar
-          className="min-w-0 flex-1 sm:max-w-sm"
+          className="w-full min-w-0 sm:w-auto sm:max-w-sm sm:flex-1"
           defaultValue={query.search ?? ""}
           onSearch={(value) => navigate({ ...query, search: value || undefined })}
         />

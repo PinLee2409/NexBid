@@ -15,11 +15,11 @@ const ZONES = ["Asia/Ho_Chi_Minh", "America/New_York"];
 const plain = (text: string | null) => (text ?? "").replace(/\s+/g, " ");
 
 for (const timezoneId of ZONES) {
-  test(`times are shown in ${timezoneId}`, async ({ browser }) => {
+  test(`times are shown in ${timezoneId}`, async ({ openContext }) => {
     const clock = await newLot("Clock lot", true);
     const bid = await placeBid(clock.id, await login(data.users.sara));
     const queued = await newLot("Queued lot", false);
-    const context = await browser.newContext({ timezoneId });
+    const context = await openContext({ timezoneId });
     await signIn(context, data.users.admin);
     const page = await context.newPage();
 
@@ -45,7 +45,5 @@ for (const timezoneId of ZONES) {
     await page.goto("/admin/auctions");
     const row = page.locator("li").filter({ has: page.getByRole("link", { name: queued.name, exact: true }) });
     await expect.poll(async () => plain(await row.textContent())).toContain(plain(opens));
-
-    await context.close();
   });
 }

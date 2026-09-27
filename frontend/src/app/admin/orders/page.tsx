@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage, useEnumLabels } from "@/hooks/use-labels";
 import { formatCurrency } from "@/lib/format";
@@ -49,7 +49,7 @@ export default function AdminOrdersPage() {
     <>
       <PageHeader title={t("ordersTitle")} description={t("ordersSubtitle")} />
 
-      <Tabs value={tab} onValueChange={(value) => setTab(value as OrderTab)} className="mt-6">
+      <Tabs value={tab} onValueChange={(value) => setTab(value as OrderTab)} className="mt-6 block">
         <TabsList>
           {TABS.map((key) => (
             <TabsTrigger key={key} value={key}>
@@ -57,38 +57,38 @@ export default function AdminOrdersPage() {
             </TabsTrigger>
           ))}
         </TabsList>
-      </Tabs>
 
-      <div className="mt-10">
-        {state.status === "loading" ? (
-          <div>
-            {Array.from({ length: 3 }).map((_, index) => (
-              <AuctionListRowSkeleton key={index} />
-            ))}
-          </div>
-        ) : state.status === "error" ? (
-          <EmptyState tone="error" icon={Receipt} title={tc("tryAgain")} description={state.error.message} />
-        ) : state.data.length === 0 ? (
-          <EmptyState icon={Receipt} title={t("ordersEmptyTitle")} description={t("ordersEmptyBody")} />
-        ) : (
-          <ul>
-            {state.data.map((entry) => (
-              <OrderRow
-                key={entry.order.id}
-                entry={entry}
-                action={
-                  entry.order.status === "PAID" || entry.order.status === "PROCESSING" ? (
-                    <Button size="sm" variant="outline" onClick={() => setRefunding(entry)}>
-                      <Undo2 className="size-4" />
-                      {t("refund")}
-                    </Button>
-                  ) : null
-                }
-              />
-            ))}
-          </ul>
-        )}
-      </div>
+        <TabsContent value={tab} className="mt-10">
+          {state.status === "loading" ? (
+            <div>
+              {Array.from({ length: 3 }).map((_, index) => (
+                <AuctionListRowSkeleton key={index} />
+              ))}
+            </div>
+          ) : state.status === "error" ? (
+            <EmptyState tone="error" icon={Receipt} title={tc("tryAgain")} description={state.error.message} />
+          ) : state.data.length === 0 ? (
+            <EmptyState icon={Receipt} title={t("ordersEmptyTitle")} description={t("ordersEmptyBody")} />
+          ) : (
+            <ul>
+              {state.data.map((entry) => (
+                <OrderRow
+                  key={entry.order.id}
+                  entry={entry}
+                  action={
+                    entry.order.status === "PAID" || entry.order.status === "PROCESSING" ? (
+                      <Button size="sm" variant="outline" onClick={() => setRefunding(entry)}>
+                        <Undo2 className="size-4" />
+                        {t("refund")}
+                      </Button>
+                    ) : null
+                  }
+                />
+              ))}
+            </ul>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <RefundDialog entry={refunding} onClose={() => setRefunding(null)} onRefunded={refresh} />
     </>

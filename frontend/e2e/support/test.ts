@@ -1,8 +1,8 @@
-import type { BrowserContext } from "@playwright/test";
+import { test as base, expect, type BrowserContext, type BrowserContextOptions } from "@playwright/test";
 
 import { createLot, login, TOKEN_STORAGE_KEY } from "./stack";
 
-export { expect, test } from "@playwright/test";
+export { expect };
 
 export interface Lot {
   id: string;
@@ -17,6 +17,50 @@ export interface E2EData {
 }
 
 export const data: E2EData = JSON.parse(process.env.E2E_DATA ?? "null");
+
+// EN: A 4xx the page expected (a wrong password, a refused bid) is shown to the user; a 5xx is a failure.
+// VI: Lỗi 4xx mà trang đã lường trước (sai mật khẩu, bid bị từ chối) được báo cho người dùng; 5xx là lỗi thật.
+const EXPECTED = /Failed to load resource: the server responded with a status of 4\d\d/;
+
+function watchConsole(context: BrowserContext, errors: string[]): void {
+  context.on("console", (message) => {
+    if (message.type() === "error" && !EXPECTED.test(message.text())) {
+      errors.push(`${message.page()?.url() ?? "?"}: ${message.text()}`);
+    }
+  });
+  context.on("weberror", (error) => errors.push(`uncaught: ${error.error().message}`));
+}
+
+/**
+ * EN: Every test fails if any page it opened logged an error or threw: hydration mismatches, React warnings
+ *     raised as errors, failed requests. `openContext` opens extra browsers under the same watch.
+ * VI: Mọi test sẽ trượt nếu trang nào nó mở ghi lỗi ra console hoặc ném exception: lệch hydration, cảnh báo
+ *     React dạng lỗi, request hỏng. `openContext` mở thêm trình duyệt trong cùng sự theo dõi đó.
+ */
+export const test = base.extend<{
+  consoleErrors: string[];
+  openContext: (options?: BrowserContextOptions) => Promise<BrowserContext>;
+}>({
+  consoleErrors: [
+    async ({ context }, provide) => {
+      const errors: string[] = [];
+      watchConsole(context, errors);
+      await provide(errors);
+      expect(errors, "console errors on the pages this test opened").toEqual([]);
+    },
+    { auto: true },
+  ],
+  openContext: async ({ browser, consoleErrors }, provide) => {
+    const opened: BrowserContext[] = [];
+    await provide(async (options) => {
+      const context = await browser.newContext(options);
+      watchConsole(context, consoleErrors);
+      opened.push(context);
+      return context;
+    });
+    await Promise.all(opened.map((context) => context.close()));
+  },
+});
 
 /** EN: A name no other test or attempt uses. / VI: Một cái tên không test hay lần chạy nào khác dùng. */
 export function unique(label: string): string {
@@ -44,7 +88,10 @@ export async function newLot(label: string, open: boolean): Promise<Lot> {
 export async function signIn(context: BrowserContext, email: string): Promise<void> {
   const session = await login(email);
   await context.addInitScript(
-    ([key, value]) => window.localStorage.setItem(key, value),
+    ([key, value]) => {
+      // EN: Not on the blank page a new tab starts on, which has no storage. / VI: Không chạy trên trang trống lúc mở tab mới, vốn không có bộ nhớ.
+      if (window.location.protocol.startsWith("http")) window.localStorage.setItem(key, value);
+    },
     [TOKEN_STORAGE_KEY, JSON.stringify(session)] as const,
   );
 }
