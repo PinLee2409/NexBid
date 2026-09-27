@@ -453,6 +453,11 @@ class AuctionAutoEndTest {
         String seller = tokenFor("end.seller9@nexbid.com", "Ninth Seller", RoleName.SELLER);
         String admin = tokenFor("end.admin9@nexbid.com", "Ninth Admin", RoleName.ADMIN);
         String auction = activeLot(seller, admin, "Last second lot");
+        // EN: Lots other test classes left due would be closed too and spoil the count below (it happened on
+        //     CI, where Linux runs the classes in another order).
+        // VI: Các lô mà test class khác để lại đã tới hạn cũng sẽ bị đóng và làm sai phép đếm bên dưới (đã xảy ra
+        //     trên CI, nơi Linux chạy các class theo thứ tự khác).
+        drain();
         makeDue(auction);
 
         // EN: Plays the part of a bid that passed its clock check a moment before the deadline and is

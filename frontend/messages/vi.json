@@ -207,7 +207,8 @@
     "searchEmptyBody": "Kiểm tra lại chính tả, hoặc duyệt toàn bộ danh mục.",
     "browseAll": "Xem tất cả phiên",
     "pagination": "Trang {page} / {total}",
-    "searchLabel": "Tìm phiên đấu giá"
+    "searchLabel": "Tìm phiên đấu giá",
+    "resultsHeading": "Kết quả"
   },
   "auction": {
     "backToAuctions": "Về danh sách phiên",

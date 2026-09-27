@@ -40,8 +40,10 @@ export function OpeningStage({
         <ProductPhoto
           src={cover?.url}
           alt={cover?.alt}
-          priority
           sizes="100vw"
+          // The page's largest paint: fetched ahead of everything else.
+          loading="eager"
+          fetchPriority="high"
           className="object-cover object-center"
           fallback="none"
         />

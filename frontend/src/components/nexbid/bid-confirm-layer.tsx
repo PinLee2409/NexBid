@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
@@ -54,7 +54,7 @@ export function BidConfirmLayer({
   return (
     <AnimatePresence>
       {open ? (
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -64,7 +64,7 @@ export function BidConfirmLayer({
           aria-modal="true"
           aria-label={t("confirmTitle")}
         >
-          <motion.div
+          <m.div
             initial={{ y: 28, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 14, opacity: 0 }}
@@ -106,8 +106,8 @@ export function BidConfirmLayer({
                 {tc("cancel")}
               </button>
             </div>
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       ) : null}
     </AnimatePresence>
   );

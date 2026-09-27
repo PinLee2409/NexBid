@@ -47,7 +47,12 @@ export function LotNumber({
       {!bare ? (
         <span className="label-sm text-dim translate-y-[-0.1em]">LOT</span>
       ) : null}
-      <span className={cn("display figure", SIZES[size])}>{formatLot(lot)}</span>
+      {decorative ? (
+        // Drawn by CSS: decoration, not text (WCAG 1.4.3 does not apply to it).
+        <span data-lot={formatLot(lot)} className={cn("display figure before:content-[attr(data-lot)]", SIZES[size])} />
+      ) : (
+        <span className={cn("display figure", SIZES[size])}>{formatLot(lot)}</span>
+      )}
     </span>
   );
 }

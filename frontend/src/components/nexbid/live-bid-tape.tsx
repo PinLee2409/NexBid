@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
 
 import { formatCurrency } from "@/lib/format";
@@ -52,7 +52,7 @@ export function LiveBidTape({
           const isTop = index === 0;
 
           return (
-            <motion.li
+            <m.li
               key={bid.id}
               layout
               initial={isFresh ? { opacity: 0, y: -14 } : false}
@@ -99,7 +99,7 @@ export function LiveBidTape({
               >
                 ▲
               </span>
-            </motion.li>
+            </m.li>
           );
         })}
       </AnimatePresence>

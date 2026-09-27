@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // No advertising which framework serves the site.
   poweredByHeader: false,
+  // AVIF where the browser takes it (smaller photos), WebP otherwise.
+  images: {
+    formats: ["image/avif", "image/webp"],
+  },
   // Browser safety headers for pages; the Content Security Policy, which needs
   // a fresh nonce per request, is set in src/proxy.ts. Answers from the backend
   // (/api, /media) carry Spring Security's own headers.

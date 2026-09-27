@@ -50,15 +50,12 @@ export function LocaleSwitcher({
           variant="ghost"
           size={variant === "compact" ? "icon" : "sm"}
           disabled={isPending}
-          aria-label={t("changeLanguage")}
           className={cn(variant === "compact" && "relative", className)}
         >
           <Languages aria-hidden="true" />
-          {variant === "full" ? (
-            <span>{LOCALE_LABELS[current].name}</span>
-          ) : (
-            <span className="sr-only">{LOCALE_LABELS[current].name}</span>
-          )}
+          {/* The spoken name contains the visible one (WCAG 2.5.3): "Change language: English". */}
+          <span className="sr-only">{t("changeLanguage")}: </span>
+          <span className={variant === "full" ? undefined : "sr-only"}>{LOCALE_LABELS[current].name}</span>
         </Button>
       </DropdownMenuTrigger>
 

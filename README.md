@@ -528,6 +528,26 @@ connections busy — caused by looking the account up on every request; caching 
 removed it. Method, all endpoints, database and Redis figures, and how to run it:
 [`docs/load-test`](docs/load-test/README.md).
 
+### Frontend performance
+
+Lighthouse 13 on the production build (`docker compose up`, demo data), mobile profile — simulated slow
+4G and a 4× slower CPU — median of three runs:
+
+| Page | Performance | LCP | Total blocking time | Page weight | Accessibility |
+| --- | --- | --- | --- | --- | --- |
+| Home | 77 → 83 | 6.0 → 4.7 s | 150 → 48 ms | 1012 → 711 KiB | 96 → 100 |
+| Discover | 82 → 87 | 4.9 → 4.0 s | 61 → 38 ms | 1017 → 697 KiB | 98 → 100 |
+| Lot page | 83 → 88 | 4.7 → 3.7 s | 61 → 27 ms | 878 → 636 KiB | 100 |
+| Sign in | 85 → 91 | 4.3 → 3.5 s | 42 → 33 ms | 767 → 508 KiB | 100 |
+
+Desktop scores 99–100 on every page, before and after; layout shift is 0 everywhere. What moved the numbers:
+the logo was being fetched at 1920 and 3840 px wide for a 30 px mark (and its hidden light/dark twin with
+it); photos are served as AVIF; each page's largest image is fetched with `fetchpriority=high` and nothing
+else claims priority; fonts are no longer preloaded (a preload fetched the Vietnamese subset on English pages
+too), with metric-matched fallbacks filling in; framer-motion loads only the features the app uses
+(`LazyMotion`); the home page reads its showcase and editorial lots in parallel. Most of what remains on
+mobile is JavaScript: about 290 KiB, a third of it React itself.
+
 ---
 
 ## Docs

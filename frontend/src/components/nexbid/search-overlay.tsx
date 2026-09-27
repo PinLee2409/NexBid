@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -55,7 +55,7 @@ export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
   return (
     <AnimatePresence>
       {open ? (
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -77,7 +77,7 @@ export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
               </button>
             </div>
 
-            <motion.div
+            <m.div
               initial={{ y: 24, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.34, delay: 0.04, ease: [0.22, 1, 0.36, 1] }}
@@ -99,7 +99,7 @@ export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
                 className="display placeholder:text-dim/50 text-foreground caret-signal-text mt-4 w-full border-none bg-transparent text-[clamp(2.5rem,9vw,7rem)] outline-none"
               />
               <div className="bg-signal-text mt-2 h-px w-full" />
-            </motion.div>
+            </m.div>
 
             <div className="mt-10 pb-20">
               {trimmed === "" ? (
@@ -111,7 +111,7 @@ export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
               ) : (
                 <ul>
                   {results.map((auction, index) => (
-                    <motion.li
+                    <m.li
                       key={auction.id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -136,13 +136,13 @@ export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
                           {formatCurrency(auction.currentPrice)}
                         </span>
                       </Link>
-                    </motion.li>
+                    </m.li>
                   ))}
                 </ul>
               )}
             </div>
           </div>
-        </motion.div>
+        </m.div>
       ) : null}
     </AnimatePresence>
   );

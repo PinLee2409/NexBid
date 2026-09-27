@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { Check, Eye, Gavel, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -449,7 +449,7 @@ function StateBand({
   } as const;
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: "auto" }}
       exit={{ opacity: 0, height: 0 }}
@@ -460,6 +460,6 @@ function StateBand({
       <div className={cn("border-line border-b px-4 py-5", TONE_STYLES[tone])}>
         {children}
       </div>
-    </motion.div>
+    </m.div>
   );
 }
