@@ -130,3 +130,16 @@ Hiện không còn mục nào đang chờ.
 - Test: `LoginRateLimitTest`, `ProductionGuardTest`, `ProductionProfileTest`, `security.spec.ts` (CSP và nonce,
   chặn handler inline bị chèn vào trang, form đăng nhập báo giới hạn).
 
+## Đã làm (27/09/2026) — đợt 8: tiếng Việt và dọn phần còn sót từ thời dữ liệu giả
+
+- **Thông báo lỗi theo ngôn ngữ người đọc:** lỗi đăng nhập/đăng ký trước đây viết cứng bằng tiếng Anh trong code,
+  và 10 màn hình lỗi hiện nguyên văn thông báo tiếng Anh của server. Giờ tất cả dịch theo mã lỗi
+  (`useAuthErrorMessage`, `ApiErrorState`); thêm bản dịch cho `REFRESH_TOKEN_INVALID` và `LOGIN_RATE_LIMITED`.
+  Nhãn cho trình đọc màn hình (Filters, Main, Menu, Breadcrumb, Close) cũng đã dịch.
+- **Test giữ hai bộ thông điệp khớp nhau** (`src/i18n/messages.test.ts`): cùng khoá, cùng placeholder ở hai ngôn ngữ,
+  có thông điệp cho mọi mã lỗi, và danh sách mã lỗi của frontend phải trùng `ErrorCode.java`. E2E
+  `vietnamese.spec.ts` kiểm tra người đọc tiếng Việt thấy lỗi bằng tiếng Việt, không phải tiếng Anh của server.
+- **Dọn code thừa (knip):** xoá 13 component UI không dùng, 18 hàm/hằng/kiểu chết (các hàm service không ai gọi,
+  `isLive`/`isUpcoming`/..., `formatNumber`, `MAIN_NAV`, `PRICE_FILTER`, các kiểu envelope cũ), bỏ `export` ở những
+  thứ chỉ dùng trong file; sửa các chú thích còn nói về "mock". `npm run knip` chạy trong CI.
+

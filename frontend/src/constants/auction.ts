@@ -45,10 +45,3 @@ export const BROWSABLE_STATUSES: AuctionStatus[] = [
   "SCHEDULED",
   "ENDED",
 ];
-
-/** Price filter bounds for the browse sidebar. */
-export const PRICE_FILTER = {
-  min: 0,
-  max: 20_000,
-  step: 100,
-} as const;

@@ -8,6 +8,7 @@ import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { FormField } from "@/components/common/form-field";
+import { useAuthErrorMessage } from "@/hooks/use-labels";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function LoginForm() {
   const t = useTranslations("auth");
+  const authErrorMessage = useAuthErrorMessage();
   const tc = useTranslations("common");
   const router = useRouter();
 
@@ -58,7 +60,7 @@ export function LoginForm() {
       const result = await signIn({ email, password, remember });
 
       if (!result.ok) {
-        setFormError(result.message);
+        setFormError(authErrorMessage(result.error));
         return;
       }
 

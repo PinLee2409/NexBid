@@ -132,8 +132,3 @@ function codeForStatus(status: number): ErrorCode {
   if (status === 404) return "NOT_FOUND";
   return "INTERNAL_ERROR";
 }
-
-/** EN: The error code, whatever was thrown. / VI: Mã lỗi, bất kể thứ bị ném ra là gì. */
-export function errorCodeOf(error: unknown): ErrorCode {
-  return error instanceof ApiError ? error.code : "INTERNAL_ERROR";
-}

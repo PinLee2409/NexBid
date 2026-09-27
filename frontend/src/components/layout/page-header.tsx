@@ -1,9 +1,10 @@
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-export interface Crumb {
+interface Crumb {
   label: string;
   href?: string;
 }
@@ -32,12 +33,14 @@ export function PageHeader({
   className,
   children,
 }: PageHeaderProps) {
+  const t = useTranslations("nav");
+
   return (
     <div className={cn("border-line border-b pb-6", className)}>
       {breadcrumbs?.length ? (
         // A plain trail rather than shadcn's breadcrumb: at this size the
         // separators and links are one line of micro-caps, not a component.
-        <nav aria-label="Breadcrumb" className="mb-4">
+        <nav aria-label={t("breadcrumb")} className="mb-4">
           <ol className="label-sm text-dim flex flex-wrap items-center gap-2">
             {breadcrumbs.map((crumb, index) => {
               const isLast = index === breadcrumbs.length - 1;

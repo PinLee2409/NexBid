@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { AuctionListItem } from "@/components/auction/auction-list-item";
+import { ApiErrorState } from "@/components/common/api-error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { PageHeader } from "@/components/layout/page-header";
@@ -39,7 +40,6 @@ function matchesTab(standing: BidStanding, tab: BidTab): boolean {
 
 export default function MyBidsPage() {
   const t = useTranslations("account");
-  const tc = useTranslations("common");
   const [tab, setTab] = useState<BidTab>("ACTIVE");
 
   const { state } = useAsyncData("my-bids", listMyBids);
@@ -74,12 +74,7 @@ export default function MyBidsPage() {
               ))}
             </div>
           ) : state.status === "error" ? (
-            <EmptyState
-              tone="error"
-              icon={Gavel}
-              title={tc("tryAgain")}
-              description={state.error.message}
-            />
+            <ApiErrorState icon={Gavel} error={state.error} />
           ) : entries.length === 0 ? (
             <EmptyState
               icon={Gavel}

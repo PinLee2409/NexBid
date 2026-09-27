@@ -98,7 +98,7 @@ export function useUnreadNotificationCount(): number {
 }
 
 /** `GET /api/notifications` */
-export async function listNotifications(): Promise<AppNotification[]> {
+async function listNotifications(): Promise<AppNotification[]> {
   const inbox = await api<ApiNotificationInbox>("/api/notifications", { query: { size: PAGE_SIZE } });
   const userId = getCurrentUser()?.id ?? "";
   const items = inbox.notifications.items.map((item) => toNotification(item, userId));

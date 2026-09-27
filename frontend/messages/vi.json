@@ -106,7 +106,10 @@
     "live": "Trực tiếp",
     "discover": "Khám phá",
     "sell": "Đăng bán",
-    "payments": "Thanh toán"
+    "payments": "Thanh toán",
+    "mainNav": "Chính",
+    "menuNav": "Menu",
+    "breadcrumb": "Đường dẫn"
   },
   "footer": {
     "marketplace": "Sàn đấu giá",
@@ -308,7 +311,8 @@
       "confirmMismatch": "Mật khẩu xác nhận không khớp.",
       "invalidCredentials": "Email hoặc mật khẩu không đúng.",
       "emailExists": "Email này đã được đăng ký.",
-      "blocked": "Tài khoản này đã bị khoá."
+      "blocked": "Tài khoản này đã bị khoá.",
+      "tooManyAttempts": "Đăng nhập sai quá nhiều lần. Thử lại sau {minutes} phút."
     },
     "demoTitle": "Tài khoản demo",
     "demoBody": "Đăng nhập bằng {email} với mật khẩu {password} (sau khi nạp dữ liệu demo)."
@@ -904,6 +908,8 @@
     "UNSUPPORTED_MEDIA_TYPE": "Loại file này không được hỗ trợ.",
     "INTERNAL_ERROR": "Đã có lỗi xảy ra. Vui lòng thử lại.",
     "ORDER_STATUS_INVALID": "Đơn hàng không ở bước này.",
-    "ADMIN_NOT_BLOCKABLE": "Không thể khoá tài khoản admin."
+    "ADMIN_NOT_BLOCKABLE": "Không thể khoá tài khoản admin.",
+    "REFRESH_TOKEN_INVALID": "Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại.",
+    "LOGIN_RATE_LIMITED": "Đăng nhập sai quá nhiều lần. Hãy thử lại sau."
   }
 }

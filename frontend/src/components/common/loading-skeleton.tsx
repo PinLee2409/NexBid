@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
  * Placeholders hold the exact geometry of what replaces them, so nothing on
  * the page moves when the data lands. Square, like everything else here.
  */
-export function AuctionCardSkeleton({ className }: { className?: string }) {
+function AuctionCardSkeleton({ className }: { className?: string }) {
   return (
     <div className={cn("", className)}>
       <Skeleton className="aspect-[4/5] rounded-none" />

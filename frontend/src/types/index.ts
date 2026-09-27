@@ -1,9 +1,9 @@
 /**
  * Domain model for NexBid.
  *
- * These types mirror the REST contract described in the project specification
- * (§22–§29). The mock services in `src/services` produce exactly these shapes,
- * so swapping them for a real Spring Boot API should not require UI changes.
+ * These are the shapes the UI is built on, following the REST contract in the
+ * project specification (§22–§29). The services in `src/services` map the
+ * backend's answers (`services/api/dto.ts`) into them (`services/api/mappers.ts`).
  */
 
 /* -------------------------------------------------------------------------- */
@@ -13,71 +13,60 @@
 /** ISO-8601 timestamp, always produced by the server. */
 export type IsoDateString = string;
 
-export type Id = string;
-
-/** Standard success envelope (spec §28). */
-export interface ApiResponse<T> {
-  success: true;
-  message: string;
-  data: T;
-}
-
-/** Standard error envelope (spec §28). */
-export interface ApiError {
-  success: false;
-  code: ErrorCode;
-  message: string;
-  timestamp: IsoDateString;
-}
+type Id = string;
 
 /**
  * Error codes the backend returns — the same list, in the same order, as
- * `backend/.../common/exception/ErrorCode.java`. The two change together.
+ * `backend/.../common/exception/ErrorCode.java`. The two change together;
+ * `src/i18n/messages.test.ts` fails when they drift apart.
  */
-export type ErrorCode =
-  | "USER_NOT_FOUND"
-  | "EMAIL_ALREADY_EXISTS"
-  | "INVALID_CREDENTIALS"
-  | "ACCOUNT_BLOCKED"
-  | "ADMIN_NOT_BLOCKABLE"
-  | "REFRESH_TOKEN_INVALID"
-  | "LOGIN_RATE_LIMITED"
-  | "PRODUCT_NOT_FOUND"
-  | "CATEGORY_NOT_FOUND"
-  | "CATEGORY_ALREADY_EXISTS"
-  | "IMAGE_NOT_FOUND"
-  | "IMAGE_INVALID"
-  | "IMAGE_TOO_LARGE"
-  | "IMAGE_LIMIT_REACHED"
-  | "PRODUCT_NOT_EDITABLE"
-  | "PRODUCT_NOT_SELLABLE"
-  | "PRODUCT_ALREADY_IN_AUCTION"
-  | "AUCTION_NOT_FOUND"
-  | "AUCTION_NOT_ACTIVE"
-  | "AUCTION_ALREADY_ENDED"
-  | "AUCTION_NOT_EDITABLE"
-  | "AUCTION_SCHEDULE_INVALID"
-  | "AUCTION_NOT_PENDING"
-  | "SELLER_CANNOT_BID"
-  | "BID_TOO_LOW"
-  | "BID_CONFLICT"
-  | "BID_RATE_LIMITED"
-  | "AUTO_BID_INVALID"
-  | "AUTO_BID_EXISTS"
-  | "AUTO_BID_NOT_FOUND"
-  | "PAYMENT_NOT_FOUND"
-  | "PAYMENT_EXPIRED"
-  | "PAYMENT_ALREADY_PAID"
-  | "ORDER_NOT_FOUND"
-  | "ORDER_STATUS_INVALID"
-  | "NOTIFICATION_NOT_FOUND"
-  | "ACCESS_DENIED"
-  | "NOT_AUTHENTICATED"
-  | "VALIDATION_ERROR"
-  | "NOT_FOUND"
-  | "METHOD_NOT_ALLOWED"
-  | "UNSUPPORTED_MEDIA_TYPE"
-  | "INTERNAL_ERROR";
+export const ERROR_CODES = [
+  "USER_NOT_FOUND",
+  "EMAIL_ALREADY_EXISTS",
+  "INVALID_CREDENTIALS",
+  "ACCOUNT_BLOCKED",
+  "ADMIN_NOT_BLOCKABLE",
+  "REFRESH_TOKEN_INVALID",
+  "LOGIN_RATE_LIMITED",
+  "PRODUCT_NOT_FOUND",
+  "CATEGORY_NOT_FOUND",
+  "CATEGORY_ALREADY_EXISTS",
+  "IMAGE_NOT_FOUND",
+  "IMAGE_INVALID",
+  "IMAGE_TOO_LARGE",
+  "IMAGE_LIMIT_REACHED",
+  "PRODUCT_NOT_EDITABLE",
+  "PRODUCT_NOT_SELLABLE",
+  "PRODUCT_ALREADY_IN_AUCTION",
+  "AUCTION_NOT_FOUND",
+  "AUCTION_NOT_ACTIVE",
+  "AUCTION_ALREADY_ENDED",
+  "AUCTION_NOT_EDITABLE",
+  "AUCTION_SCHEDULE_INVALID",
+  "AUCTION_NOT_PENDING",
+  "SELLER_CANNOT_BID",
+  "BID_TOO_LOW",
+  "BID_CONFLICT",
+  "BID_RATE_LIMITED",
+  "AUTO_BID_INVALID",
+  "AUTO_BID_EXISTS",
+  "AUTO_BID_NOT_FOUND",
+  "PAYMENT_NOT_FOUND",
+  "PAYMENT_EXPIRED",
+  "PAYMENT_ALREADY_PAID",
+  "ORDER_NOT_FOUND",
+  "ORDER_STATUS_INVALID",
+  "NOTIFICATION_NOT_FOUND",
+  "ACCESS_DENIED",
+  "NOT_AUTHENTICATED",
+  "VALIDATION_ERROR",
+  "NOT_FOUND",
+  "METHOD_NOT_ALLOWED",
+  "UNSUPPORTED_MEDIA_TYPE",
+  "INTERNAL_ERROR",
+] as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[number];
 
 export interface Page<T> {
   items: T[];
@@ -108,7 +97,7 @@ export interface User {
 }
 
 /** Public-facing seller summary shown on auction pages. */
-export interface SellerSummary {
+interface SellerSummary {
   id: Id;
   displayName: string;
   avatarUrl?: string;
@@ -173,7 +162,7 @@ export type AuctionStatus =
   | "REJECTED"
   | "CANCELLED";
 
-export interface AntiSnipingConfig {
+interface AntiSnipingConfig {
   enabled: boolean;
   /** Bids inside this window before `endTime` extend the auction. */
   windowSeconds: number;
@@ -234,7 +223,7 @@ export interface AuctionDetail extends AuctionSummary {
 }
 
 /** Where the signed-in user stands in a given auction. */
-export interface ViewerAuctionState {
+interface ViewerAuctionState {
   isSeller: boolean;
   isHighestBidder: boolean;
   hasBid: boolean;
@@ -281,11 +270,6 @@ export interface Bid {
   createdAt: IsoDateString;
 }
 
-export interface PlaceBidRequest {
-  auctionId: Id;
-  amount: number;
-}
-
 /** What the server answers to an accepted bid. */
 export interface PlaceBidResult {
   bid: Bid;
@@ -313,9 +297,8 @@ export interface AutoBid {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Events broadcast on `/topic/auctions/{auctionId}` (spec §10).
- * The mock realtime client emits exactly these, so the WebSocket swap is a
- * transport change rather than a UI change.
+ * Events broadcast on `/topic/auctions/{auctionId}` (spec §10), as the realtime
+ * service hands them to the pages.
  */
 export type AuctionEvent =
   | {
@@ -351,8 +334,6 @@ export type AuctionEvent =
       viewerCount: number;
       serverTime: IsoDateString;
     };
-
-export type AuctionEventType = AuctionEvent["type"];
 
 /** Transport-agnostic subscription handle. */
 export type Unsubscribe = () => void;

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
+import { ApiErrorState } from "@/components/common/api-error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { OrderRow } from "@/components/common/order-row";
@@ -23,7 +24,6 @@ import { listSoldOrders, shipOrder } from "@/services/seller-service";
  */
 export default function SellerOrdersPage() {
   const t = useTranslations("seller");
-  const tc = useTranslations("common");
 
   const { state, refresh } = useAsyncData("seller-orders", listSoldOrders);
 
@@ -39,7 +39,7 @@ export default function SellerOrdersPage() {
             ))}
           </div>
         ) : state.status === "error" ? (
-          <EmptyState tone="error" icon={Receipt} title={tc("tryAgain")} description={state.error.message} />
+          <ApiErrorState icon={Receipt} error={state.error} />
         ) : state.data.length === 0 ? (
           <EmptyState icon={Receipt} title={t("ordersEmptyTitle")} description={t("ordersEmptyBody")} />
         ) : (

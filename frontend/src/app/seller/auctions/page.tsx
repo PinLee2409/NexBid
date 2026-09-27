@@ -7,6 +7,7 @@ import { useTransition } from "react";
 import { toast } from "sonner";
 
 import { AuctionListItem } from "@/components/auction/auction-list-item";
+import { ApiErrorState } from "@/components/common/api-error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { PageHeader } from "@/components/layout/page-header";
@@ -22,7 +23,6 @@ import type { AuctionSummary } from "@/types";
 
 export default function SellerAuctionsPage() {
   const t = useTranslations("seller");
-  const tc = useTranslations("common");
 
   const { state, refresh } = useAsyncData("seller-auctions", listMyAuctions);
 
@@ -49,12 +49,7 @@ export default function SellerAuctionsPage() {
             ))}
           </div>
         ) : state.status === "error" ? (
-          <EmptyState
-            tone="error"
-            icon={Gavel}
-            title={tc("tryAgain")}
-            description={state.error.message}
-          />
+          <ApiErrorState icon={Gavel} error={state.error} />
         ) : state.data.length === 0 ? (
           <EmptyState
             icon={Gavel}

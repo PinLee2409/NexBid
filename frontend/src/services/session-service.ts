@@ -6,7 +6,7 @@ import { createStore } from "@/lib/create-store";
 import type { User, UserRole } from "@/types";
 
 import type { ApiLogin, ApiUser } from "./api/dto";
-import { ApiError, api } from "./api/http";
+import { api } from "./api/http";
 import { toUser } from "./api/mappers";
 import { keepSessionFresh } from "./api/session-refresh";
 import { clearToken, getToken, hasSession, onTokenChange, setToken } from "./api/token-store";
@@ -104,34 +104,13 @@ export interface SignUpInput extends Credentials {
   fullName: string;
 }
 
+/** EN: A failure carries the error itself; the form puts it in the reader's language. / VI: Lỗi mang theo chính nó; form tự diễn đạt theo ngôn ngữ người đọc. */
 export type AuthResult =
   | { ok: true; user: User }
-  | { ok: false; message: string };
+  | { ok: false; error: unknown };
 
 function failure(error: unknown): AuthResult {
-  if (error instanceof ApiError) {
-    switch (error.code) {
-      case "INVALID_CREDENTIALS":
-        return { ok: false, message: "Incorrect email or password." };
-      case "ACCOUNT_BLOCKED":
-        return { ok: false, message: "This account has been suspended." };
-      case "EMAIL_ALREADY_EXISTS":
-        return { ok: false, message: "An account with this email already exists." };
-      case "VALIDATION_ERROR": {
-        const first = error.details ? Object.values(error.details)[0] : undefined;
-        return { ok: false, message: first ?? error.message };
-      }
-      case "LOGIN_RATE_LIMITED": {
-        const minutes = Math.max(1, Math.ceil((error.retryAfterSeconds ?? 60) / 60));
-        return { ok: false, message: `Too many failed sign-ins. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.` };
-      }
-      case "BID_RATE_LIMITED":
-        return { ok: false, message: "Too many attempts. Wait a moment and try again." };
-      default:
-        break;
-    }
-  }
-  return { ok: false, message: "Something went wrong. Please try again." };
+  return { ok: false, error };
 }
 
 /** `POST /api/auth/login` */

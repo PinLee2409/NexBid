@@ -142,7 +142,7 @@ export interface ApiAutoBid {
   updatedAt: IsoDateString;
 }
 
-export type ApiBidStanding = "WINNING" | "OUTBID" | "WON" | "LOST";
+type ApiBidStanding = "WINNING" | "OUTBID" | "WON" | "LOST";
 
 export interface ApiMyBid {
   auction: ApiAuctionSummary;

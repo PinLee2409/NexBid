@@ -16,7 +16,7 @@ import type { AuctionDetail, AuctionEvent, AuctionStatus, AutoBid, Bid } from "@
  * right after each bid.
  */
 
-export interface AuctionRoomState {
+interface AuctionRoomState {
   currentPrice: number;
   bidCount: number;
   endTime: string;

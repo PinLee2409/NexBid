@@ -95,7 +95,7 @@ export function SiteHeader({ liveCount = 0 }: SiteHeaderProps) {
         <div className="mx-auto flex h-16 max-w-[1680px] items-center gap-8 px-5 sm:px-8">
           <Logo size={26} />
 
-          <nav aria-label="Main" className="hidden items-center gap-7 lg:flex">
+          <nav aria-label={t("mainNav")} className="hidden items-center gap-7 lg:flex">
             {PRIMARY_NAV.map((item) => {
               const active = pathname.startsWith(item.href.split("?")[0]);
               return (
@@ -288,7 +288,7 @@ function MobileMenu({
         </SheetTitle>
       </SheetHeader>
 
-      <nav aria-label="Mobile" className="flex-1 overflow-y-auto">
+      <nav aria-label={t("menuNav")} className="flex-1 overflow-y-auto">
         <ul className="border-line border-b">
           {PRIMARY_NAV.map((item) => (
             <li key={item.key} className="border-line border-b last:border-b-0">

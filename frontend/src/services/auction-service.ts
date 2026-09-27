@@ -23,7 +23,7 @@ export interface AuctionListResult extends Page<AuctionSummary> {
 }
 
 /** `GET /api/server-time` */
-export async function getServerTime(): Promise<string> {
+async function getServerTime(): Promise<string> {
   const { serverTime } = await api<{ serverTime: string }>("/api/server-time");
   return serverTime;
 }
@@ -164,14 +164,4 @@ async function listCategoriesWithLiveCounts(): Promise<Category[]> {
     ),
   );
   return categories.map((category, index) => ({ ...category, auctionCount: counts[index] }));
-}
-
-/** `GET /api/categories/{slug}` */
-export async function getCategoryBySlug(slug: string): Promise<Category | null> {
-  try {
-    return toCategory(await api<ApiCategory>(`/api/categories/${slug}`));
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) return null;
-    throw error;
-  }
 }

@@ -60,6 +60,8 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npm run lint
+      # EN: No unused files, exports or dependencies. / VI: Không có file, export hay thư viện nào bị bỏ không.
+      - run: npm run knip
       - run: npm test
       - run: npm run build
 

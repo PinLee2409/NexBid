@@ -106,7 +106,10 @@
     "live": "Live",
     "discover": "Discover",
     "sell": "Sell",
-    "payments": "Payments"
+    "payments": "Payments",
+    "mainNav": "Main",
+    "menuNav": "Menu",
+    "breadcrumb": "Breadcrumb"
   },
   "footer": {
     "marketplace": "Marketplace",
@@ -308,7 +311,8 @@
       "confirmMismatch": "Passwords do not match.",
       "invalidCredentials": "Incorrect email or password.",
       "emailExists": "An account with this email already exists.",
-      "blocked": "This account has been suspended."
+      "blocked": "This account has been suspended.",
+      "tooManyAttempts": "Too many failed sign-ins. Try again in {minutes, plural, one {# minute} other {# minutes}}."
     },
     "demoTitle": "Demo account",
     "demoBody": "Sign in as {email} with the password {password} (after loading the demo data)."
@@ -904,6 +908,8 @@
     "UNSUPPORTED_MEDIA_TYPE": "That file type is not supported.",
     "INTERNAL_ERROR": "Something went wrong. Please try again.",
     "ORDER_STATUS_INVALID": "This order is not at that step.",
-    "ADMIN_NOT_BLOCKABLE": "Admin accounts cannot be blocked."
+    "ADMIN_NOT_BLOCKABLE": "Admin accounts cannot be blocked.",
+    "REFRESH_TOKEN_INVALID": "Your session has ended. Sign in again.",
+    "LOGIN_RATE_LIMITED": "Too many failed sign-ins. Try again later."
   }
 }

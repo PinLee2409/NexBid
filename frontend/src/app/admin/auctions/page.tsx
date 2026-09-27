@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { ProductPhoto } from "@/components/common/product-photo";
 import { AuctionStatusBadge } from "@/components/auction/auction-status-badge";
 import { CategoryName } from "@/components/common/category-name";
+import { ApiErrorState } from "@/components/common/api-error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { PageHeader } from "@/components/layout/page-header";
@@ -44,7 +45,6 @@ const TAB_KEYS: Record<ReviewTab, string> = {
 
 export default function AdminAuctionsPage() {
   const t = useTranslations("admin");
-  const tc = useTranslations("common");
 
   const [tab, setTab] = useState<ReviewTab>("PENDING_APPROVAL");
   const { state, refresh } = useAsyncData(`admin-auctions-${tab}`, () =>
@@ -78,12 +78,7 @@ export default function AdminAuctionsPage() {
               ))}
             </div>
           ) : state.status === "error" ? (
-            <EmptyState
-              tone="error"
-              icon={Gavel}
-              title={tc("tryAgain")}
-              description={state.error.message}
-            />
+            <ApiErrorState icon={Gavel} error={state.error} />
           ) : state.data.length === 0 ? (
             <EmptyState
               icon={Gavel}

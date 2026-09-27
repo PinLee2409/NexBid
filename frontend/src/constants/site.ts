@@ -22,17 +22,11 @@ export const SITE = {
  * Navigation is defined by translation key, never by literal copy, so every
  * label follows the reader's locale.
  */
-export interface NavItem {
+interface NavItem {
   /** Key inside the `nav` (or `footer`) message namespace. */
   labelKey: string;
   href: string;
 }
-
-export const MAIN_NAV: NavItem[] = [
-  { labelKey: "auctions", href: "/auctions" },
-  { labelKey: "categories", href: "/auctions#categories" },
-  { labelKey: "howItWorks", href: "/how-it-works" },
-];
 
 export interface AccountNavItem extends NavItem {
   icon: LucideIcon;

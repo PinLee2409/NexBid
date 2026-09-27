@@ -26,10 +26,6 @@ const compactCurrencyFormatter = new Intl.NumberFormat(CURRENCY.locale, {
   maximumFractionDigits: 1,
 });
 
-const numberFormatter = new Intl.NumberFormat(CURRENCY.locale, {
-  maximumFractionDigits: 0,
-});
-
 /** `₫18,500,000` — the canonical price rendering across the product. */
 export function formatCurrency(amount: number): string {
   return currencyFormatter.format(amount);
@@ -38,11 +34,6 @@ export function formatCurrency(amount: number): string {
 /** `₫18.5M` — for dense surfaces such as dashboard stat tiles. */
 export function formatCompactCurrency(amount: number): string {
   return compactCurrencyFormatter.format(amount);
-}
-
-/** `18,500,000` — bare number, used inside inputs where the symbol sits outside. */
-export function formatNumber(value: number): string {
-  return numberFormatter.format(value);
 }
 
 /** `1,284` viewers → `1.3K`. Keeps live counters from wrapping. */

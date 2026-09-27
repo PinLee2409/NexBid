@@ -455,6 +455,11 @@ the browse filters kept in the URL, name masking, and the session code — when 
 access token, retries once after a 401, or gives up and signs the user out. They run in about a second and
 need no backend.
 
+They also keep the English and Vietnamese message catalogues in step: the same keys, the same placeholders
+in each translation, and a message for every error code — and the frontend's list of error codes must match
+the backend's `ErrorCode` enum, so the two cannot drift apart. [knip](https://knip.dev) (`npm run knip`) fails
+on unused files, exports and dependencies.
+
 ### End-to-end tests
 
 [Playwright](frontend/e2e) drives the real app in Chromium against a running stack:
@@ -488,7 +493,7 @@ instead of downloading Chromium.
 ### CI/CD
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request: the full
-backend suite (`./mvnw verify`, with Testcontainers on the runner's Docker); `tsc`, ESLint, the unit
+backend suite (`./mvnw verify`, with Testcontainers on the runner's Docker); `tsc`, ESLint, knip, the unit
 tests and `next build` for the frontend; the end-to-end tests against `docker compose up`; then both Docker images are
 built. A push to `main` publishes the images once everything above passed:
 
