@@ -106,7 +106,10 @@
     "live": "Live",
     "discover": "Discover",
     "sell": "Sell",
-    "payments": "Payments"
+    "payments": "Payments",
+    "mainNav": "Main",
+    "menuNav": "Menu",
+    "breadcrumb": "Breadcrumb"
   },
   "footer": {
     "marketplace": "Marketplace",
@@ -308,10 +311,11 @@
       "confirmMismatch": "Passwords do not match.",
       "invalidCredentials": "Incorrect email or password.",
       "emailExists": "An account with this email already exists.",
-      "blocked": "This account has been suspended."
+      "blocked": "This account has been suspended.",
+      "tooManyAttempts": "Too many failed sign-ins. Try again in {minutes, plural, one {# minute} other {# minutes}}."
     },
     "demoTitle": "Demo account",
-    "demoBody": "Sign in with {email} and any password."
+    "demoBody": "Sign in as {email} with the password {password} (after loading the demo data)."
   },
   "account": {
     "title": "Your account",
@@ -392,7 +396,10 @@
     "paymentAmount": "Amount due",
     "paymentTotalDue": "Total outstanding",
     "paymentExpiredNotice": "This payment window has closed. The lot may be offered to the next bidder.",
-    "viewOrder": "View order"
+    "viewOrder": "View order",
+    "confirmReceipt": "Confirm receipt",
+    "receiptConfirmed": "Order completed",
+    "receiptConfirmedBody": "Thanks — the order is closed."
   },
   "seller": {
     "workspace": "Seller workspace",
@@ -492,7 +499,14 @@
       "descriptionRequired": "Add a description.",
       "categoryRequired": "Choose a category.",
       "imagesRequired": "Add at least one photo."
-    }
+    },
+    "ordersTitle": "Orders",
+    "ordersSubtitle": "Your sold lots. Ship paid orders; the buyer confirms receipt.",
+    "ordersEmptyTitle": "No orders yet",
+    "ordersEmptyBody": "Lots you sell appear here once the winner has an order.",
+    "markShipped": "Mark as shipped",
+    "shipped": "Marked as shipped",
+    "shippedBody": "The buyer can now confirm receipt."
   },
   "admin": {
     "console": "Admin console",
@@ -544,7 +558,29 @@
     "auditIp": "IP address",
     "auditEmptyTitle": "No audit entries",
     "auditEmptyBody": "Actions such as approvals, bids and blocks are recorded here.",
-    "system": "System"
+    "system": "System",
+    "ordersTitle": "Orders",
+    "ordersSubtitle": "Every sale, from payment to delivery. Refund a paid order the buyer has not received.",
+    "ordersEmptyTitle": "No orders here",
+    "ordersEmptyBody": "Orders in this status will appear here.",
+    "tabAllOrders": "All",
+    "refund": "Refund",
+    "refundTitle": "Refund this order?",
+    "refundBody": "The order is cancelled and the payment marked refunded. This cannot be undone.",
+    "refunded": "Order refunded",
+    "refundedBody": "The payment is marked refunded.",
+    "confirmRefund": "Refund",
+    "adminNotBlockable": "Admin accounts cannot be blocked.",
+    "activityTitle": "Last 24 hours",
+    "activityHint": "Hourly, from the event stream",
+    "activityBids": "Bids",
+    "activityClosed": "Lots closed",
+    "activitySellThrough": "Sell-through",
+    "activityRevenue": "Revenue paid",
+    "activityChartLabel": "Bids per hour",
+    "activityChartSummary": "{total} bids in the last 24 hours; busiest hour {peak}.",
+    "activityHourBids": "{count, plural, one {# bid} other {# bids}}",
+    "activityUnavailable": "Activity is not available right now."
   },
   "howItWorks": {
     "title": "How NexBid works",
@@ -655,7 +691,10 @@
       "AUCTION_ENDED": "Auction ended",
       "PAYMENT_SUCCESS": "Payment successful",
       "USER_BLOCKED": "User blocked",
-      "USER_UNBLOCKED": "User unblocked"
+      "USER_UNBLOCKED": "User unblocked",
+      "PAYMENT_REFUNDED": "Payment refunded",
+      "ORDER_SHIPPED": "Order shipped",
+      "ORDER_COMPLETED": "Order completed"
     },
     "role": {
       "BUYER": "Buyer",
@@ -867,6 +906,10 @@
     "NOT_FOUND": "Not found.",
     "METHOD_NOT_ALLOWED": "That action is not supported.",
     "UNSUPPORTED_MEDIA_TYPE": "That file type is not supported.",
-    "INTERNAL_ERROR": "Something went wrong. Please try again."
+    "INTERNAL_ERROR": "Something went wrong. Please try again.",
+    "ORDER_STATUS_INVALID": "This order is not at that step.",
+    "ADMIN_NOT_BLOCKABLE": "Admin accounts cannot be blocked.",
+    "REFRESH_TOKEN_INVALID": "Your session has ended. Sign in again.",
+    "LOGIN_RATE_LIMITED": "Too many failed sign-ins. Try again later."
   }
 }

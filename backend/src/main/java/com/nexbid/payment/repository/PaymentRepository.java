@@ -37,4 +37,12 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     @Query("SELECT p FROM Payment p WHERE p.status IN (com.nexbid.payment.PaymentStatus.PENDING, "
             + "com.nexbid.payment.PaymentStatus.FAILED) AND p.expiredAt <= :now ORDER BY p.expiredAt")
     List<Payment> findOverdue(@Param("now") Instant now, Pageable pageable);
+
+    /**
+     * EN: Still waiting on the winner, with a deadline after `from` and no later than `until`.
+     * VI: Vẫn đang chờ người thắng, với hạn chót sau `from` và không muộn hơn `until`.
+     */
+    @Query("SELECT p FROM Payment p WHERE p.status IN (com.nexbid.payment.PaymentStatus.PENDING, "
+            + "com.nexbid.payment.PaymentStatus.FAILED) AND p.expiredAt > :from AND p.expiredAt <= :until")
+    List<Payment> findOpenDueBetween(@Param("from") Instant from, @Param("until") Instant until);
 }

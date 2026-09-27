@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 
 import { createStore } from "@/lib/create-store";
-import type { AuctionSummary, WatchlistItem } from "@/types";
+import type { WatchlistItem } from "@/types";
 
 import type { ApiAuctionSummary } from "./api/dto";
 import { api } from "./api/http";
@@ -89,9 +89,4 @@ export async function listWatchlist(): Promise<WatchlistItem[]> {
   });
   watchStore.setState(new Set(items.map((item) => item.auctionId)));
   return items;
-}
-
-export async function listWatchedAuctions(): Promise<AuctionSummary[]> {
-  const items = await listWatchlist();
-  return items.map((item) => item.auction);
 }

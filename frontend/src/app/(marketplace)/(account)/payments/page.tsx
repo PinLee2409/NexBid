@@ -7,6 +7,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { ProductPhoto } from "@/components/common/product-photo";
+import { ApiErrorState } from "@/components/common/api-error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { PageHeader } from "@/components/layout/page-header";
@@ -70,12 +71,7 @@ export default function PaymentsPage() {
             ))}
           </div>
         ) : state.status === "error" ? (
-          <EmptyState
-            tone="error"
-            icon={Wallet}
-            title={tc("tryAgain")}
-            description={state.error.message}
-          />
+          <ApiErrorState icon={Wallet} error={state.error} />
         ) : entries.length === 0 ? (
           <EmptyState
             icon={Wallet}

@@ -38,11 +38,13 @@ interface FilterSidebarProps {
  * the server re-renders the results and the view stays shareable.
  */
 export function FilterSidebar({ query, categories, className }: FilterSidebarProps) {
+  const tc = useTranslations("common");
+
   return (
     <>
       <aside
         className={cn("hidden lg:block", className)}
-        aria-label="Filters"
+        aria-label={tc("filters")}
       >
         <FilterControls query={query} categories={categories} />
       </aside>

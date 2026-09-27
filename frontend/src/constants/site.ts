@@ -22,17 +22,11 @@ export const SITE = {
  * Navigation is defined by translation key, never by literal copy, so every
  * label follows the reader's locale.
  */
-export interface NavItem {
+interface NavItem {
   /** Key inside the `nav` (or `footer`) message namespace. */
   labelKey: string;
   href: string;
 }
-
-export const MAIN_NAV: NavItem[] = [
-  { labelKey: "auctions", href: "/auctions" },
-  { labelKey: "categories", href: "/auctions#categories" },
-  { labelKey: "howItWorks", href: "/how-it-works" },
-];
 
 export interface AccountNavItem extends NavItem {
   icon: LucideIcon;
@@ -54,6 +48,7 @@ export const SELLER_NAV: AccountNavItem[] = [
   { labelKey: "dashboard", href: "/seller/dashboard", icon: LayoutDashboard },
   { labelKey: "products", href: "/seller/products", icon: Package },
   { labelKey: "auctions", href: "/seller/auctions", icon: Gavel },
+  { labelKey: "orders", href: "/seller/orders", icon: Receipt },
 ];
 
 /** Admin console (spec §36). */
@@ -61,6 +56,7 @@ export const ADMIN_NAV: AccountNavItem[] = [
   { labelKey: "overview", href: "/admin", icon: LayoutDashboard },
   { labelKey: "auctions", href: "/admin/auctions", icon: Gavel },
   { labelKey: "users", href: "/admin/users", icon: UserRound },
+  { labelKey: "orders", href: "/admin/orders", icon: Receipt },
   { labelKey: "auditLogs", href: "/admin/audit-logs", icon: ListChecks },
 ];
 

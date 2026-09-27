@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -34,5 +35,11 @@ public class OrderController {
     @GetMapping("/{id}")
     public ApiResponse<OrderView> one(@AuthenticationPrincipal CurrentUser me, @PathVariable UUID id) {
         return ApiResponse.of(orders.get(me.id(), id));
+    }
+
+    /** EN: The buyer confirms the goods arrived. / VI: Người mua xác nhận đã nhận hàng. */
+    @PostMapping("/{id}/received")
+    public ApiResponse<OrderView> received(@AuthenticationPrincipal CurrentUser me, @PathVariable UUID id) {
+        return ApiResponse.of(orders.confirmReceipt(me.id(), id), "Order received");
     }
 }

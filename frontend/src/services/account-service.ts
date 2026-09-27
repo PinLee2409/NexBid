@@ -87,11 +87,6 @@ export async function getAccountStats(): Promise<AccountStats> {
   };
 }
 
-/** `GET /api/users/me` */
-export async function getProfile(): Promise<User> {
-  return applyAccount(await api<ApiUser>("/api/users/me"));
-}
-
 /**
  * `PUT /api/users/me` — only the name can change. The public handle is
  * derived from it by the server, so it follows on its own.

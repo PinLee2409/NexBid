@@ -75,6 +75,35 @@ export function useBidRejectionMessage() {
  * Localised text for any refusal from the API. The code is the contract; the
  * server's own message is for developers and never shown.
  */
+/**
+ * EN: Why signing in or up failed, in the reader's language. The server's own message is English; only its
+ *     code is used.
+ * VI: Vì sao đăng nhập hay đăng ký thất bại, theo ngôn ngữ người đọc. Thông báo của server là tiếng Anh; chỉ
+ *     dùng mã lỗi của nó.
+ */
+export function useAuthErrorMessage() {
+  const t = useTranslations("auth.errors");
+  const apiError = useApiErrorMessage();
+
+  return (error: unknown): string => {
+    const code = error instanceof ApiError ? error.code : "INTERNAL_ERROR";
+    switch (code) {
+      case "INVALID_CREDENTIALS":
+        return t("invalidCredentials");
+      case "EMAIL_ALREADY_EXISTS":
+        return t("emailExists");
+      case "ACCOUNT_BLOCKED":
+        return t("blocked");
+      case "LOGIN_RATE_LIMITED": {
+        const seconds = error instanceof ApiError ? error.retryAfterSeconds ?? 60 : 60;
+        return t("tooManyAttempts", { minutes: Math.max(1, Math.ceil(seconds / 60)) });
+      }
+      default:
+        return apiError(error);
+    }
+  };
+}
+
 export function useApiErrorMessage() {
   const t = useTranslations("apiErrors");
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export type AsyncState<T> =
+type AsyncState<T> =
   | { status: "loading"; data: null; error: null }
   | { status: "success"; data: T; error: null }
   | { status: "error"; data: null; error: Error };
@@ -16,7 +16,7 @@ export interface AsyncResult<T> {
 const LOADING = { status: "loading", data: null, error: null } as const;
 
 /**
- * Loads data from a mock service with explicit loading / success / error
+ * Loads data from an API service with explicit loading / success / error
  * states, so every screen can render the three UX states the spec requires.
  *
  * `key` identifies the request: change it (a tab, a filter, an id) and the

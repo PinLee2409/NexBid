@@ -8,6 +8,7 @@ import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { FormField } from "@/components/common/form-field";
+import { useAuthErrorMessage } from "@/hooks/use-labels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { signUp } from "@/services/session-service";
@@ -24,6 +25,7 @@ const MIN_PASSWORD_LENGTH = 8;
 
 export function RegisterForm() {
   const t = useTranslations("auth");
+  const authErrorMessage = useAuthErrorMessage();
   const tc = useTranslations("common");
   const router = useRouter();
 
@@ -79,7 +81,7 @@ export function RegisterForm() {
       });
 
       if (!result.ok) {
-        setFormError(result.message);
+        setFormError(authErrorMessage(result.error));
         return;
       }
 

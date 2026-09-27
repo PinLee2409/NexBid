@@ -32,7 +32,10 @@ export function getMinimumNextBid(
   return auction.currentPrice + auction.minimumIncrement;
 }
 
-/** Suggested amounts offered next to the bid input (1x / 2x / 5x increment). */
+/**
+ * Suggested amounts offered next to the bid input: 1x / 2x / 5x the increment,
+ * counted so that 1x is exactly the minimum next bid.
+ */
 export function getQuickBidAmounts(
   auction: Pick<
     Auction,
@@ -41,7 +44,7 @@ export function getQuickBidAmounts(
 ): number[] {
   const minimum = getMinimumNextBid(auction);
   return AUCTION_CONFIG.quickIncrements.map(
-    (multiplier, index) => minimum + index * auction.minimumIncrement * multiplier,
+    (multiplier) => minimum + (multiplier - 1) * auction.minimumIncrement,
   );
 }
 
@@ -54,13 +57,6 @@ export function getMsRemaining(
   now: number,
 ): number {
   return Math.max(0, new Date(auction.endTime).getTime() - now);
-}
-
-export function getMsUntilStart(
-  auction: Pick<Auction, "startTime">,
-  now: number,
-): number {
-  return Math.max(0, new Date(auction.startTime).getTime() - now);
 }
 
 export type UrgencyLevel = "none" | "soon" | "urgent" | "critical";
@@ -85,8 +81,8 @@ export function isEndingSoon(auction: Pick<Auction, "endTime" | "status">, now: 
 
 /**
  * Spec §13: a bid landing inside the anti-sniping window pushes the end time
- * back. Exposed so the bid panel can warn before the fact and so the mock
- * realtime engine can apply the same rule the backend will.
+ * back. The server applies it; this copy only lets the bid panel warn before
+ * the fact.
  */
 export function willTriggerExtension(
   auction: Pick<Auction, "endTime" | "antiSniping">,
@@ -104,30 +100,6 @@ export function applyExtension(
   return new Date(new Date(endTime).getTime() + extensionSeconds * 1000).toISOString();
 }
 
-/* -------------------------------------------------------------------------- */
-/*                                   Status                                   */
-/* -------------------------------------------------------------------------- */
-
-export function isLive(auction: Pick<Auction, "status">): boolean {
-  return auction.status === "ACTIVE";
-}
-
-export function isUpcoming(auction: Pick<Auction, "status">): boolean {
-  return auction.status === "SCHEDULED";
-}
-
-export function isFinished(auction: Pick<Auction, "status">): boolean {
-  return (
-    auction.status === "ENDED" ||
-    auction.status === "COMPLETED" ||
-    auction.status === "CANCELLED"
-  );
-}
-
-export function isBiddable(auction: Pick<Auction, "status">): boolean {
-  return auction.status === "ACTIVE";
-}
-
 /** Seller-side rule: auctions are only editable while still a draft (§7.4). */
 export function isAuctionEditable(status: AuctionStatus): boolean {
   return status === "DRAFT" || status === "REJECTED";
@@ -141,7 +113,7 @@ export function isAuctionEditable(status: AuctionStatus): boolean {
  * Reasons a bid is refused. These are *codes*, never copy — the UI maps them
  * to a localised message from the `bidErrors` namespace.
  */
-export type BidRejectionCode =
+type BidRejectionCode =
   | Extract<
       ErrorCode,
       | "NOT_AUTHENTICATED"

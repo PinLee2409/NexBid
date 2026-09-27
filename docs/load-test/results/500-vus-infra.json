@@ -2,7 +2,7 @@
   "vus": 500,
   "peak_db_connections": 10,
   "peak_busy_db_connections": 3,
-  "redis_hits": 69692,
-  "redis_misses": 500,
-  "redis_hit_rate": 0.9929
+  "redis_hits": 69836,
+  "redis_misses": 23183,
+  "redis_hit_rate": 0.7508
 }

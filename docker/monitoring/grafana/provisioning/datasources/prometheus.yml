@@ -1,0 +1,11 @@
+# EN: The one data source, with a fixed uid so the provisioned dashboard can name it.
+# VI: Nguồn dữ liệu duy nhất, với uid cố định để dashboard dựng sẵn gọi đúng tên nó.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true

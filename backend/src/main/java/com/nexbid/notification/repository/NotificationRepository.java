@@ -16,20 +16,19 @@ import com.nexbid.notification.entity.Notification;
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 
     /**
-     * EN: Adds a notice. For the once-per-lot types, a second attempt for the same person and lot is
-     *     dropped by the partial unique index instead of failing — so a job may safely run twice.
-     * VI: Thêm một thông báo. Với các loại chỉ-một-lần-mỗi-lô, lần thử thứ hai cho cùng người và cùng lô bị
-     *     index duy nhất có điều kiện bỏ qua thay vì báo lỗi — nên một job chạy hai lần vẫn an toàn.
+     * EN: Adds a notice. A repeat the partial unique indexes rule out (once per lot, or an extension while
+     *     the last one is unread) is dropped instead of failing — so a job may safely run twice.
+     * VI: Thêm một thông báo. Lần lặp mà các index duy nhất có điều kiện không cho phép (một lần mỗi lô, hoặc
+     *     gia hạn khi thông báo trước chưa đọc) bị bỏ qua thay vì báo lỗi — nên một job chạy hai lần vẫn an toàn.
      */
     @Modifying
     @Query(value = """
             INSERT INTO notifications (id, user_id, type, title, message, auction_id, is_read, created_at)
-            VALUES (gen_random_uuid(), :userId, :type, :title, :message, :auctionId, FALSE, :createdAt)
-            ON CONFLICT (user_id, auction_id, type)
-                WHERE type IN ('AUCTION_STARTING', 'AUCTION_ENDING', 'AUCTION_WON', 'AUCTION_LOST')
-                DO NOTHING
+            VALUES (:id, :userId, :type, :title, :message, :auctionId, FALSE, :createdAt)
+            ON CONFLICT DO NOTHING
             """, nativeQuery = true)
     int insert(
+            @Param("id") UUID id,
             @Param("userId") UUID userId,
             @Param("type") String type,
             @Param("title") String title,

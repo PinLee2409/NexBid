@@ -3,6 +3,7 @@ package com.nexbid.notification;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,21 +25,30 @@ import com.nexbid.notification.repository.NotificationRepository;
 public class NotificationService {
 
     private final NotificationRepository notifications;
+    private final ApplicationEventPublisher events;
 
-    public NotificationService(NotificationRepository notifications) {
+    public NotificationService(NotificationRepository notifications, ApplicationEventPublisher events) {
         this.notifications = notifications;
+        this.events = events;
     }
 
     /**
      * EN: Records a notice, dated when the event happened rather than when it was written, so notices
-     *     written in parallel still read in the right order. Returns 0 for a once-per-lot repeat.
-     * VI: Ghi một thông báo, đề ngày theo lúc sự việc xảy ra chứ không theo lúc ghi, để các thông báo ghi
-     *     song song vẫn hiện đúng thứ tự. Trả về 0 nếu là lần lặp của loại chỉ-một-lần-mỗi-lô.
+     *     written in parallel still read in the right order, and rings the user's bell once it commits.
+     *     Returns 0 for a repeat the indexes rule out.
+     * VI: Ghi một thông báo, đề ngày theo lúc sự việc xảy ra chứ không theo lúc ghi, để các thông báo ghi song
+     *     song vẫn hiện đúng thứ tự, và rung chuông của người đó khi đã commit. Trả về 0 nếu là lần lặp bị index chặn.
      */
     @Transactional
     public int notify(
             UUID userId, NotificationType type, String title, String message, UUID auctionId, Instant occurredAt) {
-        return notifications.insert(userId, type.name(), title, message, auctionId, occurredAt);
+        UUID id = UUID.randomUUID();
+        int inserted = notifications.insert(id, userId, type.name(), title, message, auctionId, occurredAt);
+        if (inserted == 1) {
+            events.publishEvent(new NotificationCreated(
+                    userId, new NotificationView(id, type, title, message, auctionId, false, occurredAt)));
+        }
+        return inserted;
     }
 
     public NotificationInbox inboxOf(UUID userId, NotificationQuery query) {

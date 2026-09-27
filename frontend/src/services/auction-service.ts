@@ -23,7 +23,7 @@ export interface AuctionListResult extends Page<AuctionSummary> {
 }
 
 /** `GET /api/server-time` */
-export async function getServerTime(): Promise<string> {
+async function getServerTime(): Promise<string> {
   const { serverTime } = await api<{ serverTime: string }>("/api/server-time");
   return serverTime;
 }
@@ -84,6 +84,7 @@ export async function getAuction(auctionId: string): Promise<AuctionDetail | nul
     },
     category,
     seller: { id: detail.seller.id, displayName: detail.seller.displayName },
+    viewerCount: detail.viewerCount ?? undefined,
     watched: false,
     recentBids: bids.items.map((bid) => toBid(bid, null)),
   };
@@ -128,7 +129,8 @@ export async function getHomeFeed(): Promise<HomeFeed> {
     getServerTime(),
   ]);
 
-  const showcase = featured.items[0] ?? null;
+  // EN: The showcase is read in full for its live viewer count. / VI: Lô trưng bày được đọc đầy đủ để lấy số người đang xem.
+  const showcase = featured.items[0] ? ((await getAuction(featured.items[0].id)) ?? featured.items[0]) : null;
   // The editorial spread quotes the description, which cards do not carry. It must not repeat the showcase.
   const spread = live.items.find((auction) => auction.id !== showcase?.id);
   const editorial = spread ? ((await getAuction(spread.id)) ?? spread) : null;
@@ -162,14 +164,4 @@ async function listCategoriesWithLiveCounts(): Promise<Category[]> {
     ),
   );
   return categories.map((category, index) => ({ ...category, auctionCount: counts[index] }));
-}
-
-/** `GET /api/categories/{slug}` */
-export async function getCategoryBySlug(slug: string): Promise<Category | null> {
-  try {
-    return toCategory(await api<ApiCategory>(`/api/categories/${slug}`));
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) return null;
-    throw error;
-  }
 }

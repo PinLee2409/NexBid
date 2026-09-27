@@ -33,6 +33,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
+import com.nexbid.auction.ViewerCountMessage;
 import com.nexbid.support.TestInfrastructure;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserService;
@@ -113,7 +114,12 @@ class RealtimeBidTest {
             @Override
             @SuppressWarnings("unchecked")
             public void handleFrame(StompHeaders headers, Object payload) {
-                inbox.add((Map<String, Object>) payload);
+                Map<String, Object> message = (Map<String, Object>) payload;
+                // EN: Viewer counts have their own test (LotViewersTest); this one listens for bids and lifecycle news.
+                // VI: Số người xem có test riêng (LotViewersTest); test này chỉ nghe tin trả giá và vòng đời lô.
+                if (!ViewerCountMessage.TYPE.equals(message.get("type"))) {
+                    inbox.add(message);
+                }
             }
         });
 

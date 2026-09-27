@@ -24,6 +24,7 @@ import com.nexbid.auction.PageView;
 import com.nexbid.auth.SuccessfulLoginEvent;
 import com.nexbid.bid.BidPlacedEvent;
 import com.nexbid.common.security.CurrentUser;
+import com.nexbid.order.OrderEvents;
 import com.nexbid.payment.PaymentEvents;
 import com.nexbid.user.UserService;
 import com.nexbid.user.UserStatusChangedEvent;
@@ -83,6 +84,22 @@ public class AuditLogService {
     void onPayment(PaymentEvents.Succeeded event) {
         record(event.userId(), AuditAction.PAYMENT_SUCCESS, "Payment", event.paymentId(),
                 null, "SUCCESS");
+    }
+
+    @EventListener
+    void onRefund(PaymentEvents.Refunded event) {
+        record(event.actorId(), AuditAction.PAYMENT_REFUNDED, "Payment", event.paymentId(),
+                "SUCCESS", "REFUNDED");
+    }
+
+    @EventListener
+    void onShipped(OrderEvents.Shipped event) {
+        record(event.actorId(), AuditAction.ORDER_SHIPPED, "Order", event.orderId(), "PAID", "PROCESSING");
+    }
+
+    @EventListener
+    void onReceived(OrderEvents.Received event) {
+        record(event.actorId(), AuditAction.ORDER_COMPLETED, "Order", event.orderId(), "PROCESSING", "COMPLETED");
     }
 
     @EventListener

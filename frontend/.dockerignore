@@ -5,5 +5,12 @@ node_modules
 *.log
 *.tsbuildinfo
 .claude
+e2e
+playwright.config.ts
+**/*.test.ts
+vitest.config.mts
+knip.json
+test-results
+playwright-report
 Dockerfile
 .dockerignore

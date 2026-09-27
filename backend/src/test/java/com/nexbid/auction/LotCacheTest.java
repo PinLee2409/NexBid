@@ -228,6 +228,12 @@ class LotCacheTest {
         mockMvc.perform(get("/api/auctions/" + lot.auctionId()))
                 .andExpect(jsonPath("$.data.images.length()").value(1));
 
+        // EN: Photos are locked while the lot runs; a lot that ended unsold hands the product back to the
+        //     seller, and its public page — still cached — must follow what they change.
+        // VI: Ảnh bị khoá khi lô đang chạy; lô kết thúc không bán được thì trả sản phẩm lại cho người bán, và trang
+        //     công khai của nó — vẫn đang trong cache — phải theo đúng những gì họ đổi.
+        jdbc.update("UPDATE auctions SET status = 'ENDED' WHERE id = ?::uuid", lot.auctionId());
+        jdbc.update("UPDATE products SET status = 'AVAILABLE' WHERE id = ?::uuid", lot.productId());
         addPhoto(lot.seller(), lot.productId());
 
         // EN: Without the eviction this would still say 1 for the rest of the TTL.

@@ -2,7 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Anton, Geist, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
+import { headers } from "next/headers";
 
+import { TimeZoneSync } from "@/components/common/time-zone-sync";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -53,6 +55,8 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const locale = await getLocale();
+  // The Content Security Policy's nonce for this request (src/proxy.ts).
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   return (
     // next-themes writes the theme class on the client before paint, so the
@@ -63,8 +67,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} ${anton.variable} antialiased`}
     >
       <body className="flex min-h-dvh flex-col">
-        <ThemeProvider>
+        <ThemeProvider nonce={nonce}>
           <NextIntlClientProvider>
+            <TimeZoneSync />
             {children}
             <Toaster
               position="bottom-right"

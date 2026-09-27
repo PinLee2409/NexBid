@@ -99,6 +99,7 @@ export function ImageUploader({ value, onChange, error, id }: ImageUploaderProps
           type="file"
           accept="image/*"
           multiple
+          aria-label={t("addPhoto")}
           className="sr-only"
           onChange={(event) => {
             addFiles(event.target.files);

@@ -21,6 +21,24 @@ export const LOCALE_INTL: Record<Locale, string> = {
   vi: "vi-VN",
 };
 
+/**
+ * Times are shown in the reader's own zone. The browser reports it through this
+ * cookie; until it has, the server renders in UTC.
+ */
+export const TIME_ZONE_COOKIE = "NEXBID_TZ";
+
+export const DEFAULT_TIME_ZONE = "UTC";
+
+export function isTimeZone(value: string | undefined): value is string {
+  if (!value) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function isLocale(value: string | undefined): value is Locale {
   return value !== undefined && LOCALES.includes(value as Locale);
 }

@@ -146,6 +146,10 @@ function hrefFor(notification: ApiNotification): string | undefined {
     case "PAYMENT_SUCCESS":
     case "PAYMENT_EXPIRED":
       return "/orders";
+    case "AUCTION_CANCELLED":
+      // EN: A cancelled lot has no public page, and seller and winner land in different places.
+      // VI: Lô đã huỷ không còn trang công khai, và người bán với người thắng xem ở hai nơi khác nhau.
+      return undefined;
     default:
       return notification.auctionId ? `/auctions/${notification.auctionId}` : undefined;
   }

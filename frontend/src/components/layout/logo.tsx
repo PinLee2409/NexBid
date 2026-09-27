@@ -59,7 +59,7 @@ function ThemedArt({
  * lime accent intact; the light cut keeps near-black ink and darkens the lime,
  * which would otherwise sit at roughly 1.1:1 on a pale page.
  */
-export function LogoMark({
+function LogoMark({
   className,
   size = 28,
 }: {

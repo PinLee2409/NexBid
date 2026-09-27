@@ -1,6 +1,7 @@
 import type { ErrorCode } from "@/types";
 
-import { clearToken, getToken } from "./token-store";
+import { RENEW_BEFORE_MS, refreshSession } from "./session-refresh";
+import { clearToken, getToken, hasSession, tokenExpiresIn } from "./token-store";
 
 /**
  * EN: The one way the frontend talks to the backend. In the browser it calls its own origin
@@ -54,9 +55,17 @@ function queryString(query: RequestOptions["query"]): string {
   return text ? `?${text}` : "";
 }
 
-export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function api<T>(path: string, options: RequestOptions = {}, retried = false): Promise<T> {
   const onServer = typeof window === "undefined";
   const url = `${onServer ? SERVER_BASE_URL : ""}${path}${queryString(options.query)}`;
+  // EN: The auth endpoints manage the session themselves. / VI: Các endpoint xác thực tự lo phiên đăng nhập.
+  const authCall = path.startsWith("/api/auth/");
+
+  // EN: A token about to run out (or already out, while a session may remain) is renewed first.
+  // VI: Token sắp hết hạn (hoặc đã hết mà có thể vẫn còn phiên) được gia hạn trước.
+  if (!onServer && !authCall && hasSession() && tokenExpiresIn() <= RENEW_BEFORE_MS) {
+    await refreshSession();
+  }
 
   const headers: Record<string, string> = { Accept: "application/json" };
   let body: BodyInit | undefined;
@@ -95,9 +104,14 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   }
 
   if (!response.ok || payload?.success === false) {
-    // EN: A token the server no longer accepts (expired, account blocked) signs the user out.
-    // VI: Token mà server không còn chấp nhận (hết hạn, tài khoản bị khoá) sẽ đăng xuất người dùng.
-    if (response.status === 401 && token) clearToken();
+    // EN: A token the server no longer accepts gets one renewal and one retry; if the session cannot be
+    //     renewed (signed out elsewhere, account blocked), the user is signed out.
+    // VI: Token mà server không còn chấp nhận được gia hạn một lần và thử lại một lần; nếu không gia hạn được
+    //     (đã đăng xuất ở nơi khác, tài khoản bị khoá) thì người dùng bị đăng xuất.
+    if (response.status === 401 && token && !authCall) {
+      if (!retried && (await refreshSession(token))) return api<T>(path, options, true);
+      clearToken();
+    }
     const retryAfter = Number(response.headers.get("Retry-After"));
     throw new ApiError(
       response.status,
@@ -117,9 +131,4 @@ function codeForStatus(status: number): ErrorCode {
   if (status === 403) return "ACCESS_DENIED";
   if (status === 404) return "NOT_FOUND";
   return "INTERNAL_ERROR";
-}
-
-/** EN: The error code, whatever was thrown. / VI: Mã lỗi, bất kể thứ bị ném ra là gì. */
-export function errorCodeOf(error: unknown): ErrorCode {
-  return error instanceof ApiError ? error.code : "INTERNAL_ERROR";
 }

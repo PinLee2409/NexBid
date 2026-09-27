@@ -13,6 +13,12 @@ public enum ErrorCode {
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT),
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED),
     ACCOUNT_BLOCKED(HttpStatus.FORBIDDEN),
+    // EN: Admins cannot block an admin — not another one, not themselves. / VI: Admin không khoá được admin — kể cả chính mình.
+    ADMIN_NOT_BLOCKABLE(HttpStatus.CONFLICT),
+    // EN: Missing, expired, signed out, or replayed after it was replaced. / VI: Thiếu, hết hạn, đã đăng xuất, hoặc bị dùng lại sau khi đã được thay.
+    REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED),
+    // EN: Too many wrong passwords; Retry-After says when to try again. / VI: Sai mật khẩu quá nhiều lần; Retry-After cho biết khi nào thử lại.
+    LOGIN_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS),
 
     /* --- Catalogue / Sản phẩm ---------------------------------------- */
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND),
@@ -67,6 +73,8 @@ public enum ErrorCode {
     // EN: Already settled — paying twice would charge twice. / VI: Đã thanh toán rồi — trả lần nữa là trừ tiền hai lần.
     PAYMENT_ALREADY_PAID(HttpStatus.CONFLICT),
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND),
+    // EN: A step out of order, e.g. confirming receipt of an order never shipped. / VI: Sai thứ tự bước, ví dụ xác nhận đã nhận một đơn chưa gửi.
+    ORDER_STATUS_INVALID(HttpStatus.CONFLICT),
 
     /* --- Notifications / Thông báo ------------------------------------ */
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND),

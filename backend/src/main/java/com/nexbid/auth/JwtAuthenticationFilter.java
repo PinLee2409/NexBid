@@ -10,10 +10,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.nexbid.auth.jwt.JwtService;
-import com.nexbid.user.UserService;
-import com.nexbid.user.UserStatus;
-
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,14 +25,10 @@ import jakarta.servlet.http.HttpServletResponse;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String PREFIX = "Bearer ";
+    private final TokenAuthenticator tokens;
 
-    private final JwtService jwtService;
-    private final UserService users;
-
-    public JwtAuthenticationFilter(JwtService jwtService, UserService users) {
-        this.jwtService = jwtService;
-        this.users = users;
+    public JwtAuthenticationFilter(TokenAuthenticator tokens) {
+        this.tokens = tokens;
     }
 
     @Override
@@ -45,24 +37,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain chain) throws ServletException, IOException {
 
-        String header = request.getHeader("Authorization");
+        tokens.authenticate(request.getHeader("Authorization")).ifPresent(user -> {
+            // EN: Spring expects ROLE_ prefixed authorities for hasRole(...) to match.
+            // VI: Spring cần authority có tiền tố ROLE_ thì hasRole(...) mới khớp.
+            List<SimpleGrantedAuthority> authorities = user.roles().stream()
+                    .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                    .toList();
 
-        if (header != null && header.startsWith(PREFIX)) {
-            jwtService.read(header.substring(PREFIX.length()))
-                    .filter(user -> users.findById(user.id())
-                            .map(account -> account.status() == UserStatus.ACTIVE)
-                            .orElse(false))
-                    .ifPresent(user -> {
-                // EN: Spring expects ROLE_ prefixed authorities for hasRole(...) to match.
-                // VI: Spring cần authority có tiền tố ROLE_ thì hasRole(...) mới khớp.
-                List<SimpleGrantedAuthority> authorities = user.roles().stream()
-                        .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
-                        .toList();
-
-                var authentication = new UsernamePasswordAuthenticationToken(user, null, authorities);
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-                    });
-        }
+            var authentication = new UsernamePasswordAuthenticationToken(user, null, authorities);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+        });
 
         // EN: A missing or bad token is not an error here — the request simply stays anonymous and
         //     the authorisation rules decide. That keeps public endpoints working.

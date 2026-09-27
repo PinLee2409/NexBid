@@ -1,0 +1,108 @@
+{
+  "uid": "nexbid-overview",
+  "title": "NexBid",
+  "description": "Spec §34 metrics: bids, bid latency, active auctions, realtime sessions, payments — plus the database pool the load test found to be the bottleneck.",
+  "tags": ["nexbid"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Active auctions",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(active_auctions{application=\"nexbid\"})" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "none" }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Realtime sessions",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(websocket_connections{application=\"nexbid\"})" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area", "colorMode": "none" }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Bid requests (last hour)",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(increase(bid_requests_total{application=\"nexbid\"}[1h]))" }],
+      "fieldConfig": { "defaults": { "decimals": 0 } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "none" }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Payments (last hour)",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(increase(payment_success_total{application=\"nexbid\"}[1h]))" }],
+      "fieldConfig": { "defaults": { "decimals": 0 } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "none" }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Bids per second",
+      "gridPos": { "x": 0, "y": 5, "w": 12, "h": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(bid_success_total{application=\"nexbid\"}[1m]))", "legendFormat": "accepted" },
+        { "refId": "B", "expr": "sum by (reason) (rate(bid_failed_total{application=\"nexbid\"}[1m]))", "legendFormat": "refused: {{reason}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 0 } } },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Bid latency",
+      "description": "Time to answer POST /api/auctions/{id}/bids. Spec §31 target: p95 under 500 ms.",
+      "gridPos": { "x": 12, "y": 5, "w": 12, "h": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.50, sum by (le) (rate(bid_latency_seconds_bucket{application=\"nexbid\"}[1m])))", "legendFormat": "p50" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le) (rate(bid_latency_seconds_bucket{application=\"nexbid\"}[1m])))", "legendFormat": "p95" },
+        { "refId": "C", "expr": "histogram_quantile(0.99, sum by (le) (rate(bid_latency_seconds_bucket{application=\"nexbid\"}[1m])))", "legendFormat": "p99" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 0 } } },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Database connections",
+      "description": "The pool the load test found busy at 1000 users (docs/load-test).",
+      "gridPos": { "x": 0, "y": 14, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(hikaricp_connections_active{application=\"nexbid\"})", "legendFormat": "in use" },
+        { "refId": "B", "expr": "sum(hikaricp_connections_pending{application=\"nexbid\"})", "legendFormat": "waiting" },
+        { "refId": "C", "expr": "sum(hikaricp_connections_max{application=\"nexbid\"})", "legendFormat": "pool size" }
+      ],
+      "fieldConfig": { "defaults": { "decimals": 0, "custom": { "lineWidth": 2, "fillOpacity": 0 } } },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "JVM heap",
+      "gridPos": { "x": 12, "y": 14, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(jvm_memory_used_bytes{application=\"nexbid\", area=\"heap\"})", "legendFormat": "used" },
+        { "refId": "B", "expr": "sum(jvm_memory_max_bytes{application=\"nexbid\", area=\"heap\"})", "legendFormat": "max" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 2, "fillOpacity": 0 } } },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    }
+  ]
+}

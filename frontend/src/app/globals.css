@@ -90,10 +90,10 @@
   --surface-2: #e7e7e1;
 
   --foreground: #111110;
-  --muted-foreground: #5c5c57;
-  /* Darker than the dark theme's equivalent: the same apparent quietness on a
-     pale page would leave the micro-caps under 3:1. */
-  --dim: #74746e;
+  --muted-foreground: #4e4e49;
+  /* The quietest text still reads at 4.5:1 (WCAG AA) on every light surface,
+     down to surface-2; muted sits a clear step above it. */
+  --dim: #666660;
 
   --line: rgba(17, 17, 16, 0.12);
   --line-strong: rgba(17, 17, 16, 0.26);
@@ -150,8 +150,9 @@
   --surface-2: #161616;
 
   --foreground: #f2f0ea;
-  --muted-foreground: #8a8a85;
-  --dim: #5a5a56;
+  --muted-foreground: #9b9a94;
+  /* 4.5:1 (WCAG AA) on every dark surface, down to surface-2. */
+  --dim: #807f79;
 
   --line: rgba(242, 240, 234, 0.1);
   --line-strong: rgba(242, 240, 234, 0.2);

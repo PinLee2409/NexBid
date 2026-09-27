@@ -84,6 +84,21 @@ export interface ApiImage {
   sortOrder: number;
 }
 
+/** EN: One UTC hour of the Analytics Consumer's totals. / VI: Một giờ UTC trong số liệu tổng của Analytics Consumer. */
+export interface ApiAnalyticsHour {
+  hour: IsoDateString;
+  bids: number;
+  auctionsEnded: number;
+  auctionsSold: number;
+  payments: number;
+  revenue: number;
+}
+
+export interface ApiAnalyticsReport {
+  hours: ApiAnalyticsHour[];
+  totals: Omit<ApiAnalyticsHour, "hour"> & { sellThrough: number | null };
+}
+
 export interface ApiAuctionDetail {
   auction: ApiAuction;
   product: { id: string; name: string; description: string; condition: ProductCondition };
@@ -92,6 +107,8 @@ export interface ApiAuctionDetail {
   seller: { id: string; displayName: string };
   minimumNextBid: number;
   openForBidding: boolean;
+  /** EN: Null when the server cannot count right now. / VI: Null khi server tạm thời không đếm được. */
+  viewerCount: number | null;
   serverTime: IsoDateString;
 }
 
@@ -125,7 +142,7 @@ export interface ApiAutoBid {
   updatedAt: IsoDateString;
 }
 
-export type ApiBidStanding = "WINNING" | "OUTBID" | "WON" | "LOST";
+type ApiBidStanding = "WINNING" | "OUTBID" | "WON" | "LOST";
 
 export interface ApiMyBid {
   auction: ApiAuctionSummary;
@@ -224,4 +241,5 @@ export type ApiAuctionMessage =
       startTime: IsoDateString;
       endTime: IsoDateString;
       serverTime: IsoDateString;
-    };
+    }
+  | { type: "VIEWER_COUNT"; auctionId: string; viewerCount: number };

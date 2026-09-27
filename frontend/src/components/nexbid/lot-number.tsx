@@ -7,6 +7,8 @@ interface LotNumberProps {
   size?: LotSize;
   /** Hides the small "LOT" caption, leaving just the figure. */
   bare?: boolean;
+  /** Pure composition (a faint watermark): hidden from assistive tech, which reads the number elsewhere. */
+  decorative?: boolean;
   className?: string;
 }
 
@@ -32,10 +34,16 @@ export function LotNumber({
   lot,
   size = "sm",
   bare = false,
+  decorative = false,
   className,
 }: LotNumberProps) {
   return (
-    <span className={cn("inline-flex items-baseline gap-2", className)}>
+    <span
+      className={cn("inline-flex items-baseline gap-2", className)}
+      aria-hidden={decorative || undefined}
+      // Lets accessibility checks skip it: decorative text has no contrast requirement (WCAG 1.4.3).
+      data-decorative={decorative || undefined}
+    >
       {!bare ? (
         <span className="label-sm text-dim translate-y-[-0.1em]">LOT</span>
       ) : null}

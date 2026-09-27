@@ -61,12 +61,14 @@ export function OpeningStage({
             lot={auction.lotNumber}
             size="xl"
             bare
+            decorative
             className="text-foreground/12 -mt-6 leading-[0.8] select-none sm:-mt-10"
           />
         </div>
 
         <div className="mt-auto">
-          <p className="label text-muted-foreground mb-3">
+          {/* Sits where the scrim is still thin: the title's shadow keeps it legible on a bright photo. */}
+          <p className="label over-image text-foreground/85 mb-3">
             {t("openingLot")} · {auction.category.name}
           </p>
 

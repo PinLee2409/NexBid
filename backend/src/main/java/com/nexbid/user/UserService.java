@@ -10,6 +10,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.context.ApplicationEventPublisher;
 
+import com.nexbid.common.exception.BusinessException;
 import com.nexbid.common.exception.ErrorCode;
 import com.nexbid.common.exception.ResourceNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +51,17 @@ public class UserService {
      */
     public Optional<UserCredentials> findCredentialsByEmail(String email) {
         return users.findByEmailIgnoreCase(email).map(user -> new UserCredentials(
+                user.getId(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getPassword(),
+                user.getStatus(),
+                roleNames(user)));
+    }
+
+    /** EN: As above, by id: for renewing a session. / VI: Như trên, theo id: dùng khi gia hạn phiên đăng nhập. */
+    public Optional<UserCredentials> findCredentialsById(java.util.UUID id) {
+        return users.findById(id).map(user -> new UserCredentials(
                 user.getId(),
                 user.getFullName(),
                 user.getEmail(),
@@ -147,12 +159,20 @@ public class UserService {
                 found.getNumber() + 1, found.getSize(), found.getTotalElements(), found.getTotalPages());
     }
 
-    /** EN: A status change and its audit event commit together. / VI: Đổi trạng thái và audit commit cùng nhau. */
+    /**
+     * EN: A status change and its audit event commit together. An ADMIN account cannot be blocked — not by
+     *     another admin, not by itself — so the console can never lock out the people who run it.
+     * VI: Đổi trạng thái và audit commit cùng nhau. Tài khoản ADMIN không thể bị khoá — bởi admin khác hay
+     *     bởi chính mình — để trang quản trị không bao giờ tự khoá mất những người vận hành nó.
+     */
     @Transactional
     public UserAccount setBlocked(java.util.UUID id, java.util.UUID adminId, boolean blocked) {
         User user = users.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.USER_NOT_FOUND, "No account with id " + id));
+        if (blocked && roleNames(user).contains(RoleName.ADMIN)) {
+            throw new BusinessException(ErrorCode.ADMIN_NOT_BLOCKABLE, "An admin account cannot be blocked");
+        }
         UserStatus next = blocked ? UserStatus.BLOCKED : UserStatus.ACTIVE;
         UserStatus before = user.getStatus();
         if (before != next) {

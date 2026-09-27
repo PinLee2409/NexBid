@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import { AuctionListItem } from "@/components/auction/auction-list-item";
 import { WatchButton } from "@/components/auction/watch-button";
+import { ApiErrorState } from "@/components/common/api-error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { PageHeader } from "@/components/layout/page-header";
@@ -37,12 +38,7 @@ export default function WatchlistPage() {
             ))}
           </div>
         ) : state.status === "error" ? (
-          <EmptyState
-            tone="error"
-            icon={Heart}
-            title={tc("tryAgain")}
-            description={state.error.message}
-          />
+          <ApiErrorState icon={Heart} error={state.error} />
         ) : state.data.length === 0 ? (
           <EmptyState
             icon={Heart}

@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.mockito.Mockito;
 
 import com.nexbid.auth.JwtAuthenticationFilter;
+import com.nexbid.auth.TokenAuthenticator;
 import com.nexbid.auth.jwt.JwtProperties;
 import com.nexbid.auth.jwt.JwtService;
 import com.nexbid.infrastructure.config.SecurityConfig;
@@ -18,7 +19,7 @@ import com.nexbid.user.UserService;
  */
 @TestConfiguration(proxyBeanMethods = false)
 @EnableConfigurationProperties(JwtProperties.class)
-@Import({ SecurityConfig.class, JwtAuthenticationFilter.class, JwtService.class })
+@Import({ SecurityConfig.class, JwtAuthenticationFilter.class, TokenAuthenticator.class, JwtService.class })
 public class WebSliceSecurity {
 
     @Bean

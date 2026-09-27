@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 
 import { AuctionListItem } from "@/components/auction/auction-list-item";
+import { ApiErrorState } from "@/components/common/api-error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { PageHeader } from "@/components/layout/page-header";
@@ -33,12 +34,7 @@ export default function MyWinsPage() {
             ))}
           </div>
         ) : state.status === "error" ? (
-          <EmptyState
-            tone="error"
-            icon={Trophy}
-            title={tc("tryAgain")}
-            description={state.error.message}
-          />
+          <ApiErrorState icon={Trophy} error={state.error} />
         ) : state.data.length === 0 ? (
           <EmptyState
             icon={Trophy}

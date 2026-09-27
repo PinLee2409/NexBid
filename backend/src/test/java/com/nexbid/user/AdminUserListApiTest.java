@@ -1,5 +1,6 @@
 package com.nexbid.user;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -74,6 +75,48 @@ class AdminUserListApiTest {
                         .header("Authorization", "Bearer " + admin))
                 .andExpect(jsonPath("$.data.totalItems").value(1))
                 .andExpect(jsonPath("$.data.items[0].id").value(quinn));
+    }
+
+    @Test
+    void noAdminCanBeBlockedNotEvenByThemselves() throws Exception {
+        String admin = tokenFor("userlist.boss@nexbid.com", "Boss Admin", RoleName.ADMIN);
+        tokenFor("userlist.peer@nexbid.com", "Peer Admin", RoleName.ADMIN);
+        String self = users.findByEmail("userlist.boss@nexbid.com").orElseThrow().id().toString();
+        String peer = users.findByEmail("userlist.peer@nexbid.com").orElseThrow().id().toString();
+
+        for (String target : java.util.List.of(self, peer)) {
+            mockMvc.perform(patch("/api/admin/users/" + target + "/block").header("Authorization", "Bearer " + admin)
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"blocked\":true}"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("ADMIN_NOT_BLOCKABLE"));
+        }
+        assertThat(users.findByEmail("userlist.peer@nexbid.com").orElseThrow().status()).isEqualTo(UserStatus.ACTIVE);
+
+        // EN: Unblocking is never refused — it can only give access back. / VI: Mở khoá không bao giờ bị từ chối — nó chỉ trả lại quyền truy cập.
+        mockMvc.perform(patch("/api/admin/users/" + peer + "/block").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"blocked\":false}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void aBlockedAccountsTokenStopsWorkingOnTheVeryNextRequest() throws Exception {
+        String admin = tokenFor("userlist.warden@nexbid.com", "Warden Admin", RoleName.ADMIN);
+        String buyer = tokenFor("userlist.cached@nexbid.com", "Cached Buyer", RoleName.BUYER);
+        String buyerId = users.findByEmail("userlist.cached@nexbid.com").orElseThrow().id().toString();
+
+        // EN: The first request remembers the account as active. / VI: Request đầu tiên ghi nhớ tài khoản đang hoạt động.
+        mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + buyer)).andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/admin/users/" + buyerId + "/block").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"blocked\":true}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + buyer))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(patch("/api/admin/users/" + buyerId + "/block").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"blocked\":false}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + buyer)).andExpect(status().isOk());
     }
 
     @Test

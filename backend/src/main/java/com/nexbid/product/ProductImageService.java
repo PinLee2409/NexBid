@@ -108,6 +108,7 @@ public class ProductImageService {
             UUID sellerId, UUID productId, List<MultipartFile> files, String altText) {
 
         Product product = ownedProduct(sellerId, productId);
+        requireEditable(product);
 
         if (files == null || files.isEmpty()) {
             throw new BusinessException(ErrorCode.IMAGE_INVALID, "No file was uploaded");
@@ -138,7 +139,7 @@ public class ProductImageService {
      */
     @Transactional
     public List<ProductImageView> remove(UUID sellerId, UUID productId, UUID imageId) {
-        ownedProduct(sellerId, productId);
+        requireEditable(ownedProduct(sellerId, productId));
 
         ProductImage image = images.findByIdAndProductId(imageId, productId)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -163,7 +164,7 @@ public class ProductImageService {
      */
     @Transactional
     public List<ProductImageView> makeCover(UUID sellerId, UUID productId, UUID imageId) {
-        ownedProduct(sellerId, productId);
+        requireEditable(ownedProduct(sellerId, productId));
 
         ProductImage chosen = images.findByIdAndProductId(imageId, productId)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -219,6 +220,17 @@ public class ProductImageService {
         return products.findByIdAndSellerId(productId, sellerId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.PRODUCT_NOT_FOUND, "No product with id " + productId));
+    }
+
+    /**
+     * EN: Photos are part of what the admin approved, so they lock with the rest of the listing.
+     * VI: Ảnh là một phần của những gì admin đã duyệt, nên bị khoá cùng phần còn lại của tin bán.
+     */
+    private static void requireEditable(Product product) {
+        if (product.getStatus() == ProductStatus.IN_AUCTION || product.getStatus() == ProductStatus.SOLD) {
+            throw new BusinessException(
+                    ErrorCode.PRODUCT_NOT_EDITABLE, "The photos of a product in an auction or sold cannot be changed");
+        }
     }
 
     private List<ProductImageView> toViews(UUID productId) {

@@ -6,11 +6,12 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { AuctionListItem } from "@/components/auction/auction-list-item";
+import { ApiErrorState } from "@/components/common/api-error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { formatCurrency } from "@/lib/format";
 import { listMyBids, type BidStanding, type MyBidEntry } from "@/services/account-service";
@@ -39,7 +40,6 @@ function matchesTab(standing: BidStanding, tab: BidTab): boolean {
 
 export default function MyBidsPage() {
   const t = useTranslations("account");
-  const tc = useTranslations("common");
   const [tab, setTab] = useState<BidTab>("ACTIVE");
 
   const { state } = useAsyncData("my-bids", listMyBids);
@@ -56,7 +56,7 @@ export default function MyBidsPage() {
       <Tabs
         value={tab}
         onValueChange={(value) => setTab(value as BidTab)}
-        className="mt-6"
+        className="mt-6 block"
       >
         <TabsList>
           {(Object.keys(TAB_KEYS) as BidTab[]).map((key) => (
@@ -65,37 +65,32 @@ export default function MyBidsPage() {
             </TabsTrigger>
           ))}
         </TabsList>
-      </Tabs>
 
-      <div className="mt-6">
-        {state.status === "loading" ? (
-          <div>
-            {Array.from({ length: 3 }).map((_, index) => (
-              <AuctionListRowSkeleton key={index} />
-            ))}
-          </div>
-        ) : state.status === "error" ? (
-          <EmptyState
-            tone="error"
-            icon={Gavel}
-            title={tc("tryAgain")}
-            description={state.error.message}
-          />
-        ) : entries.length === 0 ? (
-          <EmptyState
-            icon={Gavel}
-            title={t("bidsEmptyTitle")}
-            description={t("bidsEmptyBody")}
-            action={{ label: t("bidsEmptyAction"), href: "/auctions" }}
-          />
-        ) : (
-          <ul>
-            {entries.map((entry) => (
-              <BidRow key={entry.auction.id} entry={entry} />
-            ))}
-          </ul>
-        )}
-      </div>
+        <TabsContent value={tab} className="mt-6">
+          {state.status === "loading" ? (
+            <div>
+              {Array.from({ length: 3 }).map((_, index) => (
+                <AuctionListRowSkeleton key={index} />
+              ))}
+            </div>
+          ) : state.status === "error" ? (
+            <ApiErrorState icon={Gavel} error={state.error} />
+          ) : entries.length === 0 ? (
+            <EmptyState
+              icon={Gavel}
+              title={t("bidsEmptyTitle")}
+              description={t("bidsEmptyBody")}
+              action={{ label: t("bidsEmptyAction"), href: "/auctions" }}
+            />
+          ) : (
+            <ul>
+              {entries.map((entry) => (
+                <BidRow key={entry.auction.id} entry={entry} />
+              ))}
+            </ul>
+          )}
+        </TabsContent>
+      </Tabs>
     </>
   );
 }

@@ -9,8 +9,11 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,11 +25,13 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.nexbid.infrastructure.kafka.ConsumedEvents;
 import com.nexbid.infrastructure.kafka.EventHeaders;
+import com.nexbid.infrastructure.kafka.KafkaConfig;
 import com.nexbid.payment.PaymentEvents;
 import com.nexbid.support.TestInfrastructure;
 import com.nexbid.user.RoleName;
@@ -60,6 +65,9 @@ class NotificationConsumerTest {
 
     @Autowired
     private KafkaTemplate<String, String> kafka;
+
+    @Autowired
+    private ConsumerFactory<String, String> consumers;
 
     @Autowired
     private ConsumedEvents consumed;
@@ -111,6 +119,25 @@ class NotificationConsumerTest {
         kafka.send(record).join();
     }
 
+    /**
+     * EN: The dead letter for one event, read from the start of the payments DLT, or null within the time.
+     * VI: Thư chết của một sự kiện, đọc từ đầu DLT của payments, hoặc null nếu hết thời gian.
+     */
+    private ConsumerRecord<String, String> deadLetterOf(UUID eventId) {
+        try (Consumer<String, String> consumer = consumers.createConsumer("dlt-probe-" + UUID.randomUUID(), null)) {
+            consumer.subscribe(List.of("nexbid.payments" + KafkaConfig.DEAD_LETTER_SUFFIX));
+            long deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos();
+            while (System.nanoTime() < deadline) {
+                for (ConsumerRecord<String, String> record : consumer.poll(Duration.ofMillis(200))) {
+                    if (eventId.equals(EventHeaders.idOf(record))) {
+                        return record;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     private int paymentNotices(UUID user) {
         return jdbc.queryForObject(
                 "SELECT count(*) FROM notifications WHERE user_id = ? AND type = 'PAYMENT_SUCCESS'", Integer.class, user);
@@ -153,9 +180,9 @@ class NotificationConsumerTest {
                 .isEqualTo(1);
         // EN: Not even marked as handled — it was never this consumer's to handle.
         // VI: Thậm chí không được đánh dấu là đã xử lý — nó chưa bao giờ là việc của consumer này.
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM consumed_events WHERE event_id = ?", Integer.class, opened))
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM consumed_events WHERE consumer = 'notifications' AND event_id = ?", Integer.class, opened))
                 .isZero();
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM consumed_events WHERE event_id = ?", Integer.class, marker))
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM consumed_events WHERE consumer = 'notifications' AND event_id = ?", Integer.class, marker))
                 .isEqualTo(1);
     }
 
@@ -174,8 +201,15 @@ class NotificationConsumerTest {
 
         await().atMost(Duration.ofSeconds(15)).until(() -> paymentNotices(buyer) == 1);
         assertThat(output).contains("Skipping an event that can never be handled: PaymentEvents.Succeeded at nexbid.payments-");
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM consumed_events WHERE event_id = ?", Integer.class, broken))
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM consumed_events WHERE consumer = 'notifications' AND event_id = ?", Integer.class, broken))
                 .isZero();
+
+        // EN: Set aside, not thrown away: the dead letter is the original, key and body unchanged.
+        // VI: Được tách riêng chứ không vứt đi: thư chết chính là bản gốc, khoá và nội dung giữ nguyên.
+        ConsumerRecord<String, String> parked = deadLetterOf(broken);
+        assertThat(parked).isNotNull();
+        assertThat(parked.key()).isEqualTo(lot.toString());
+        assertThat(parked.value()).isEqualTo("{\"paymentId\": not json");
     }
 
     @Test
@@ -194,8 +228,9 @@ class NotificationConsumerTest {
 
         await().atMost(Duration.ofSeconds(15)).until(() -> paymentNotices(buyer) == 1);
         assertThat(output).contains("Skipping an event that can never be handled: PaymentEvents.Succeeded at nexbid.payments-");
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM consumed_events WHERE event_id = ?", Integer.class, refused))
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM consumed_events WHERE consumer = 'notifications' AND event_id = ?", Integer.class, refused))
                 .isZero();
+        assertThat(deadLetterOf(refused)).isNotNull();
     }
 
     @Test

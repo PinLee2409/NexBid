@@ -1,12 +1,14 @@
 "use client";
 
+import { LogOut } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { BUYER_NAV } from "@/constants/site";
 import { cn } from "@/lib/utils";
 import { useUnreadNotificationCount } from "@/services/notification-service";
+import { signOut } from "@/services/session-service";
 import { useWatchedAuctionIds } from "@/services/watchlist-service";
 
 /**
@@ -15,7 +17,9 @@ import { useWatchedAuctionIds } from "@/services/watchlist-service";
  */
 export function AccountNav() {
   const t = useTranslations("nav");
+  const tc = useTranslations("common");
   const pathname = usePathname();
+  const router = useRouter();
 
   const unread = useUnreadNotificationCount();
   const watching = useWatchedAuctionIds().size;
@@ -87,6 +91,19 @@ export function AccountNav() {
           );
         })}
       </ul>
+
+      {/* EN: Desktop has no menu sheet, so signing out lives here. / VI: Desktop không có menu trượt, nên nút đăng xuất nằm ở đây. */}
+      <button
+        type="button"
+        onClick={async () => {
+          await signOut();
+          router.push("/");
+        }}
+        className="label text-muted-foreground hover:text-foreground mt-6 hidden w-full items-center gap-3 py-3.5 pl-4 transition-colors lg:flex"
+      >
+        <LogOut className="size-4 shrink-0" aria-hidden="true" />
+        {tc("signOut")}
+      </button>
     </nav>
   );
 }

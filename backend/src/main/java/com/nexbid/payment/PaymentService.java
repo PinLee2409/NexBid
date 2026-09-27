@@ -81,6 +81,47 @@ public class PaymentService {
                         Payment::getId, payment -> view(payment, null, now).payment()));
     }
 
+    /**
+     * EN: The same, whoever paid — for the seller's and the admin's view of an order.
+     * VI: Như trên, bất kể ai trả — cho màn hình đơn hàng của người bán và của admin.
+     */
+    public Map<UUID, PaymentView.Details> detailsOf(List<UUID> paymentIds) {
+        Instant now = Instant.now();
+        return payments.findAllById(paymentIds).stream()
+                .collect(Collectors.toMap(Payment::getId, payment -> view(payment, null, now).payment()));
+    }
+
+    /**
+     * EN: Payments still open whose deadline falls after `from` and no later than `until`.
+     * VI: Các khoản còn mở có hạn chót sau `from` và không muộn hơn `until`.
+     */
+    public List<PaymentDue> openDueBetween(Instant from, Instant until) {
+        return payments.findOpenDueBetween(from, until).stream()
+                .map(payment -> new PaymentDue(payment.getId(), payment.getAuctionId(), payment.getUserId(),
+                        payment.getAmount(), payment.getExpiredAt()))
+                .toList();
+    }
+
+    /**
+     * EN: Gives a completed payment back. Called by the order module, which has already checked the order
+     *     may be refunded; only a paid payment can be.
+     * VI: Hoàn lại một khoản đã trả. Do module order gọi, sau khi đã kiểm tra đơn được phép hoàn; chỉ khoản đã
+     *     trả mới hoàn được.
+     */
+    @Transactional
+    public void refund(UUID paymentId, UUID actorId) {
+        Payment payment = payments.findByIdForUpdate(paymentId).orElseThrow(() -> notFound(paymentId));
+        if (payment.getStatus() != PaymentStatus.SUCCESS) {
+            throw new IllegalStateException("Only a paid payment can be refunded, not " + payment.getStatus());
+        }
+
+        payment.settle(PaymentStatus.REFUNDED);
+        payments.saveAndFlush(payment);
+        events.publishEvent(new PaymentEvents.Refunded(
+                payment.getId(), payment.getAuctionId(), payment.getUserId(), payment.getAmount(), actorId,
+                Instant.now()));
+    }
+
     public PaymentView get(UUID userId, UUID paymentId) {
         Payment payment = payments.findById(paymentId)
                 .filter(found -> found.getUserId().equals(userId))

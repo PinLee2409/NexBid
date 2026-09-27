@@ -26,10 +26,6 @@ const compactCurrencyFormatter = new Intl.NumberFormat(CURRENCY.locale, {
   maximumFractionDigits: 1,
 });
 
-const numberFormatter = new Intl.NumberFormat(CURRENCY.locale, {
-  maximumFractionDigits: 0,
-});
-
 /** `₫18,500,000` — the canonical price rendering across the product. */
 export function formatCurrency(amount: number): string {
   return currencyFormatter.format(amount);
@@ -38,11 +34,6 @@ export function formatCurrency(amount: number): string {
 /** `₫18.5M` — for dense surfaces such as dashboard stat tiles. */
 export function formatCompactCurrency(amount: number): string {
   return compactCurrencyFormatter.format(amount);
-}
-
-/** `18,500,000` — bare number, used inside inputs where the symbol sits outside. */
-export function formatNumber(value: number): string {
-  return numberFormatter.format(value);
 }
 
 /** `1,284` viewers → `1.3K`. Keeps live counters from wrapping. */
@@ -54,9 +45,13 @@ export function formatCompactNumber(value: number): string {
   }).format(value);
 }
 
-/** Parses user input like `19,000,000` or `₫19,000,000` back into a number. */
+/**
+ * Parses user input like `19,000,000`, `₫19,000,000` or `19.000.000` back
+ * into a number. VND has no minor unit, so every separator is grouping,
+ * whichever locale typed it.
+ */
 export function parseCurrencyInput(value: string): number | null {
-  const normalized = value.replace(/[^0-9.]/g, "");
+  const normalized = value.replace(/[^0-9]/g, "");
   if (normalized === "") return null;
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;

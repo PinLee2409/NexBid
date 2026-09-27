@@ -3,7 +3,7 @@
 import type { AuctionSummary, Order, Payment } from "@/types";
 
 import type { ApiOrder, ApiPayment } from "./api/dto";
-import { ApiError, api } from "./api/http";
+import { api } from "./api/http";
 import { toOrder, toPayment, toSummary } from "./api/mappers";
 
 /**
@@ -36,20 +36,6 @@ export async function listPayments(): Promise<PaymentEntry[]> {
     api<ApiOrder[]>("/api/users/me/orders"),
   ]);
   return payments.map((payment) => toEntry(payment, orders));
-}
-
-/** `GET /api/payments/{id}` */
-export async function getPayment(paymentId: string): Promise<PaymentEntry | null> {
-  try {
-    const [payment, orders] = await Promise.all([
-      api<ApiPayment>(`/api/payments/${paymentId}`),
-      api<ApiOrder[]>("/api/users/me/orders"),
-    ]);
-    return toEntry(payment, orders);
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) return null;
-    throw error;
-  }
 }
 
 /**

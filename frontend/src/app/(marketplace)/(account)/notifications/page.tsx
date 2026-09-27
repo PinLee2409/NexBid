@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { NotificationItem } from "@/components/common/notification-item";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   markAllAsRead,
   markAsRead,
@@ -45,41 +45,42 @@ export default function NotificationsPage() {
         }
       />
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <Tabs
-          value={filter}
-          onValueChange={(value) => setFilter(value as NotificationFilter)}
-        >
+      <Tabs
+        value={filter}
+        onValueChange={(value) => setFilter(value as NotificationFilter)}
+        className="block"
+      >
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
           <TabsList>
             <TabsTrigger value="ALL">{t("filterAll")}</TabsTrigger>
             <TabsTrigger value="UNREAD">{t("filterUnread")}</TabsTrigger>
           </TabsList>
-        </Tabs>
 
-        <p className="text-muted-foreground text-sm">
-          {t("unreadCount", { count: unreadCount })}
-        </p>
-      </div>
+          <p className="text-muted-foreground text-sm">
+            {t("unreadCount", { count: unreadCount })}
+          </p>
+        </div>
 
-      <div className="mt-6">
-        {visible.length === 0 ? (
-          <EmptyState
-            icon={BellOff}
-            title={t("notificationsEmptyTitle")}
-            description={t("notificationsEmptyBody")}
-          />
-        ) : (
-          <ul>
-            {visible.map((notification) => (
-              <NotificationItem
-                key={notification.id}
-                notification={notification}
-                onMarkRead={(id) => markAsRead(id)}
-              />
-            ))}
-          </ul>
-        )}
-      </div>
+        <TabsContent value={filter} className="mt-6">
+          {visible.length === 0 ? (
+            <EmptyState
+              icon={BellOff}
+              title={t("notificationsEmptyTitle")}
+              description={t("notificationsEmptyBody")}
+            />
+          ) : (
+            <ul>
+              {visible.map((notification) => (
+                <NotificationItem
+                  key={notification.id}
+                  notification={notification}
+                  onMarkRead={(id) => markAsRead(id)}
+                />
+              ))}
+            </ul>
+          )}
+        </TabsContent>
+      </Tabs>
     </>
   );
 }

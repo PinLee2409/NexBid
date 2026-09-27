@@ -23,6 +23,7 @@ import com.nexbid.support.TestInfrastructure;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserService;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -44,6 +45,9 @@ class PlaceBidApiTest {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private MeterRegistry meters;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -121,6 +125,33 @@ class PlaceBidApiTest {
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"amount\":" + amount + "}"));
+    }
+
+    private double count(String name, String... tags) {
+        var counter = meters.find(name).tags(tags).counter();
+        return counter == null ? 0 : counter.count();
+    }
+
+    @Test
+    void everyBidRequestIsCountedAndTimedWithTheReasonForARefusal() throws Exception {
+        String seller = tokenFor("bid.metrics.seller@nexbid.com", "Metrics Seller", RoleName.SELLER);
+        String admin = tokenFor("bid.metrics.admin@nexbid.com", "Metrics Admin", RoleName.ADMIN);
+        String bidder = tokenFor("bid.metrics.buyer@nexbid.com", "Metrics Buyer", RoleName.BUYER);
+        String auction = approvedLot(seller, admin, "Measured lot");
+        openNow(auction);
+
+        double requests = count("bid.requests");
+        double successes = count("bid.success");
+        double tooLow = count("bid.failed", "reason", "BID_TOO_LOW");
+        long timed = meters.find("bid.latency").timer().count();
+
+        bid(auction, bidder, "10000000").andExpect(status().isCreated());
+        bid(auction, bidder, "10000000").andExpect(status().isUnprocessableEntity());
+
+        assertThat(count("bid.requests")).isEqualTo(requests + 2);
+        assertThat(count("bid.success")).isEqualTo(successes + 1);
+        assertThat(count("bid.failed", "reason", "BID_TOO_LOW")).isEqualTo(tooLow + 1);
+        assertThat(meters.find("bid.latency").timer().count()).isEqualTo(timed + 2);
     }
 
     @Test

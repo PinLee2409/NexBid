@@ -249,9 +249,127 @@ class OrderApiTest {
                 .andExpect(status().isNotFound());
     }
 
+    private String orderIdOf(Won won) {
+        return jdbc.queryForObject("SELECT id::text FROM orders WHERE auction_id = ?::uuid", String.class, won.auctionId());
+    }
+
+    private ResultActions ship(String token, String orderId) throws Exception {
+        return mockMvc.perform(post("/api/seller/orders/" + orderId + "/ship").header("Authorization", "Bearer " + token));
+    }
+
+    private ResultActions receive(String token, String orderId) throws Exception {
+        return mockMvc.perform(post("/api/users/me/orders/" + orderId + "/received")
+                .header("Authorization", "Bearer " + token));
+    }
+
+    private ResultActions refund(String token, String orderId) throws Exception {
+        return mockMvc.perform(post("/api/admin/orders/" + orderId + "/refund").header("Authorization", "Bearer " + token));
+    }
+
+    private List<String> auditOf(String entityId) {
+        return jdbc.queryForList("SELECT action FROM audit_logs WHERE entity_id = ?::uuid ORDER BY position",
+                String.class, entityId);
+    }
+
+    @Test
+    void theSellerShipsAndTheBuyerConfirmsReceipt() throws Exception {
+        Won won = wonLot("fulfil");
+        pay(won, "SUCCESS").andExpect(status().isOk());
+        String order = orderIdOf(won);
+
+        ship(won.seller(), order)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.order.status").value("PROCESSING"));
+        mockMvc.perform(get("/api/seller/orders").header("Authorization", "Bearer " + won.seller()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].order.id").value(order))
+                .andExpect(jsonPath("$.data[0].order.status").value("PROCESSING"))
+                .andExpect(jsonPath("$.data[0].auction.product.name").value("Lot fulfil"));
+
+        receive(won.winner(), order)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.order.status").value("COMPLETED"));
+
+        assertThat(statusIn("orders", order)).isEqualTo("COMPLETED");
+        assertThat(auditOf(order)).containsExactly("ORDER_SHIPPED", "ORDER_COMPLETED");
+    }
+
+    @Test
+    void aStepOutOfOrderIsRefusedAndStrangersSeeNoOrder() throws Exception {
+        Won won = wonLot("order-steps");
+        String order = orderIdOf(won);
+        String otherSeller = tokenFor("ord.steps.other@nexbid.com", "Other Seller", RoleName.SELLER);
+        String otherBuyer = tokenFor("ord.steps.buyer@nexbid.com", "Other Buyer", RoleName.BUYER);
+
+        // EN: Not paid yet: nothing to ship. / VI: Chưa trả tiền: chưa có gì để gửi.
+        ship(won.seller(), order)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ORDER_STATUS_INVALID"));
+
+        pay(won, "SUCCESS").andExpect(status().isOk());
+        // EN: Paid but not shipped: nothing to receive. / VI: Đã trả nhưng chưa gửi: chưa có gì để nhận.
+        receive(won.winner(), order)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ORDER_STATUS_INVALID"));
+
+        ship(otherSeller, order).andExpect(status().isNotFound());
+        ship(won.winner(), order).andExpect(status().isForbidden());
+        ship(won.seller(), order).andExpect(status().isOk());
+        ship(won.seller(), order).andExpect(status().isConflict());
+        receive(otherBuyer, order).andExpect(status().isNotFound());
+
+        assertThat(statusIn("orders", order)).isEqualTo("PROCESSING");
+    }
+
+    @Test
+    void anAdminRefundCancelsTheOrderAndGivesThePaymentBack() throws Exception {
+        Won won = wonLot("refund");
+        String admin = tokenFor("ord.refund.boss@nexbid.com", "Refund Admin", RoleName.ADMIN);
+        pay(won, "SUCCESS").andExpect(status().isOk());
+        String order = orderIdOf(won);
+        ship(won.seller(), order).andExpect(status().isOk());
+
+        refund(won.seller(), order).andExpect(status().isForbidden());
+        refund(admin, order)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.order.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.data.payment.status").value("REFUNDED"));
+
+        assertThat(statusIn("orders", order)).isEqualTo("CANCELLED");
+        assertThat(statusIn("payments", won.paymentId())).isEqualTo("REFUNDED");
+        assertThat(auditOf(won.paymentId())).contains("PAYMENT_REFUNDED");
+        assertThat(jdbc.queryForObject("SELECT user_id FROM audit_logs WHERE entity_id = ?::uuid AND action = 'PAYMENT_REFUNDED'",
+                UUID.class, won.paymentId())).isEqualTo(idOf(admin));
+
+        refund(admin, order)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ORDER_STATUS_INVALID"));
+        receive(won.winner(), order).andExpect(status().isConflict());
+
+        mockMvc.perform(get("/api/admin/orders").param("status", "CANCELLED").header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[?(@.order.id == '" + order + "')].payment.status").value("REFUNDED"));
+    }
+
+    @Test
+    void aCompletedOrderCannotBeRefunded() throws Exception {
+        Won won = wonLot("done");
+        String admin = tokenFor("ord.done.boss@nexbid.com", "Done Admin", RoleName.ADMIN);
+        pay(won, "SUCCESS").andExpect(status().isOk());
+        String order = orderIdOf(won);
+        ship(won.seller(), order).andExpect(status().isOk());
+        receive(won.winner(), order).andExpect(status().isOk());
+
+        refund(admin, order).andExpect(status().isConflict());
+        assertThat(statusIn("payments", won.paymentId())).isEqualTo("SUCCESS");
+    }
+
     @Test
     void theEndpointsNeedASignedInCaller() throws Exception {
         mockMvc.perform(get("/api/users/me/orders")).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/users/me/orders/" + UUID.randomUUID())).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/users/me/orders/" + UUID.randomUUID() + "/received")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/seller/orders")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/admin/orders")).andExpect(status().isUnauthorized());
     }
 }

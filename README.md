@@ -16,12 +16,21 @@ realtime updates, scheduling, caching, rate limiting and event delivery.
 
 ## Screenshots
 
+Taken from the Docker stack with the [demo data](#demo-data) loaded.
+
+![Two buyers bidding on the same lot: each bid reaches the other browser over the socket](docs/screenshots/live-bidding.gif)
+
+Two signed-in buyers on the same lot. Each bid reaches the other browser over the socket straight
+away: the price, the bid feed, and the "You've been outbid" banner all update without a reload.
+
 | | |
 | --- | --- |
 | ![Home](docs/screenshots/home.png) | ![Lot page with the live bid feed](docs/screenshots/auction-detail.png) |
 | Home | Lot page — current price, countdown, live bid feed |
 | ![Seller dashboard](docs/screenshots/seller-dashboard.png) | ![Admin approval queue](docs/screenshots/admin-approval.png) |
 | Seller dashboard | Admin approval queue |
+| ![Admin overview with hourly activity](docs/screenshots/admin-overview.png) | ![Grafana dashboard during a load test](docs/screenshots/grafana.png) |
+| Admin overview — hourly activity from the analytics consumer | Grafana during a k6 run at 200 users |
 | ![Swagger UI](docs/screenshots/swagger.png) | ![Bid latency under load](docs/load-test/bid-latency.svg) |
 | Swagger UI | Load test — bid latency from 10 to 1000 users |
 
@@ -190,9 +199,62 @@ measured against `GET /api/server-time`, not the browser's clock.
 
 Lot topics are public, so an event never says who is leading from the reader's side. After each
 `BID_PLACED` the page re-reads the lot's recent bids with the reader's token, and the `mine` flag on each
-bid decides between "You're leading" and "You've been outbid". Personal notifications (outbid, won,
-payment due) are polled every 30 seconds; a per-user socket channel is on the
-[backlog](docs/NexBid_Backlog.md).
+bid decides between "You're leading" and "You've been outbid".
+
+A signed-in browser sends its token with STOMP `CONNECT` and listens on its own
+`/user/queue/notifications`; each notice is pushed there after it commits, and an anonymous socket asking
+for that queue is refused. Each lot page also hears `VIEWER_COUNT` at most once a second — one Redis set per
+lot, one member per open socket subscription (spec §20.3).
+
+---
+
+## Sessions
+
+A signed-in browser holds two tokens:
+- an **access token** (JWT, 15 minutes) in localStorage, sent as `Authorization: Bearer` and with the
+  socket's `CONNECT`;
+- a **refresh token** in an `HttpOnly; Secure; SameSite=Strict` cookie scoped to `/api/auth`. Page scripts
+  cannot read it, and other sites cannot make the browser send it.
+
+`POST /api/auth/refresh` trades the cookie for a new access token and a new cookie. Each refresh token works
+once: only its SHA-256 is stored, and a renewal replaces it with a new token of the same family. If a
+replaced token ever comes back, a copy is loose, so the whole family is revoked and whoever holds it must
+sign in again. A session lasts 7 days from its last use; without "Remember me" the cookie is dropped when
+the browser closes. Signing out revokes that device's session. Blocking an account revokes all of its
+sessions, in the same transaction as the block.
+
+The frontend renews a minute before expiry, and retries a request once after a 401. Renewals run one at a
+time across tabs (a Web Lock), so two tabs never present the same cookie; the new token reaches the other
+tabs through the `storage` event. The socket reconnects only when the signed-in user changes, not on each
+renewal.
+
+Settings: `NEXBID_JWT_EXPIRY` (15m), `NEXBID_REFRESH_TTL` (7d), `NEXBID_REFRESH_COOKIE_SECURE` (true;
+browsers accept a secure cookie on `http://localhost`, so set it to false only when serving plain HTTP on
+another host).
+
+---
+
+## Security
+
+- **Password guessing is slowed down.** Wrong passwords are counted in Redis over a sliding 15 minutes: 5 per
+  email from one address, 20 per address across all emails. Past either, sign-in answers
+  `429 LOGIN_RATE_LIMITED` with `Retry-After` — even to the right password, so the answer reveals nothing. A
+  correct password clears its email-and-address count, and because the address is part of that count, nobody
+  can lock someone else out from elsewhere. The client's address comes from `X-Forwarded-For`, trusted only
+  from private addresses. Next.js passes that header on but never sets it, so in production the site must sit
+  behind a reverse proxy (which HTTPS needs anyway) that does; without one — as with `docker compose up` on
+  localhost — every browser looks like the frontend's own address.
+- **Pages run only their own scripts.** Every page is served with a Content Security Policy carrying a fresh
+  nonce (`src/proxy.ts`): scripts without it do not run, inline event handlers do not run, the page cannot be
+  framed by another site, and it may connect only to itself and the realtime socket. Pages also send
+  `nosniff`, `X-Frame-Options: DENY`, a strict `Referrer-Policy`, a `Permissions-Policy` and HSTS; the
+  backend's answers carry Spring Security's equivalents.
+- **Production refuses unsafe settings.** With `SPRING_PROFILES_ACTIVE=prod` the backend will not start on a
+  JWT secret shipped in this repository or shorter than 32 bytes, or with a refresh cookie allowed over plain
+  HTTP, and it stops publishing Swagger UI and `/v3/api-docs`. Without the profile — `docker compose up`, the
+  dev setup — nothing needs configuring.
+
+Settings: `NEXBID_LOGIN_ACCOUNT_LIMIT` (5), `NEXBID_LOGIN_ADDRESS_LIMIT` (20), `NEXBID_LOGIN_WINDOW` (15m).
 
 ---
 
@@ -220,6 +282,10 @@ flowchart LR
     outbox -- "relay, after commit,<br/>oldest first" --> topics["nexbid.auctions<br/>nexbid.payments<br/>(keyed by lot)"]
     topics --> consumer["Notification consumer"]
     consumer -- "once per event<br/>(consumed_events)" --> notices[("notifications")]
+    topics --> analytics["Analytics consumer"]
+    analytics -- "once per event" --> hourly[("analytics_hourly")]
+    consumer -. "can never succeed" .-> dlt["nexbid.*.DLT"]
+    analytics -.-> dlt
 ```
 
 Events (`BidPlacedEvent`, `AuctionLifecycleEvent` for start / extend / end, `OutbidEvent`,
@@ -228,8 +294,14 @@ same transaction as the change they describe. A relay hands them to Kafka after 
 once acknowledged. A rolled-back bid never produces an event; a committed one always does; Kafka being
 down only delays delivery. Events of one lot share a key, so they arrive in order. The consumer records
 each event it handled in the same transaction as its work, so a redelivery does nothing. An event that
-cannot be read, or that the database refuses outright (a user it does not have), is logged and skipped
-rather than blocking everything behind it; any other failure is retried until it clears.
+cannot be read, or that the database refuses outright (a user it does not have), is logged and parked on
+the topic's dead-letter twin (`nexbid.auctions.DLT`, `nexbid.payments.DLT`) rather than blocking
+everything behind it; any other failure is retried until it clears.
+
+Two consumer groups read the same topics independently (spec §19). The notification consumer writes the
+bell; the analytics consumer adds each bid, close and payment into hourly totals, which the admin overview
+charts for the last 24 hours (`GET /api/admin/analytics`). Audit entries are written inside the original
+transaction instead of by a consumer, so they can never disagree with the data.
 
 ---
 
@@ -240,13 +312,13 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 
 | Area | Endpoints |
 | --- | --- |
-| Auth | `POST /api/auth/register`, `POST /api/auth/login` (JWT, 2 hours) |
+| Auth | `POST /api/auth/register`, `POST /api/auth/login` (JWT for 15 minutes + refresh cookie), `POST /api/auth/refresh`, `POST /api/auth/logout` |
 | Catalogue | `GET /api/auctions`, `GET /api/auctions/{id}`, `GET /api/categories`, `GET /api/server-time` — public |
 | Bidding | `POST /api/auctions/{id}/bids`, `GET /api/auctions/{id}/bids`, `/api/auctions/{id}/auto-bid` |
-| Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders`, `…/me/watchlist`, `/api/notifications` |
-| Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions` |
-| Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users`, `/api/admin/users/{id}/block`, `/api/admin/audit-logs` |
-| Realtime | STOMP at `/ws`, topic `/topic/auctions/{id}` |
+| Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders` (`…/{id}/received`), `…/me/watchlist`, `/api/notifications` |
+| Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions`, `/api/seller/orders` (`…/{id}/ship`) |
+| Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users`, `/api/admin/users/{id}/block`, `/api/admin/orders` (`…/{id}/refund`), `/api/admin/analytics`, `/api/admin/audit-logs` |
+| Realtime | STOMP at `/ws`: `/topic/auctions/{id}` for everyone, `/user/queue/notifications` for the signed-in user |
 
 `/api/admin/**` needs the ADMIN role and `/api/seller/**` needs SELLER. The frontend hides those menus
 too, but that is decoration — the server is what refuses.
@@ -280,8 +352,8 @@ Frontend at http://localhost:3000, backend at http://localhost:8080/api/health. 
 both images and takes a few minutes; after changing code, run `docker compose up --build`. Postgres,
 Redis and Kafka stay inside the compose network. If a dev server already holds 3000 or 8080, set
 `NEXBID_FRONTEND_PORT` / `NEXBID_BACKEND_PORT`. To make an account admin, register it, then restart
-the backend with `NEXBID_ADMIN_EMAILS=you@example.com docker compose up -d backend` and sign in again —
-a token only carries the roles held when it was issued.
+the backend with `NEXBID_ADMIN_EMAILS=you@example.com docker compose up -d backend` and sign in again (or
+wait for the next token renewal, at most 15 minutes) — a token only carries the roles held when it was issued.
 
 ### Development
 
@@ -339,6 +411,19 @@ docker compose -f docker/compose.yaml down -v && docker compose -f docker/compos
 rm -f backend/var/images/*
 ```
 
+### Monitoring
+
+```bash
+docker compose --profile monitoring up
+```
+
+Adds Prometheus (http://localhost:9090) and Grafana (http://localhost:3001, viewable without signing in)
+with a provisioned dashboard: the metrics of spec §34 — `bid_requests_total`, `bid_success_total`,
+`bid_failed_total` by reason, `bid_latency` (p50 / p95 / p99), `active_auctions`,
+`websocket_connections`, `payment_success_total` — plus the database pool the load test found to be the
+bottleneck. In the Docker stack the backend serves health and metrics on port 8090, which is never
+published, so only Prometheus inside the network can read them.
+
 ---
 
 ## Testing
@@ -348,7 +433,7 @@ cd backend && ./mvnw test
 ```
 
 ```bash
-cd frontend && npm run build
+cd frontend && npm test
 ```
 
 The backend suite needs Docker, not the dev services: each test context starts its own Postgres, Redis
@@ -362,12 +447,55 @@ and Kafka in containers. Highlights:
 - Kafka outage, Redis outage, duplicate delivery and rollback each have a test, and each test was checked
   by breaking the code it guards and watching it fail.
 
+### Frontend unit tests
+
+[Vitest](https://vitest.dev) covers the frontend's own logic, next to the code it checks (`src/**/*.test.ts`):
+the bid rules the panel applies before a request is sent (spec §7.8, §8, §13, §14), prices and countdowns,
+the browse filters kept in the URL, name masking, and the session code — when the HTTP client renews the
+access token, retries once after a 401, or gives up and signs the user out. They run in about a second and
+need no backend.
+
+They also keep the English and Vietnamese message catalogues in step: the same keys, the same placeholders
+in each translation, and a message for every error code — and the frontend's list of error codes must match
+the backend's `ErrorCode` enum, so the two cannot drift apart. [knip](https://knip.dev) (`npm run knip`) fails
+on unused files, exports and dependencies.
+
+### End-to-end tests
+
+[Playwright](frontend/e2e) drives the real app in Chromium against a running stack:
+- a visitor finds a lot and is asked to sign in;
+- sign-in, a wrong password, and registration;
+- two buyers on the same lot, each seeing the other's bid and the "outbid" banner without a reload;
+- the minimum-bid check;
+- an admin approving a lot;
+- times shown in the reader's own time zone;
+- every page, for every role, checked with [axe](https://github.com/dequelabs/axe-core) against WCAG 2.1 AA in
+  both themes;
+- every page at 375 px wide: nothing wider than the screen, and a bid placed from a phone;
+- no test passes if a page it opened logged a console error, a hydration mismatch or an uncaught exception.
+
+Each run creates its own accounts and lots, with a run id in every name, so it can run again on the same
+database.
+
+```bash
+docker compose up -d --build --wait
+```
+
+```bash
+cd frontend && npx playwright install chromium && npm run test:e2e
+```
+
+Setup grants the seller and admin roles through `docker compose exec postgres`, as the demo seed does. Point
+the tests elsewhere with `E2E_WEB_URL`, `E2E_API_URL` and `E2E_COMPOSE_FILE` (relative to `frontend/`, e.g.
+`../docker/compose.yaml` for the dev services). `E2E_BROWSER_CHANNEL=chrome` uses an installed Chrome
+instead of downloading Chromium.
+
 ### CI/CD
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request: the full
-backend suite (`./mvnw verify`, with Testcontainers on the runner's Docker), then `tsc`, ESLint and
-`next build` for the frontend, then both Docker images are built. A push to `main` publishes the images
-once everything above passed:
+backend suite (`./mvnw verify`, with Testcontainers on the runner's Docker); `tsc`, ESLint, knip, the unit
+tests and `next build` for the frontend; the end-to-end tests against `docker compose up`; then both Docker images are
+built. A push to `main` publishes the images once everything above passed:
 
 ```bash
 docker pull ghcr.io/pinlee2409/nexbid-backend:latest
@@ -389,14 +517,16 @@ k6 against `docker compose up`, focusing on `POST /api/auctions/{id}/bids`. Late
 
 | Users | Requests/s | Bid p50 | Bid p95 | Bid p99 | Errors |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 10 | 12.6 | 10.9 | 14.3 | 16.9 | 0.00% |
-| 100 | 126.9 | 3.7 | 12.2 | 16.9 | 0.00% |
-| 500 | 637.0 | 3.0 | 11.5 | 19.4 | 0.00% |
-| 1000 | 1242.1 | 3.1 | 200.3 | 413.3 | 0.00% |
+| 10 | 12.6 | 15.2 | 26.0 | 36.0 | 0.00% |
+| 100 | 127.1 | 3.5 | 13.3 | 18.0 | 0.00% |
+| 500 | 637.9 | 2.1 | 9.3 | 13.6 | 0.00% |
+| 1000 | 1270.6 | 2.1 | 9.3 | 27.1 | 0.00% |
 
-Every spec §31 target (bid p95 < 500 ms, lot page p95 < 300 ms) holds at 1000 users on one laptop. The
-knee is between 500 and 1000 users, where 8 of the 10 pooled database connections were busy at the peak. Method,
-all endpoints, database and Redis figures, and how to run it: [`docs/load-test`](docs/load-test/README.md).
+Every spec §31 target (bid p95 < 500 ms, lot page p95 < 300 ms) holds at 1000 users on one laptop, by a
+wide margin. The first run had a knee between 500 and 1000 users — bid p95 200 ms, 8 of 10 database
+connections busy — caused by looking the account up on every request; caching that check for a few seconds
+removed it. Method, all endpoints, database and Redis figures, and how to run it:
+[`docs/load-test`](docs/load-test/README.md).
 
 ---
 

@@ -3,7 +3,7 @@
 import type { AuctionSummary, Order, Payment } from "@/types";
 
 import type { ApiOrder } from "./api/dto";
-import { ApiError, api } from "./api/http";
+import { api } from "./api/http";
 import { toOrder, toPayment, toSummary } from "./api/mappers";
 
 /**
@@ -19,7 +19,7 @@ export interface OrderEntry {
   auction: AuctionSummary | null;
 }
 
-function toEntry(view: ApiOrder): OrderEntry {
+export function toEntry(view: ApiOrder): OrderEntry {
   return {
     order: toOrder(view.order),
     payment: view.payment ? toPayment(view.payment) : null,
@@ -33,12 +33,7 @@ export async function listOrders(): Promise<OrderEntry[]> {
   return orders.map(toEntry);
 }
 
-/** `GET /api/users/me/orders/{id}` */
-export async function getOrder(orderId: string): Promise<OrderEntry | null> {
-  try {
-    return toEntry(await api<ApiOrder>(`/api/users/me/orders/${orderId}`));
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) return null;
-    throw error;
-  }
+/** `POST /api/users/me/orders/{id}/received` — the buyer confirms the goods arrived. */
+export async function confirmReceipt(orderId: string): Promise<OrderEntry> {
+  return toEntry(await api<ApiOrder>(`/api/users/me/orders/${orderId}/received`, { method: "POST" }));
 }

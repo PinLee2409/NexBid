@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import { ProductPhoto } from "@/components/common/product-photo";
 import { AuctionStatusBadge } from "@/components/auction/auction-status-badge";
+import { ApiErrorState } from "@/components/common/api-error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { PageHeader } from "@/components/layout/page-header";
@@ -17,7 +18,6 @@ import type { ProductStatus } from "@/types";
 
 export default function SellerProductsPage() {
   const t = useTranslations("seller");
-  const tc = useTranslations("common");
 
   const { state } = useAsyncData("seller-products", listMyProducts);
 
@@ -44,12 +44,7 @@ export default function SellerProductsPage() {
             ))}
           </div>
         ) : state.status === "error" ? (
-          <EmptyState
-            tone="error"
-            icon={Package}
-            title={tc("tryAgain")}
-            description={state.error.message}
-          />
+          <ApiErrorState icon={Package} error={state.error} />
         ) : state.data.length === 0 ? (
           <EmptyState
             icon={Package}
@@ -127,12 +122,15 @@ function ProductRow({ entry }: { entry: ProductWithMeta }) {
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <Button asChild size="sm" variant="outline">
-          <Link href={`/seller/products/${product.id}/edit`}>
-            <Pencil className="size-3.5" />
-            {tc("edit")}
-          </Link>
-        </Button>
+        {/* A product in an auction or sold is locked, photos included. */}
+        {product.status !== "IN_AUCTION" && product.status !== "SOLD" ? (
+          <Button asChild size="sm" variant="outline">
+            <Link href={`/seller/products/${product.id}/edit`}>
+              <Pencil className="size-3.5" />
+              {tc("edit")}
+            </Link>
+          </Button>
+        ) : null}
         {!auction ? (
           <Button asChild size="sm">
             <Link href={`/seller/auctions/create?productId=${product.id}`}>

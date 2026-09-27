@@ -8,6 +8,7 @@ import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { FormField } from "@/components/common/form-field";
+import { useAuthErrorMessage } from "@/hooks/use-labels";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function LoginForm() {
   const t = useTranslations("auth");
+  const authErrorMessage = useAuthErrorMessage();
   const tc = useTranslations("common");
   const router = useRouter();
 
@@ -55,10 +57,10 @@ export function LoginForm() {
     if (Object.keys(nextErrors).length > 0) return;
 
     startTransition(async () => {
-      const result = await signIn({ email, password });
+      const result = await signIn({ email, password, remember });
 
       if (!result.ok) {
-        setFormError(result.message);
+        setFormError(authErrorMessage(result.error));
         return;
       }
 
@@ -148,7 +150,7 @@ export function LoginForm() {
 
       <p className="border-line text-dim mt-8 border-t pt-4 text-xs leading-relaxed">
         <span className="label-sm text-foreground">{t("demoTitle")}</span>{" "}
-        {t("demoBody", { email: "pin@nexbid.com" })}
+        {t("demoBody", { email: "pin@nexbid.test", password: "nexbid-demo" })}
       </p>
 
       <p className="text-muted-foreground mt-6 text-center text-sm">

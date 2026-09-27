@@ -37,6 +37,7 @@ export function LotInFocus({ auction, serverTime }: LotInFocusProps) {
               lot={auction.lotNumber}
               size="lg"
               bare
+              decorative
               className="text-foreground/15 mt-6 block leading-none"
             />
 

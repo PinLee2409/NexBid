@@ -34,4 +34,11 @@ public final class PaymentEvents {
     @Externalized("nexbid.payments::#{auctionId()}")
     public record Expired(UUID paymentId, UUID auctionId, UUID userId, BigDecimal amount, Instant at) {
     }
+
+    /**
+     * EN: An admin gave a payment back. Kept inside the server: the audit log is its only listener.
+     * VI: Admin đã hoàn lại một khoản thanh toán. Chỉ dùng trong server: audit log là listener duy nhất.
+     */
+    public record Refunded(UUID paymentId, UUID auctionId, UUID userId, BigDecimal amount, UUID actorId, Instant at) {
+    }
 }

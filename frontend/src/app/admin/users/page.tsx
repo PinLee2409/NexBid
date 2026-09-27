@@ -72,6 +72,8 @@ function UserRow({ user, onChanged }: { user: User; onChanged: () => void }) {
   const errorMessage = useApiErrorMessage();
 
   const blocked = user.status === "BLOCKED";
+  // Admin accounts cannot be blocked, not even your own; unblocking stays available.
+  const protectedAdmin = user.roles.includes("ADMIN") && !blocked;
 
   function toggleBlocked() {
     startTransition(async () => {
@@ -126,7 +128,8 @@ function UserRow({ user, onChanged }: { user: User; onChanged: () => void }) {
       <Button
         variant={blocked ? "outline" : "destructive"}
         onClick={toggleBlocked}
-        disabled={isPending}
+        disabled={isPending || protectedAdmin}
+        title={protectedAdmin ? t("adminNotBlockable") : undefined}
         className="shrink-0"
       >
         {isPending ? (

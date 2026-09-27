@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { ProductPhoto } from "@/components/common/product-photo";
 import { AuctionStatusBadge } from "@/components/auction/auction-status-badge";
 import { CategoryName } from "@/components/common/category-name";
+import { ApiErrorState } from "@/components/common/api-error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { PageHeader } from "@/components/layout/page-header";
@@ -22,7 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage } from "@/hooks/use-labels";
@@ -44,7 +45,6 @@ const TAB_KEYS: Record<ReviewTab, string> = {
 
 export default function AdminAuctionsPage() {
   const t = useTranslations("admin");
-  const tc = useTranslations("common");
 
   const [tab, setTab] = useState<ReviewTab>("PENDING_APPROVAL");
   const { state, refresh } = useAsyncData(`admin-auctions-${tab}`, () =>
@@ -60,7 +60,7 @@ export default function AdminAuctionsPage() {
       <Tabs
         value={tab}
         onValueChange={(value) => setTab(value as ReviewTab)}
-        className="mt-6"
+        className="mt-6 block"
       >
         <TabsList>
           {(Object.keys(TAB_KEYS) as ReviewTab[]).map((key) => (
@@ -69,41 +69,36 @@ export default function AdminAuctionsPage() {
             </TabsTrigger>
           ))}
         </TabsList>
-      </Tabs>
 
-      <div className="mt-10">
-        {state.status === "loading" ? (
-          <div>
-            {Array.from({ length: 2 }).map((_, index) => (
-              <AuctionListRowSkeleton key={index} />
-            ))}
-          </div>
-        ) : state.status === "error" ? (
-          <EmptyState
-            tone="error"
-            icon={Gavel}
-            title={tc("tryAgain")}
-            description={state.error.message}
-          />
-        ) : state.data.length === 0 ? (
-          <EmptyState
-            icon={Gavel}
-            title={t("pendingEmptyTitle")}
-            description={t("pendingEmptyBody")}
-          />
-        ) : (
-          <ul>
-            {state.data.map((auction) => (
-              <ReviewCard
-                key={auction.id}
-                auction={auction}
-                onApproved={refresh}
-                onRejectRequested={() => setRejecting(auction)}
-              />
-            ))}
-          </ul>
-        )}
-      </div>
+        <TabsContent value={tab} className="mt-10">
+          {state.status === "loading" ? (
+            <div>
+              {Array.from({ length: 2 }).map((_, index) => (
+                <AuctionListRowSkeleton key={index} />
+              ))}
+            </div>
+          ) : state.status === "error" ? (
+            <ApiErrorState icon={Gavel} error={state.error} />
+          ) : state.data.length === 0 ? (
+            <EmptyState
+              icon={Gavel}
+              title={t("pendingEmptyTitle")}
+              description={t("pendingEmptyBody")}
+            />
+          ) : (
+            <ul>
+              {state.data.map((auction) => (
+                <ReviewCard
+                  key={auction.id}
+                  auction={auction}
+                  onApproved={refresh}
+                  onRejectRequested={() => setRejecting(auction)}
+                />
+              ))}
+            </ul>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <RejectDialog
         auction={rejecting}

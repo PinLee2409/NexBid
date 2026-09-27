@@ -1,10 +1,19 @@
 "use client";
 
-import type { Auction, AuctionStatus, AuctionSummary, AuditLog, User } from "@/types";
+import type { Auction, AuctionStatus, AuctionSummary, AuditLog, OrderStatus, User } from "@/types";
 
-import type { ApiAuction, ApiAuctionSummary, ApiAuditLog, ApiPage, ApiUser } from "./api/dto";
+import type {
+  ApiAnalyticsReport,
+  ApiAuction,
+  ApiAuctionSummary,
+  ApiAuditLog,
+  ApiOrder,
+  ApiPage,
+  ApiUser,
+} from "./api/dto";
 import { api } from "./api/http";
 import { toAuction, toAuditLog, toSummary, toUser } from "./api/mappers";
+import { toEntry, type OrderEntry } from "./order-service";
 
 /**
  * Admin APIs (spec §7.5, §21, §27).
@@ -81,6 +90,27 @@ export async function setUserBlocked(userId: string, blocked: boolean): Promise<
       body: { blocked },
     }),
   );
+}
+
+/** `GET /api/admin/orders?status=…` — every order when no status is given, most recently changed first. */
+export async function listOrders(statuses: OrderStatus[] = []): Promise<OrderEntry[]> {
+  const page = await api<ApiPage<ApiOrder>>("/api/admin/orders", { query: { status: statuses, size: 100 } });
+  return page.items.map(toEntry);
+}
+
+/** `POST /api/admin/orders/{id}/refund` — cancels the order and gives the payment back. */
+export async function refundOrder(orderId: string): Promise<OrderEntry> {
+  return toEntry(await api<ApiOrder>(`/api/admin/orders/${orderId}/refund`, { method: "POST" }));
+}
+
+/** `GET /api/admin/analytics?hours=…` — hourly totals from the Analytics Consumer, oldest hour first. */
+export async function getActivity(hours = 24): Promise<ApiAnalyticsReport> {
+  const report = await api<ApiAnalyticsReport>("/api/admin/analytics", { query: { hours } });
+  // EN: Money arrives as JSON numbers already, but BigDecimal may come as a string. / VI: Tiền có thể tới dạng chuỗi từ BigDecimal.
+  return {
+    hours: report.hours.map((hour) => ({ ...hour, revenue: Number(hour.revenue) })),
+    totals: { ...report.totals, revenue: Number(report.totals.revenue) },
+  };
 }
 
 /** `GET /api/admin/audit-logs`, newest first. */

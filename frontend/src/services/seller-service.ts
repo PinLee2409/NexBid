@@ -10,9 +10,10 @@ import type {
   ProductImage,
 } from "@/types";
 
-import type { ApiAuction, ApiImage, ApiProduct } from "./api/dto";
+import type { ApiAuction, ApiImage, ApiOrder, ApiProduct } from "./api/dto";
 import { api } from "./api/http";
 import { toAuction, toCategory, toImage, toProduct } from "./api/mappers";
+import { toEntry, type OrderEntry } from "./order-service";
 import { getCurrentUser } from "./session-service";
 
 /**
@@ -229,4 +230,14 @@ export async function createAuction(
 /** `POST /api/seller/auctions/{id}/submit` */
 export async function submitAuctionForApproval(auctionId: string): Promise<Auction> {
   return toAuction(await api<ApiAuction>(`/api/seller/auctions/${auctionId}/submit`, { method: "POST" }));
+}
+
+/** `GET /api/seller/orders` — what this seller has sold, newest first. */
+export async function listSoldOrders(): Promise<OrderEntry[]> {
+  return (await api<ApiOrder[]>("/api/seller/orders")).map(toEntry);
+}
+
+/** `POST /api/seller/orders/{id}/ship` — PAID → PROCESSING. */
+export async function shipOrder(orderId: string): Promise<OrderEntry> {
+  return toEntry(await api<ApiOrder>(`/api/seller/orders/${orderId}/ship`, { method: "POST" }));
 }

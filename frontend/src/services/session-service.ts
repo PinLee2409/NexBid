@@ -6,17 +6,18 @@ import { createStore } from "@/lib/create-store";
 import type { User, UserRole } from "@/types";
 
 import type { ApiLogin, ApiUser } from "./api/dto";
-import { ApiError, api } from "./api/http";
+import { api } from "./api/http";
 import { toUser } from "./api/mappers";
-import { clearToken, getToken, onTokenChange, setToken } from "./api/token-store";
+import { keepSessionFresh } from "./api/session-refresh";
+import { clearToken, getToken, hasSession, onTokenChange, setToken } from "./api/token-store";
 
 /**
  * Client-side session, backed by the JWT from `POST /api/auth/login`.
  *
  * EN: The token is the truth: with one, the account comes from `GET /api/users/me`; without one (or
- *     once the server rejects it) the reader is signed out.
+ *     once the server refuses both it and the refresh cookie) the reader is signed out.
  * VI: Token là sự thật: có token thì thông tin tài khoản lấy từ `GET /api/users/me`; không có (hoặc server
- *     từ chối nó) thì người đọc đã đăng xuất.
+ *     từ chối cả nó lẫn cookie refresh) thì người đọc đã đăng xuất.
  */
 
 export interface SessionState {
@@ -30,7 +31,9 @@ const sessionStore = createStore<SessionState>({ user: null, hydrated: false });
 let started = false;
 
 async function loadAccount(): Promise<void> {
-  if (!getToken()) {
+  // EN: An expired token still means the refresh cookie is worth a try; api() renews before asking.
+  // VI: Token hết hạn vẫn có nghĩa là đáng thử cookie refresh; api() sẽ gia hạn trước khi hỏi.
+  if (!getToken() && !hasSession()) {
     sessionStore.setState({ user: null, hydrated: true });
     return;
   }
@@ -47,8 +50,9 @@ function start(): void {
   if (started || typeof window === "undefined") return;
   started = true;
   onTokenChange(() => {
-    if (!getToken()) sessionStore.setState({ user: null, hydrated: true });
+    if (!hasSession()) sessionStore.setState({ user: null, hydrated: true });
   });
+  keepSessionFresh();
   void loadAccount();
 }
 
@@ -92,44 +96,29 @@ export function getCurrentUser(): User | null {
 export interface Credentials {
   email: string;
   password: string;
+  /** EN: Stay signed in after the browser closes. Defaults to yes. / VI: Vẫn đăng nhập sau khi đóng trình duyệt. Mặc định là có. */
+  remember?: boolean;
 }
 
 export interface SignUpInput extends Credentials {
   fullName: string;
 }
 
+/** EN: A failure carries the error itself; the form puts it in the reader's language. / VI: Lỗi mang theo chính nó; form tự diễn đạt theo ngôn ngữ người đọc. */
 export type AuthResult =
   | { ok: true; user: User }
-  | { ok: false; message: string };
+  | { ok: false; error: unknown };
 
 function failure(error: unknown): AuthResult {
-  if (error instanceof ApiError) {
-    switch (error.code) {
-      case "INVALID_CREDENTIALS":
-        return { ok: false, message: "Incorrect email or password." };
-      case "ACCOUNT_BLOCKED":
-        return { ok: false, message: "This account has been suspended." };
-      case "EMAIL_ALREADY_EXISTS":
-        return { ok: false, message: "An account with this email already exists." };
-      case "VALIDATION_ERROR": {
-        const first = error.details ? Object.values(error.details)[0] : undefined;
-        return { ok: false, message: first ?? error.message };
-      }
-      case "BID_RATE_LIMITED":
-        return { ok: false, message: "Too many attempts. Wait a moment and try again." };
-      default:
-        break;
-    }
-  }
-  return { ok: false, message: "Something went wrong. Please try again." };
+  return { ok: false, error };
 }
 
 /** `POST /api/auth/login` */
-export async function signIn({ email, password }: Credentials): Promise<AuthResult> {
+export async function signIn({ email, password, remember = true }: Credentials): Promise<AuthResult> {
   try {
     const login = await api<ApiLogin>("/api/auth/login", {
       method: "POST",
-      body: { email: email.trim(), password },
+      body: { email: email.trim(), password, rememberMe: remember },
     });
     setToken(login.accessToken, login.expiresAt);
     // EN: The login answer has no join date; the profile page shows one. / VI: Kết quả đăng nhập không có ngày tham gia; trang hồ sơ cần nó.
@@ -155,7 +144,14 @@ export async function signUp({ fullName, email, password }: SignUpInput): Promis
   return signIn({ email, password });
 }
 
-export function signOut(): void {
+/** EN: `POST /api/auth/logout` ends the session on the server too. / VI: `POST /api/auth/logout` kết thúc cả phiên trên server. */
+export async function signOut(): Promise<void> {
+  try {
+    await api<void>("/api/auth/logout", { method: "POST" });
+  } catch {
+    // EN: Offline: the cookie expires on its own; this device is signed out regardless.
+    // VI: Mất mạng: cookie tự hết hạn; thiết bị này vẫn được đăng xuất.
+  }
   clearToken();
   sessionStore.setState({ user: null, hydrated: true });
 }
