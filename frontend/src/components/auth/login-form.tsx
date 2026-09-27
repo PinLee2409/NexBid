@@ -148,7 +148,7 @@ export function LoginForm() {
 
       <p className="border-line text-dim mt-8 border-t pt-4 text-xs leading-relaxed">
         <span className="label-sm text-foreground">{t("demoTitle")}</span>{" "}
-        {t("demoBody", { email: "pin@nexbid.com" })}
+        {t("demoBody", { email: "pin@nexbid.test", password: "nexbid-demo" })}
       </p>
 
       <p className="text-muted-foreground mt-6 text-center text-sm">

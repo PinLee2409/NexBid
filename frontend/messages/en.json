@@ -311,7 +311,7 @@
       "blocked": "This account has been suspended."
     },
     "demoTitle": "Demo account",
-    "demoBody": "Sign in with {email} and any password."
+    "demoBody": "Sign in as {email} with the password {password} (after loading the demo data)."
   },
   "account": {
     "title": "Your account",

@@ -8,12 +8,7 @@ Các mục đã làm nằm ở cuối file, kèm các quyết định nghiệp v
 
 ---
 
-## 1. Dọn dẹp môi trường dev
-
-- DB dev (`nexbid` trên cổng 55432) còn user và lô tạo ra khi kiểm thử các chức năng trước. Nếu muốn sạch:
-  `docker compose -f docker/compose.yaml down -v` rồi `up -d` (mất **toàn bộ** dữ liệu dev, Flyway tạo lại
-  schema khi backend khởi động), xoá ảnh cũ trong `backend/var/images/`, rồi chạy `node docs/demo/seed.mjs`
-  để có bộ dữ liệu demo (README → Demo data).
+Hiện không còn mục nào đang chờ.
 
 ## Đã làm (27/09/2026) — đợt 1
 
@@ -54,3 +49,22 @@ Các mục đã làm nằm ở cuối file, kèm các quyết định nghiệp v
   45 giây mới giao lại partition.
 - **Quy tắc nhỏ**, theo quyết định đã chốt: không admin nào khoá được tài khoản ADMIN (kể cả chính mình) —
   `ADMIN_NOT_BLOCKABLE`; ảnh sản phẩm bị khoá cùng thông tin sản phẩm khi sản phẩm `IN_AUCTION` hoặc `SOLD`.
+
+## Đã làm (27/09/2026) — đợt 3
+
+- **Dọn môi trường dev:** DB dev đã được xoá sạch và đổ lại bằng `docs/demo/seed.mjs` (README → Demo data có
+  lệnh để làm lại khi cần).
+- **Múi giờ hiển thị**, theo quyết định đã chốt: mọi mốc giờ hiện theo múi giờ trình duyệt của người xem. Trình
+  duyệt báo múi giờ qua cookie `NEXBID_TZ`, server đọc nó cho next-intl (chưa có cookie thì dùng UTC) và trang
+  render lại một lần ở lần vào đầu tiên. Danh sách bid realtime giờ cũng định dạng qua next-intl, nên cùng một
+  bid hiện cùng một giờ ở mọi màn hình; form tạo lô nhập và xem trước theo cùng múi giờ.
+- **Test end-to-end** (Playwright, `frontend/e2e`): xem lô khi chưa đăng nhập, đăng nhập/sai mật khẩu/đăng ký,
+  hai người trả giá thấy bid của nhau không cần tải lại, chặn giá dưới mức tối thiểu, admin duyệt lô, và giờ theo
+  múi giờ người xem. Mỗi lần chạy tự tạo tài khoản và lô riêng. Chạy trong CI trên stack `docker compose`; đẩy
+  image chỉ xảy ra khi test này qua.
+- **Ảnh demo đúng sản phẩm:** thay các ảnh Unsplash sai sản phẩm trong seed (Omega là ảnh IWC, Leica là Fujifilm,
+  Sony và Canon AE-1 là máy Canon khác, Birkin là túi Ferragamo/Gucci, Vision Pro là kính Oculus, Sacai là giày
+  khác, Stratocaster là đàn Gibson...). Unsplash không có ảnh Birkin miễn phí, nên lô Birkin dùng ảnh túi da không
+  lộ thương hiệu khác.
+- **Gợi ý tài khoản demo ở trang đăng nhập:** câu cũ từ thời dữ liệu giả ("pin@nexbid.com với mật khẩu bất
+  kỳ") không còn đúng với backend thật; giờ chỉ đúng tài khoản của seed demo (`pin@nexbid.test` / `nexbid-demo`).

@@ -1,7 +1,7 @@
-# EN: Every push and pull request runs the backend tests, checks the frontend and builds both Docker images.
-#     A push to main then publishes the images to GitHub Container Registry.
-# VI: Mỗi lần push và pull request: chạy test backend, kiểm tra frontend và build cả hai image Docker.
-#     Push lên main thì còn đẩy image lên GitHub Container Registry.
+# EN: Every push and pull request runs the backend tests, checks the frontend, runs the end-to-end tests on the
+#     Docker stack and builds both Docker images. A push to main then publishes the images to GitHub Container Registry.
+# VI: Mỗi lần push và pull request: chạy test backend, kiểm tra frontend, chạy test end-to-end trên stack Docker và
+#     build cả hai image Docker. Push lên main thì còn đẩy image lên GitHub Container Registry.
 name: CI/CD
 
 on:
@@ -62,10 +62,42 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
+  e2e:
+    name: End-to-end tests
+    # EN: Playwright in Chromium against the whole stack from docker compose. / VI: Playwright trên Chromium, chạy với cả stack từ docker compose.
+    needs: [frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Start the stack
+        run: docker compose up -d --build --wait
+      - name: Install Playwright and Chromium
+        working-directory: frontend
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: Run the end-to-end tests
+        working-directory: frontend
+        run: npm run test:e2e
+      - name: Keep the Playwright report of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
+      - name: Backend log of a failed run
+        if: failure()
+        run: docker compose logs --tail 300 backend
+
   images:
     name: Docker image (${{ matrix.app }})
-    # EN: Only code that passed both checks is built, and only then published. / VI: Chỉ code đã qua cả hai bước kiểm tra mới được build, rồi mới được đẩy lên.
-    needs: [backend, frontend]
+    # EN: Only code that passed every check is built, and only then published. / VI: Chỉ code đã qua mọi bước kiểm tra mới được build, rồi mới được đẩy lên.
+    needs: [backend, frontend, e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

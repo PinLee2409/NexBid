@@ -5,5 +5,9 @@ node_modules
 *.log
 *.tsbuildinfo
 .claude
+e2e
+playwright.config.ts
+test-results
+playwright-report
 Dockerfile
 .dockerignore

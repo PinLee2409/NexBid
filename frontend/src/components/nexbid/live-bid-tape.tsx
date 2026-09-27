@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -16,12 +16,8 @@ interface LiveBidTapeProps {
   className?: string;
 }
 
-/** `19:42:18` — tape time, to the second. */
-function tapeTime(iso: string): string {
-  const value = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}`;
-}
+/** `19:42:18` — tape time, to the second, in the reader's time zone like every other time. */
+const TAPE_TIME = { hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" } as const;
 
 /**
  * The bid tape.
@@ -38,6 +34,7 @@ export function LiveBidTape({
   className,
 }: LiveBidTapeProps) {
   const t = useTranslations("terminal");
+  const format = useFormatter();
   const visible = bids.slice(0, limit);
 
   if (visible.length === 0) {
@@ -67,7 +64,7 @@ export function LiveBidTape({
               )}
             >
               <span className="text-dim w-[62px] shrink-0 tabular-nums">
-                {tapeTime(bid.createdAt)}
+                {format.dateTime(new Date(bid.createdAt), TAPE_TIME)}
               </span>
 
               <span

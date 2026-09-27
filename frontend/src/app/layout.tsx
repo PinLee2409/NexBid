@@ -3,6 +3,7 @@ import { Anton, Geist, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
 
+import { TimeZoneSync } from "@/components/common/time-zone-sync";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -65,6 +66,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-dvh flex-col">
         <ThemeProvider>
           <NextIntlClientProvider>
+            <TimeZoneSync />
             {children}
             <Toaster
               position="bottom-right"

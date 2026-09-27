@@ -397,12 +397,38 @@ and Kafka in containers. Highlights:
 - Kafka outage, Redis outage, duplicate delivery and rollback each have a test, and each test was checked
   by breaking the code it guards and watching it fail.
 
+### End-to-end tests
+
+[Playwright](frontend/e2e) drives the real app in Chromium against a running stack:
+- a visitor finds a lot and is asked to sign in;
+- sign-in, a wrong password, and registration;
+- two buyers on the same lot, each seeing the other's bid and the "outbid" banner without a reload;
+- the minimum-bid check;
+- an admin approving a lot;
+- times shown in the reader's own time zone.
+
+Each run creates its own accounts and lots, with a run id in every name, so it can run again on the same
+database.
+
+```bash
+docker compose up -d --build --wait
+```
+
+```bash
+cd frontend && npx playwright install chromium && npm run test:e2e
+```
+
+Setup grants the seller and admin roles through `docker compose exec postgres`, as the demo seed does. Point
+the tests elsewhere with `E2E_WEB_URL`, `E2E_API_URL` and `E2E_COMPOSE_FILE` (relative to `frontend/`, e.g.
+`../docker/compose.yaml` for the dev services). `E2E_BROWSER_CHANNEL=chrome` uses an installed Chrome
+instead of downloading Chromium.
+
 ### CI/CD
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request: the full
-backend suite (`./mvnw verify`, with Testcontainers on the runner's Docker), then `tsc`, ESLint and
-`next build` for the frontend, then both Docker images are built. A push to `main` publishes the images
-once everything above passed:
+backend suite (`./mvnw verify`, with Testcontainers on the runner's Docker); `tsc`, ESLint and
+`next build` for the frontend; the end-to-end tests against `docker compose up`; then both Docker images are
+built. A push to `main` publishes the images once everything above passed:
 
 ```bash
 docker pull ghcr.io/pinlee2409/nexbid-backend:latest

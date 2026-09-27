@@ -311,7 +311,7 @@
       "blocked": "Tài khoản này đã bị khoá."
     },
     "demoTitle": "Tài khoản demo",
-    "demoBody": "Đăng nhập bằng {email} với mật khẩu bất kỳ."
+    "demoBody": "Đăng nhập bằng {email} với mật khẩu {password} (sau khi nạp dữ liệu demo)."
   },
   "account": {
     "title": "Tài khoản",
