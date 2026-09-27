@@ -150,3 +150,106 @@ describe("one renewal at a time", () => {
     expect(store.getToken()).toBe("renewed-elsewhere");
   });
 });
+
+describe("what the client makes of an answer", () => {
+  const stub = (response: Response | Error) =>
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      if (response instanceof Error) throw response;
+      return response;
+    }));
+
+  it("reports an unreachable server as an error of its own, not a crash", async () => {
+    const { api } = await freshClient();
+    stub(new TypeError("Failed to fetch"));
+    await expect(api("/api/categories")).rejects.toMatchObject({ status: 0, code: "INTERNAL_ERROR" });
+  });
+
+  it.each([
+    [404, "NOT_FOUND"],
+    [403, "ACCESS_DENIED"],
+    [401, "NOT_AUTHENTICATED"],
+    [502, "INTERNAL_ERROR"],
+  ])("reads a %i page outside the envelope as %s", async (status, code) => {
+    const { api } = await freshClient();
+    stub(new Response("<html>Bad gateway</html>", { status }));
+    await expect(api("/api/categories")).rejects.toMatchObject({ status, code });
+  });
+
+  it("keeps the server's code, field errors and how long to wait", async () => {
+    const { api } = await freshClient();
+    stub(new Response(
+      JSON.stringify({ success: false, code: "BID_RATE_LIMITED", message: "Slow down", details: { amount: "too often" } }),
+      { status: 429, headers: { "Retry-After": "7" } },
+    ));
+    await expect(api("/api/auctions/a1/bids", { method: "POST", body: {} })).rejects.toMatchObject({
+      code: "BID_RATE_LIMITED",
+      details: { amount: "too often" },
+      retryAfterSeconds: 7,
+    });
+  });
+
+  it("repeats list parameters and leaves out empty ones", async () => {
+    const { api } = await freshClient();
+    const fetchMock = vi.fn<(url: string) => Promise<Response>>(async () => new Response(JSON.stringify({ success: true, data: [] })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api("/api/auctions", { query: { status: ["ACTIVE", "SCHEDULED"], search: "", page: 2, sort: undefined } });
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/auctions?status=ACTIVE&status=SCHEDULED&page=2");
+  });
+
+  it("sends JSON with its content type, and a form as it is", async () => {
+    const { api } = await freshClient();
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response(JSON.stringify({ success: true, data: null })),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api("/api/x", { method: "POST", body: { a: 1 } });
+    await api("/api/y", { method: "POST", form: new FormData() });
+    const [json, form] = fetchMock.mock.calls.map((call) => call[1]!.headers as Record<string, string>);
+    expect(json["Content-Type"]).toBe("application/json");
+    expect(form["Content-Type"]).toBeUndefined();
+  });
+});
+
+describe("keeping an open page's token fresh", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("renews a minute before the token runs out", async () => {
+    vi.useFakeTimers();
+    const { store } = await freshClient();
+    const { keepSessionFresh } = await import("./session-refresh");
+    store.setToken("old", new Date(Date.now() + 2 * 60_000).toISOString());
+    const calls = fakeBackend({ "/api/auth/refresh": [renewal("new")] });
+
+    keepSessionFresh();
+    await vi.advanceTimersByTimeAsync(59_000);
+    expect(calls).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(2_000);
+
+    expect(calls.map((call) => call.url)).toEqual(["/api/auth/refresh"]);
+    expect(store.getToken()).toBe("new");
+  });
+
+  it("catches up as soon as a tab that slept comes back", async () => {
+    vi.useFakeTimers();
+    const { store } = await freshClient();
+    const { keepSessionFresh } = await import("./session-refresh");
+    store.setToken("stale", new Date(Date.now() + 10 * 60_000).toISOString());
+    keepSessionFresh();
+    const calls = fakeBackend({ "/api/auth/refresh": [renewal("new")] });
+
+    // EN: Nine and a half minutes pass while the tab sleeps: the clock moves, its timers do not fire.
+    // VI: Chín phút rưỡi trôi qua khi tab ngủ: đồng hồ chạy, nhưng hẹn giờ của tab thì không.
+    vi.setSystemTime(Date.now() + 9.5 * 60_000);
+    expect(calls).toHaveLength(0);
+
+    Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+    await vi.waitFor(() => expect(store.getToken()).toBe("new"));
+    expect(calls).toHaveLength(1);
+  });
+
+});
