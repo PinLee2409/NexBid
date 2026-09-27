@@ -436,6 +436,10 @@ cd backend && ./mvnw test
 cd frontend && npm test
 ```
 
+```bash
+cd frontend && npm run test:coverage
+```
+
 The backend suite needs Docker, not the dev services: each test context starts its own Postgres, Redis
 and Kafka in containers. Highlights:
 
@@ -459,6 +463,18 @@ They also keep the English and Vietnamese message catalogues in step: the same k
 in each translation, and a message for every error code — and the frontend's list of error codes must match
 the backend's `ErrorCode` enum, so the two cannot drift apart. [knip](https://knip.dev) (`npm run knip`) fails
 on unused files, exports and dependencies.
+
+### Coverage
+
+| | Lines | Branches | Measured on |
+| --- | --- | --- | --- |
+| Backend (JaCoCo) | 94.7% | 80.2% | everything, across 215 classes |
+| Frontend unit (Vitest) | 97.5% | 87.7% | the logic layer: `src/lib`, `src/services/api` |
+
+Frontend components and the thin service wrappers around `fetch` are covered by the end-to-end suite rather
+than unit tests. Each figure has a floor a little below it (backend 90% / 75%, frontend 90% / 80%), so a real
+drop fails CI; every run also posts its figures on the run's page and keeps the HTML reports
+(`target/site/jacoco`, `frontend/coverage`) as artifacts.
 
 ### End-to-end tests
 
@@ -493,8 +509,8 @@ instead of downloading Chromium.
 ### CI/CD
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request: the full
-backend suite (`./mvnw verify`, with Testcontainers on the runner's Docker); `tsc`, ESLint, knip, the unit
-tests and `next build` for the frontend; the end-to-end tests against `docker compose up`; then both Docker images are
+backend suite (`./mvnw verify`, with Testcontainers on the runner's Docker, and its coverage floor); `tsc`,
+ESLint, knip, the unit tests with their coverage floor, and `next build` for the frontend; the end-to-end tests against `docker compose up`; then both Docker images are
 built. A push to `main` publishes the images once everything above passed:
 
 ```bash
@@ -551,6 +567,9 @@ mobile is JavaScript: about 290 KiB, a third of it React itself.
 ---
 
 ## Docs
+
+[`docs/decisions.md`](docs/decisions.md) explains the main design choices — concurrency, the event outbox,
+sessions, security, testing — with what each costs and the test that proves it.
 
 The specification and the step-by-step implementation guide are in [`docs/`](docs/). What the specification
 asks for beyond the 40 guide functions is tracked in [`docs/NexBid_Backlog.md`](docs/NexBid_Backlog.md).

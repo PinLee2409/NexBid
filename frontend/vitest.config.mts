@@ -12,5 +12,16 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts"],
     environment: "node",
+    coverage: {
+      provider: "v8",
+      // EN: The logic layer. Components and the thin service wrappers around fetch are exercised by the
+      //     Playwright suite instead.
+      // VI: Tầng logic. Component và các lớp bọc mỏng quanh fetch của service được bộ test Playwright kiểm tra.
+      include: ["src/lib/**", "src/services/api/**"],
+      exclude: ["src/**/*.test.ts", "src/services/api/dto.ts"],
+      reporter: ["text-summary", "html", "json-summary"],
+      // EN: A little below today's figures: a real drop fails the build. / VI: Thấp hơn số hiện tại một chút: tụt thật sự thì build hỏng.
+      thresholds: { lines: 90, statements: 90, functions: 85, branches: 80 },
+    },
   },
 });

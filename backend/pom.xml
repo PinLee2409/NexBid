@@ -31,6 +31,7 @@
 		<spring-modulith.version>2.1.1</spring-modulith.version>
 		<jjwt.version>0.12.6</jjwt.version>
 		<springdoc.version>3.1.1</springdoc.version>
+		<jacoco.version>0.8.13</jacoco.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -253,6 +254,56 @@
 									<artifactId>lombok</artifactId>
 								</path>
 							</annotationProcessorPaths>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- EN: Test coverage. The agent records which lines the tests run; the report lands in target/site/jacoco. -->
+			<!-- VI: Độ phủ test. Agent ghi lại dòng nào được test chạy qua; báo cáo nằm ở target/site/jacoco. -->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>${jacoco.version}</version>
+				<executions>
+					<execution>
+						<id>prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>test</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+					<!-- EN: A little below today's figures (94.7% lines, 80.2% branches): a real drop fails `verify`, as CI runs it. -->
+					<!-- VI: Thấp hơn số hiện tại một chút (94.7% dòng, 80.2% nhánh): tụt thật sự thì `verify` hỏng, như CI chạy. -->
+					<execution>
+						<id>check</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.90</minimum>
+										</limit>
+										<limit>
+											<counter>BRANCH</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.75</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
 						</configuration>
 					</execution>
 				</executions>

@@ -161,3 +161,15 @@ Hiện không còn mục nào đang chờ.
   - Vì job frontend hỏng nên job E2E và build image trên CI trước giờ luôn bị bỏ qua; lần push tới là lần đầu
     chúng chạy trên CI.
 
+## Đã làm (27/09/2026) — đợt 10: CI xanh, độ phủ test, tài liệu thiết kế
+
+- **CI xanh lần đầu** sau khi sửa (đợt 9): cả năm job qua, kể cả job E2E lần đầu chạy trên CI (31/31, không test
+  nào phải chạy lại).
+- **Độ phủ test:** backend dùng JaCoCo (94.7% dòng, 80.2% nhánh trên 215 class), frontend dùng Vitest cho tầng logic
+  (97.5% dòng, 87.7% nhánh); ngưỡng thấp hơn một chút (backend 90%/75%, frontend 90%/80%) nên tụt thật sự thì CI
+  hỏng; mỗi lần chạy CI ghi số liệu lên trang của lần chạy và giữ báo cáo HTML. Unit test frontend từ 75 lên 104:
+  thêm test cho mapper (thông báo dẫn tới đâu, số tiền dạng chuỗi), store, bộ hẹn giờ gia hạn phiên, và các dạng lỗi
+  của HTTP client.
+- **Tài liệu quyết định thiết kế** (`docs/decisions.md`, tiếng Anh): mười một quyết định chính — vấn đề, lựa chọn,
+  cái giá phải trả, và test chứng minh — được README trỏ tới.
+
