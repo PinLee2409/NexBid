@@ -61,7 +61,9 @@ export function AuctionCatalogueItem({
           <ProductPhoto
             src={cover?.url}
             alt={cover?.alt}
-            priority={priority}
+            // The first cards of a list are its largest paint: fetch them first.
+            loading={priority ? "eager" : undefined}
+            fetchPriority={priority ? "high" : undefined}
             sizes={
             scale === "hero" || scale === "wide"
             ? "(max-width: 1024px) 100vw, 60vw"

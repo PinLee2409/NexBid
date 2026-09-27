@@ -59,15 +59,14 @@ export function ThemeSwitcher({
         <Button
           variant="ghost"
           size={variant === "compact" ? "icon" : "sm"}
-          aria-label={t("toggle")}
           className={cn(variant === "compact" && "relative", className)}
         >
           <Icon aria-hidden="true" />
-          {variant === "full" ? (
-            <span>{selected ? t(selected.labelKey) : t("label")}</span>
-          ) : (
-            <span className="sr-only">{t("label")}</span>
-          )}
+          {/* The spoken name contains the visible one (WCAG 2.5.3): "Change appearance: Dark". */}
+          <span className="sr-only">{t("toggle")}: </span>
+          <span className={variant === "full" ? undefined : "sr-only"}>
+            {selected ? t(selected.labelKey) : t("label")}
+          </span>
         </Button>
       </DropdownMenuTrigger>
 

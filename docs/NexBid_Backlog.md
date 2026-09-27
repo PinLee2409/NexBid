@@ -143,3 +143,21 @@ Hiện không còn mục nào đang chờ.
   `isLive`/`isUpcoming`/..., `formatNumber`, `MAIN_NAV`, `PRICE_FILTER`, các kiểu envelope cũ), bỏ `export` ở những
   thứ chỉ dùng trong file; sửa các chú thích còn nói về "mock". `npm run knip` chạy trong CI.
 
+## Đã làm (27/09/2026) — đợt 9: hiệu năng và CI
+
+- **Hiệu năng trang (Lighthouse, mobile, trung vị 3 lần đo, so với bản trước trên cùng dữ liệu):** điểm tăng 5–6 ở
+  mọi trang, LCP nhanh hơn 0.8–1.3 s, trang nhẹ hơn khoảng 30%, accessibility 100 ở cả bốn trang. Nguyên nhân chính:
+  logo bị tải ở 1920/3840 px cho một hình 30 px (và cả bản sáng/tối đang ẩn); ảnh chưa dùng AVIF; ảnh lớn nhất của
+  trang chưa được ưu tiên tải; font preload cả bộ tiếng Việt trên trang tiếng Anh. Cũng sửa ba lỗi accessibility mà
+  axe trong test không bắt (tên đọc của nút ngôn ngữ, giao diện, ảnh trong gallery phải chứa chữ hiển thị; thứ tự
+  heading ở Discover). Bảng số liệu nằm trong README → Frontend performance.
+- **CI chưa từng xanh**, hai nguyên nhân, đã sửa:
+  - Frontend: `tsc` cần các kiểu `PageProps`/`LayoutProps` do Next.js sinh ra; máy dev có sẵn nhờ `next dev`,
+    còn CI checkout sạch thì chưa có. Thêm bước `next typegen` trước `tsc` (đã tái hiện đúng 15 lỗi rồi hết lỗi).
+  - Backend: `AuctionAutoEndTest.theClosingBellWaitsForABidThatIsStillCommitting` đếm số lô được đóng, nhưng các
+    test class khác để lại lô đã tới hạn trong database dùng chung; Linux chạy các class theo thứ tự khác Windows nên
+    chỉ hỏng trên CI. Test giờ dọn các lô tới hạn trước khi đếm, như hai test đếm khác trong class (đã tái hiện
+    đúng lỗi "expected 1 but was 2").
+  - Vì job frontend hỏng nên job E2E và build image trên CI trước giờ luôn bị bỏ qua; lần push tới là lần đầu
+    chúng chạy trên CI.
+

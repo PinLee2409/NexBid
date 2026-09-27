@@ -207,7 +207,8 @@
     "searchEmptyBody": "Check the spelling, or browse the full catalogue instead.",
     "browseAll": "Browse all auctions",
     "pagination": "Page {page} of {total}",
-    "searchLabel": "Search auctions"
+    "searchLabel": "Search auctions",
+    "resultsHeading": "Results"
   },
   "auction": {
     "backToAuctions": "Back to auctions",

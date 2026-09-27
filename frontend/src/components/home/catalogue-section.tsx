@@ -47,7 +47,6 @@ export function CatalogueSection({ auctions, serverTime }: CatalogueSectionProps
           auction={lead}
           serverTime={serverTime}
           scale="hero"
-          priority
           className="lg:col-span-7"
         />
 

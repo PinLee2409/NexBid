@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { useState } from "react";
 
 import { CURRENCY } from "@/lib/format";
@@ -32,7 +32,7 @@ function DigitColumn({ digit }: { digit: number }) {
         0
       </span>
 
-      <motion.span
+      <m.span
         className="absolute top-0 left-0 flex w-full flex-col"
         // No roll on first paint — only on a genuine price change.
         initial={false}
@@ -48,7 +48,7 @@ function DigitColumn({ digit }: { digit: number }) {
             {value}
           </span>
         ))}
-      </motion.span>
+      </m.span>
     </span>
   );
 }

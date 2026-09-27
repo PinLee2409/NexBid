@@ -75,6 +75,7 @@ export default async function AuctionsPage(props: PageProps<"/auctions">) {
             />
           ) : (
             <>
+              <h2 className="sr-only">{t("resultsHeading")}</h2>
               <div className="mt-10 grid gap-x-6 gap-y-12 sm:grid-cols-2 xl:grid-cols-3">
                 {result.items.map((auction, index) => (
                   <AuctionCatalogueItem

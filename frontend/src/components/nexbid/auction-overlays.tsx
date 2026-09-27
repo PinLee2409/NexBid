@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -68,7 +68,7 @@ export function AuctionExtendedOverlay({
   return (
     <AnimatePresence>
       {open ? (
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -81,7 +81,7 @@ export function AuctionExtendedOverlay({
             <p className="label text-signal-text">{t("extendedTitle")}</p>
 
             <div className="mt-10 flex flex-col items-center gap-2">
-              <motion.p
+              <m.p
                 animate={{
                   opacity: beat === 0 ? 1 : 0.25,
                   scale: beat === 0 ? 1 : 0.9,
@@ -90,30 +90,30 @@ export function AuctionExtendedOverlay({
                 className="mono-figure text-danger-text text-[clamp(2.5rem,8vw,5rem)] leading-none"
               >
                 {before}
-              </motion.p>
+              </m.p>
 
-              <motion.p
+              <m.p
                 animate={{ opacity: beat >= 1 ? 1 : 0, y: beat >= 1 ? 0 : 12 }}
                 transition={{ duration: 0.4 }}
                 className="mono-figure text-signal-text text-[clamp(2rem,6vw,3.5rem)] leading-none"
               >
                 {added}
-              </motion.p>
+              </m.p>
 
-              <motion.p
+              <m.p
                 animate={{ opacity: beat >= 2 ? 1 : 0, y: beat >= 2 ? 0 : 16 }}
                 transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                 className="display mt-4 text-[clamp(3.5rem,12vw,9rem)] leading-none"
               >
                 {after}
-              </motion.p>
+              </m.p>
             </div>
 
             <p className="text-muted-foreground mt-10 text-sm">
               {t("extendedBody")}
             </p>
           </div>
-        </motion.div>
+        </m.div>
       ) : null}
     </AnimatePresence>
   );
@@ -159,7 +159,7 @@ export function AuctionClosingOverlay({ open, onDone }: ClosingOverlayProps) {
   return (
     <AnimatePresence>
       {open ? (
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -170,7 +170,7 @@ export function AuctionClosingOverlay({ open, onDone }: ClosingOverlayProps) {
         >
           <div className="w-full max-w-5xl px-5 sm:px-8">
             {lines.map((line, index) => (
-              <motion.p
+              <m.p
                 key={index}
                 initial={{ opacity: 0, y: 24 }}
                 animate={{
@@ -183,10 +183,10 @@ export function AuctionClosingOverlay({ open, onDone }: ClosingOverlayProps) {
                 }`}
               >
                 {line}
-              </motion.p>
+              </m.p>
             ))}
           </div>
-        </motion.div>
+        </m.div>
       ) : null}
     </AnimatePresence>
   );
@@ -220,7 +220,7 @@ export function SoldOverlay({
   return (
     <AnimatePresence>
       {open ? (
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -229,7 +229,7 @@ export function SoldOverlay({
           role="dialog"
           aria-modal="true"
         >
-          <motion.div
+          <m.div
             initial={{ y: 26, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
@@ -273,8 +273,8 @@ export function SoldOverlay({
                 {t("backToLot")}
               </button>
             </div>
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       ) : null}
     </AnimatePresence>
   );

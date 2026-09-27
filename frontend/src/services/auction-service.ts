@@ -130,10 +130,14 @@ export async function getHomeFeed(): Promise<HomeFeed> {
   ]);
 
   // EN: The showcase is read in full for its live viewer count. / VI: Lô trưng bày được đọc đầy đủ để lấy số người đang xem.
-  const showcase = featured.items[0] ? ((await getAuction(featured.items[0].id)) ?? featured.items[0]) : null;
+  const lead = featured.items[0];
   // The editorial spread quotes the description, which cards do not carry. It must not repeat the showcase.
-  const spread = live.items.find((auction) => auction.id !== showcase?.id);
-  const editorial = spread ? ((await getAuction(spread.id)) ?? spread) : null;
+  const spread = live.items.find((auction) => auction.id !== lead?.id);
+  // EN: Both are known now, so both are read at once. / VI: Đã biết cả hai, nên đọc cả hai cùng lúc.
+  const [showcase, editorial] = await Promise.all([
+    lead ? getAuction(lead.id).then((detail) => detail ?? lead) : null,
+    spread ? getAuction(spread.id).then((detail) => detail ?? spread) : null,
+  ]);
 
   return {
     live: live.items,

@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
 
+import { MotionProvider } from "@/components/common/motion-provider";
 import { TimeZoneSync } from "@/components/common/time-zone-sync";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -14,12 +15,17 @@ const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin", "vietnamese"],
   display: "swap",
+  // Not preloaded: a preload fetches every subset, the Vietnamese one on English pages too. Left to the
+  // browser, only the subsets a page shows are fetched, while a metric-matched fallback fills in.
+  preload: false,
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
   display: "swap",
+  // Only for figures: loaded when used, not raced against the page's first image.
+  preload: false,
 });
 
 /** Editorial display face — condensed, heavy, set in caps. */
@@ -70,7 +76,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeProvider nonce={nonce}>
           <NextIntlClientProvider>
             <TimeZoneSync />
-            {children}
+            <MotionProvider>{children}</MotionProvider>
             <Toaster
               position="bottom-right"
               toastOptions={{

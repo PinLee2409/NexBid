@@ -29,10 +29,12 @@ function ThemedArt({
 }) {
   // Purely decorative: the name is carried by the wrapper, once, so that the
   // two cuts of the same artwork are not announced twice.
+  // The size it is shown at, so the browser fetches a 1x/2x file of a few KB
+  // rather than the full artwork. Left lazy: the cut the theme hides is never
+  // laid out, so it is never downloaded.
   const shared = {
-    width,
-    height,
-    priority: true,
+    width: Math.round((size * width) / height),
+    height: Math.round(size),
     style: { height: size, width: "auto" },
   } as const;
 

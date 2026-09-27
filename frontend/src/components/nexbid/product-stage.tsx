@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -37,7 +37,7 @@ export function ProductStage({ images, lotNumber, className }: ProductStageProps
     <div className={cn("relative", className)}>
       <div className="on-media bg-surface relative aspect-[4/5] overflow-hidden lg:aspect-auto lg:h-[calc(100svh-4rem)]">
         <AnimatePresence mode="wait" initial={false}>
-          <motion.div
+          <m.div
             key={active.id}
             initial={{ opacity: 0, scale: 1.02 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -48,11 +48,12 @@ export function ProductStage({ images, lotNumber, className }: ProductStageProps
             <ProductPhoto
               src={active.url}
               alt={active.alt}
-              priority
+              loading="eager"
+              fetchPriority="high"
               sizes="(max-width: 1024px) 100vw, 70vw"
               className="object-cover"
             />
-          </motion.div>
+          </m.div>
         </AnimatePresence>
 
         {/* The lot index, set into the corner of the stage. */}
@@ -73,7 +74,7 @@ export function ProductStage({ images, lotNumber, className }: ProductStageProps
                 key={image.id}
                 type="button"
                 onClick={() => setIndex(position)}
-                aria-label={t("viewImage", { index: position + 1 })}
+                aria-label={t("viewImage", { index: String(position + 1).padStart(2, "0") })}
                 aria-current={position === index}
                 className={cn(
                   "mono-figure text-xs transition-colors",
