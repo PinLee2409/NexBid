@@ -9,6 +9,7 @@ import type {
   Payment,
   Product,
   ProductImage,
+  SecondChanceOffer,
   User,
 } from "@/types";
 
@@ -20,6 +21,7 @@ import type {
   ApiCategory,
   ApiImage,
   ApiNotification,
+  ApiOfferDetails,
   ApiOrder,
   ApiPaymentDetails,
   ApiProduct,
@@ -150,6 +152,15 @@ function hrefFor(notification: ApiNotification): string | undefined {
       // EN: A cancelled lot has no public page, and seller and winner land in different places.
       // VI: Lô đã huỷ không còn trang công khai, và người bán với người thắng xem ở hai nơi khác nhau.
       return undefined;
+    case "SELLER_APPROVED":
+      return "/seller/products/create";
+    case "SELLER_REJECTED":
+      return "/become-seller";
+    case "SECOND_CHANCE_OFFER":
+      return "/my-wins";
+    case "SECOND_CHANCE_ACCEPTED":
+    case "SECOND_CHANCE_DECLINED":
+      return "/seller/orders";
     default:
       return notification.auctionId ? `/auctions/${notification.auctionId}` : undefined;
   }
@@ -166,6 +177,11 @@ export function toNotification(notification: ApiNotification, userId: string): A
     href: hrefFor(notification),
     createdAt: notification.createdAt,
   };
+}
+
+/** EN: Money may arrive as a string from BigDecimal. / VI: Tiền có thể tới dạng chuỗi từ BigDecimal. */
+export function toOffer(offer: ApiOfferDetails): SecondChanceOffer {
+  return { ...offer, amount: Number(offer.amount) };
 }
 
 export function toPayment(payment: ApiPaymentDetails): Payment {

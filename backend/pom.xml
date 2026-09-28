@@ -32,6 +32,7 @@
 		<jjwt.version>0.12.6</jjwt.version>
 		<springdoc.version>3.1.1</springdoc.version>
 		<jacoco.version>0.8.13</jacoco.version>
+		<datasource-micrometer.version>2.3.0</datasource-micrometer.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -43,6 +44,18 @@
 			<groupId>io.micrometer</groupId>
 			<artifactId>micrometer-registry-prometheus</artifactId>
 			<scope>runtime</scope>
+		</dependency>
+		<!-- EN: Traces (spec §34, advanced): one bid followed from HTTP through SQL and the outbox to Kafka and its consumers.
+		     VI: Trace (spec §34, bản nâng cao): theo một lượt trả giá từ HTTP qua SQL và outbox tới Kafka và các consumer. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-opentelemetry</artifactId>
+		</dependency>
+		<!-- EN: A span for each SQL statement. / VI: Một span cho mỗi câu SQL. -->
+		<dependency>
+			<groupId>net.ttddyy.observation</groupId>
+			<artifactId>datasource-micrometer-spring-boot</artifactId>
+			<version>${datasource-micrometer.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -200,6 +213,17 @@
 		<dependency>
 			<groupId>org.testcontainers</groupId>
 			<artifactId>testcontainers-kafka</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-opentelemetry-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- EN: Keeps finished spans in memory, so a test can read a whole trace. / VI: Giữ các span đã xong trong bộ nhớ, để test đọc được cả một trace. -->
+		<dependency>
+			<groupId>io.opentelemetry</groupId>
+			<artifactId>opentelemetry-sdk-testing</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

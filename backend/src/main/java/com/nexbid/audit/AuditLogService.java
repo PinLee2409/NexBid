@@ -26,6 +26,9 @@ import com.nexbid.bid.BidPlacedEvent;
 import com.nexbid.common.security.CurrentUser;
 import com.nexbid.order.OrderEvents;
 import com.nexbid.payment.PaymentEvents;
+import com.nexbid.payment.SecondChanceEvents;
+import com.nexbid.user.SellerApplicationEvent;
+import com.nexbid.user.SellerApplicationStatus;
 import com.nexbid.user.UserService;
 import com.nexbid.user.UserStatusChangedEvent;
 
@@ -108,6 +111,39 @@ public class AuditLogService {
                 ? AuditAction.USER_BLOCKED : AuditAction.USER_UNBLOCKED;
         record(event.actorId(), action, "User", event.userId(),
                 event.before().name(), event.after().name());
+    }
+
+    @EventListener
+    void onSellerApplication(SellerApplicationEvent event) {
+        AuditAction action = switch (event.status()) {
+            case PENDING -> AuditAction.SELLER_APPLIED;
+            case APPROVED -> AuditAction.SELLER_APPROVED;
+            case REJECTED -> AuditAction.SELLER_REJECTED;
+        };
+        record(event.actorId(), action, "SellerApplication", event.applicationId(),
+                event.status() == SellerApplicationStatus.PENDING ? null : SellerApplicationStatus.PENDING.name(),
+                event.status().name());
+    }
+
+    @EventListener
+    void onOfferMade(SecondChanceEvents.Offered event) {
+        record(event.sellerId(), AuditAction.OFFER_MADE, "SecondChanceOffer", event.offerId(),
+                null, event.amount().toPlainString());
+    }
+
+    @EventListener
+    void onOfferAccepted(SecondChanceEvents.Accepted event) {
+        record(event.buyerId(), AuditAction.OFFER_ACCEPTED, "SecondChanceOffer", event.offerId(), "PENDING", "ACCEPTED");
+    }
+
+    /** EN: A lapsed offer has no actor: the clock ran out. / VI: Đề nghị hết hạn không có người làm: đồng hồ đã hết. */
+    @EventListener
+    void onOfferDeclined(SecondChanceEvents.Declined event) {
+        if (event.lapsed()) {
+            record(null, AuditAction.OFFER_EXPIRED, "SecondChanceOffer", event.offerId(), "PENDING", "EXPIRED");
+        } else {
+            record(event.buyerId(), AuditAction.OFFER_DECLINED, "SecondChanceOffer", event.offerId(), "PENDING", "DECLINED");
+        }
     }
 
     public PageView<AuditLogView> list(AuditLogQuery query) {

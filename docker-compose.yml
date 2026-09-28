@@ -99,6 +99,13 @@ services:
       NEXBID_ADMIN_EMAILS: ${NEXBID_ADMIN_EMAILS:-}
       NEXBID_SELLER_EMAILS: ${NEXBID_SELLER_EMAILS:-}
       NEXBID_LOG_LEVEL: INFO
+      # EN: How often unpaid payments and unanswered offers are closed; the end-to-end run shortens it.
+      # VI: Bao lâu một lần các khoản chưa trả và đề nghị chưa trả lời bị đóng; lần chạy end-to-end rút ngắn nó.
+      NEXBID_PAYMENT_EXPIRY_INTERVAL_MS: ${NEXBID_PAYMENT_EXPIRY_INTERVAL_MS:-60000}
+      # EN: Traces go to Tempo (monitoring profile) only when NEXBID_TRACING_EXPORT=true; log lines carry the trace id anyway.
+      # VI: Trace chỉ được gửi tới Tempo (profile monitoring) khi NEXBID_TRACING_EXPORT=true; dòng log luôn mang trace id.
+      NEXBID_TRACING_EXPORT: ${NEXBID_TRACING_EXPORT:-false}
+      NEXBID_OTLP_TRACES_URL: http://tempo:4318/v1/traces
       # EN: Health and metrics move to a port that is never published: only services on this network see them.
       # VI: Health và metric chuyển sang một cổng không bao giờ công bố: chỉ service trong mạng này thấy được.
       MANAGEMENT_SERVER_PORT: 8090
@@ -156,12 +163,23 @@ services:
     ports:
       - "${NEXBID_PROMETHEUS_PORT:-9090}:9090"
 
+  # EN: Traces (spec §34, advanced): NEXBID_TRACING_EXPORT=true docker compose --profile monitoring up
+  # VI: Trace (spec §34, bản nâng cao): NEXBID_TRACING_EXPORT=true docker compose --profile monitoring up
+  tempo:
+    image: grafana/tempo:2.10.8
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo.yml"]
+    volumes:
+      - ./docker/monitoring/tempo.yml:/etc/tempo.yml:ro
+
   grafana:
     image: grafana/grafana:13.2.2
     profiles: ["monitoring"]
     restart: unless-stopped
     depends_on:
       - prometheus
+      - tempo
     environment:
       # EN: Anyone may look; editing needs the admin login. / VI: Ai cũng xem được; muốn sửa phải đăng nhập admin.
       GF_AUTH_ANONYMOUS_ENABLED: "true"

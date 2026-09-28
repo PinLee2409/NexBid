@@ -8,8 +8,8 @@ import type { User, UserRole } from "@/types";
 import type { ApiLogin, ApiUser } from "./api/dto";
 import { api } from "./api/http";
 import { toUser } from "./api/mappers";
-import { keepSessionFresh } from "./api/session-refresh";
-import { clearToken, getToken, hasSession, onTokenChange, setToken } from "./api/token-store";
+import { keepSessionFresh, refreshSession } from "./api/session-refresh";
+import { clearToken, getToken, hasSession, onTokenChange, rolesOf, setToken } from "./api/token-store";
 
 /**
  * Client-side session, backed by the JWT from `POST /api/auth/login`.
@@ -38,8 +38,7 @@ async function loadAccount(): Promise<void> {
     return;
   }
   try {
-    const me = await api<ApiUser>("/api/users/me");
-    sessionStore.setState({ user: toUser(me), hydrated: true });
+    await reloadAccount();
   } catch {
     // EN: A rejected token was already cleared by the HTTP client. / VI: Token bị từ chối đã được HTTP client xoá.
     sessionStore.setState({ user: null, hydrated: true });
@@ -154,6 +153,29 @@ export async function signOut(): Promise<void> {
   }
   clearToken();
   sessionStore.setState({ user: null, hydrated: true });
+}
+
+/**
+ * EN: Roles travel inside the access token, so one granted after it was issued (an approved seller request) is
+ *     refused by the API until the token is replaced. The account is read from the database, so it knows first.
+ * VI: Vai trò nằm trong access token, nên vai trò được cấp sau khi token ra đời (yêu cầu bán hàng được duyệt) bị
+ *     API từ chối cho tới khi token được thay. Tài khoản đọc từ database, nên biết trước.
+ */
+async function catchUpRoles(user: User): Promise<void> {
+  const token = getToken();
+  const issued = rolesOf(token);
+  if (token && user.roles.some((role) => !issued.includes(role))) await refreshSession(token);
+}
+
+/**
+ * EN: Re-reads the account, renewing the token first if a role was granted meanwhile.
+ * VI: Đọc lại tài khoản, gia hạn token trước nếu trong lúc đó có vai trò mới được cấp.
+ */
+export async function reloadAccount(): Promise<User> {
+  const user = toUser(await api<ApiUser>("/api/users/me"));
+  await catchUpRoles(user);
+  sessionStore.setState({ user, hydrated: true });
+  return user;
 }
 
 /** EN: Re-reads the account, e.g. after renaming it. / VI: Đọc lại tài khoản, ví dụ sau khi đổi tên. */

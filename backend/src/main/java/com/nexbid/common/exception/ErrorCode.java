@@ -19,6 +19,12 @@ public enum ErrorCode {
     REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED),
     // EN: Too many wrong passwords; Retry-After says when to try again. / VI: Sai mật khẩu quá nhiều lần; Retry-After cho biết khi nào thử lại.
     LOGIN_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS),
+    // EN: Becoming a seller (spec §7.1): asking twice, asking when already one, deciding twice.
+    // VI: Trở thành người bán (spec §7.1): gửi hai lần, gửi khi đã là người bán, quyết định hai lần.
+    ALREADY_SELLER(HttpStatus.CONFLICT),
+    SELLER_APPLICATION_PENDING(HttpStatus.CONFLICT),
+    SELLER_APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND),
+    SELLER_APPLICATION_NOT_PENDING(HttpStatus.CONFLICT),
 
     /* --- Catalogue / Sản phẩm ---------------------------------------- */
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND),
@@ -75,6 +81,14 @@ public enum ErrorCode {
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND),
     // EN: A step out of order, e.g. confirming receipt of an order never shipped. / VI: Sai thứ tự bước, ví dụ xác nhận đã nhận một đơn chưa gửi.
     ORDER_STATUS_INVALID(HttpStatus.CONFLICT),
+    // EN: Second-chance offers (spec §17): the lot cannot be offered, nobody to offer it to, or offered already.
+    // VI: Đề nghị cơ hội thứ hai (spec §17): lô không đề nghị được, không có ai để đề nghị, hoặc đã đề nghị rồi.
+    SECOND_CHANCE_UNAVAILABLE(HttpStatus.CONFLICT),
+    NO_RUNNER_UP(HttpStatus.CONFLICT),
+    OFFER_ALREADY_MADE(HttpStatus.CONFLICT),
+    OFFER_NOT_FOUND(HttpStatus.NOT_FOUND),
+    // EN: Already accepted, declined, or past its 24 hours. / VI: Đã nhận, đã từ chối, hoặc đã quá 24 giờ.
+    OFFER_NOT_PENDING(HttpStatus.CONFLICT),
 
     /* --- Notifications / Thông báo ------------------------------------ */
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND),

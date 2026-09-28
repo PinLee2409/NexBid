@@ -100,7 +100,9 @@ erDiagram
     auctions ||--o{ watchlists : "watched in"
     users ||--o{ watchlists : keeps
     users ||--o{ notifications : receives
-    auctions ||--o| payments : "paid by"
+    users ||--o{ seller_applications : "asks to sell"
+    auctions ||--o{ payments : "paid by"
+    auctions ||--o| second_chance_offers : "offered again"
     payments ||--|| orders : settles
 
     users {
@@ -124,11 +126,18 @@ erDiagram
     orders {
         uuid id PK "buyer_id, seller_id, status"
     }
+    seller_applications {
+        uuid id PK "note, status, rejection_reason — one pending per user"
+    }
+    second_chance_offers {
+        uuid id PK "buyer_id, amount, status, expires_at — one per lot"
+    }
 ```
 
 Supporting tables without foreign keys on purpose: `audit_logs` (history must outlive the account),
-`outbox_events` and `consumed_events` (Kafka delivery). The schema is in Flyway migrations
-[`V1`–`V14`](backend/src/main/resources/db/migration).
+`outbox_events` and `consumed_events` (Kafka delivery). A lot has at most one payment and one order alive at a
+time; a second-chance sale adds another once the first has lapsed. The schema is in Flyway migrations
+[`V1`–`V21`](backend/src/main/resources/db/migration).
 
 ---
 
@@ -146,6 +155,7 @@ stateDiagram-v2
     ACTIVE --> ENDED: scheduler, at end time — top bidder wins
     ENDED --> COMPLETED: winner pays within 48 h
     ENDED --> CANCELLED: payment window runs out
+    CANCELLED --> ENDED: runner-up accepts a second-chance offer
 ```
 
 A scheduler opens and closes lots every few seconds, in batches, under the same row lock that bids take,
@@ -153,6 +163,17 @@ so a bid in flight at the closing second either lands before the close or is ref
 close opens a 48-hour payment for the winner (mock: `SUCCESS` or `FAILED`) together with a pending order,
 and paying completes the sale. A seller can turn on anti-sniping per lot: a bid in the final seconds pushes
 the close back. A lot with no bids ends with no winner and its product is free to be auctioned again.
+
+**Second chance** (spec §17). When a winner lets the payment lapse, the seller may offer the lot once to the
+next-highest bidder, at that bidder's own highest bid. The product is held while the offer is open. The
+runner-up has 24 hours: accepting closes the lot again in their name and opens the usual 48-hour payment and
+order; declining, or not answering, gives the product back to the seller. Bidders stay anonymous to the
+seller throughout.
+
+**Becoming a seller** (spec §7.1). Every account starts as a buyer. A buyer asks to sell with a short note on
+what they will list; an admin approves or rejects it with a reason, and a rejected buyer may ask again. The
+role travels inside the access token, so the approval notice makes the open page renew its token at once —
+the seller tools work without signing in again.
 
 ---
 
@@ -289,7 +310,7 @@ flowchart LR
 ```
 
 Events (`BidPlacedEvent`, `AuctionLifecycleEvent` for start / extend / end, `OutbidEvent`,
-`PaymentEvents.Succeeded` / `Expired`) are marked `@Externalized` and written to an outbox table in the
+`PaymentEvents.Succeeded` / `Expired`, `SecondChanceEvents`) are marked `@Externalized` and written to an outbox table in the
 same transaction as the change they describe. A relay hands them to Kafka after commit and deletes them
 once acknowledged. A rolled-back bid never produces an event; a committed one always does; Kafka being
 down only delays delivery. Events of one lot share a key, so they arrive in order. The consumer records
@@ -315,9 +336,9 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | Auth | `POST /api/auth/register`, `POST /api/auth/login` (JWT for 15 minutes + refresh cookie), `POST /api/auth/refresh`, `POST /api/auth/logout` |
 | Catalogue | `GET /api/auctions`, `GET /api/auctions/{id}`, `GET /api/categories`, `GET /api/server-time` — public |
 | Bidding | `POST /api/auctions/{id}/bids`, `GET /api/auctions/{id}/bids`, `/api/auctions/{id}/auto-bid` |
-| Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders` (`…/{id}/received`), `…/me/watchlist`, `/api/notifications` |
-| Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions`, `/api/seller/orders` (`…/{id}/ship`) |
-| Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users`, `/api/admin/users/{id}/block`, `/api/admin/orders` (`…/{id}/refund`), `/api/admin/analytics`, `/api/admin/audit-logs` |
+| Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders` (`…/{id}/received`), `…/me/watchlist`, `…/me/offers` (`…/{id}/accept`, `…/{id}/decline`), `…/me/seller-application`, `/api/notifications` |
+| Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions`, `/api/seller/auctions/{id}/second-chance`, `/api/seller/second-chances`, `/api/seller/orders` (`…/{id}/ship`) |
+| Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users`, `/api/admin/users/{id}/block`, `/api/admin/seller-applications` (`…/{id}/approve`, `…/{id}/reject`), `/api/admin/orders` (`…/{id}/refund`), `/api/admin/analytics`, `/api/admin/audit-logs` |
 | Realtime | STOMP at `/ws`: `/topic/auctions/{id}` for everyone, `/user/queue/notifications` for the signed-in user |
 
 `/api/admin/**` needs the ADMIN role and `/api/seller/**` needs SELLER. The frontend hides those menus
@@ -424,6 +445,32 @@ with a provisioned dashboard: the metrics of spec §34 — `bid_requests_total`,
 bottleneck. In the Docker stack the backend serves health and metrics on port 8090, which is never
 published, so only Prometheus inside the network can read them.
 
+#### Tracing
+
+```bash
+NEXBID_TRACING_EXPORT=true docker compose --profile monitoring up
+```
+
+Also sends traces (OpenTelemetry, over OTLP) to Tempo, which Grafana reads: **Explore → Tempo → Search**.
+One bid is one trace, from the request to the notice it causes, although the second half runs on other
+threads after the request has answered:
+
+```mermaid
+flowchart LR
+    http["POST /bids<br/>(server span)"] --> sql["SQL: lock the lot,<br/>insert bid, insert outbox row"]
+    http -. "traceparent kept<br/>in the outbox row" .-> relay["outbox relay"]
+    relay --> send["Kafka send<br/>nexbid.auctions"]
+    send -- "traceparent header" --> notify["notification consumer"] --> nsql["SQL: insert notice"]
+    send --> analytics["analytics consumer"] --> asql["SQL: hourly totals"]
+```
+
+A span covers each SQL statement ([datasource-micrometer](https://github.com/jdbc-observations/datasource-micrometer),
+without bound values). The outbox relay runs later, on its own thread, so the writer keeps the event's
+W3C `traceparent` in the outbox row and the relay continues that trace; from there Kafka carries it in a record
+header to both consumer groups. The gap before the relay span is the time the event waited in the outbox.
+Log lines carry the trace id either way, so a log line leads to its trace. Health checks, metric scrapes, the
+relay's polling and scheduler ticks start no traces of their own.
+
 ---
 
 ## Testing
@@ -468,8 +515,8 @@ on unused files, exports and dependencies.
 
 | | Lines | Branches | Measured on |
 | --- | --- | --- | --- |
-| Backend (JaCoCo) | 94.7% | 80.2% | everything, across 215 classes |
-| Frontend unit (Vitest) | 97.5% | 87.7% | the logic layer: `src/lib`, `src/services/api` |
+| Backend (JaCoCo) | 95.1% | 80.7% | everything, across 241 classes |
+| Frontend unit (Vitest) | 97.2% | 88.1% | the logic layer: `src/lib`, `src/services/api` |
 
 Frontend components and the thin service wrappers around `fetch` are covered by the end-to-end suite rather
 than unit tests. Each figure has a floor a little below it (backend 90% / 75%, frontend 90% / 80%), so a real
@@ -484,6 +531,8 @@ drop fails CI; every run also posts its figures on the run's page and keeps the 
 - two buyers on the same lot, each seeing the other's bid and the "outbid" banner without a reload;
 - the minimum-bid check;
 - an admin approving a lot;
+- a buyer asking to sell, an admin approving it, and the seller tools opening without signing in again;
+- a winner who never pays, and the runner-up buying the lot through a second-chance offer;
 - times shown in the reader's own time zone;
 - every page, for every role, checked with [axe](https://github.com/dequelabs/axe-core) against WCAG 2.1 AA in
   both themes;
@@ -501,7 +550,9 @@ docker compose up -d --build --wait
 cd frontend && npx playwright install chromium && npm run test:e2e
 ```
 
-Setup grants the seller and admin roles through `docker compose exec postgres`, as the demo seed does. Point
+Setup grants the seller and admin roles through `docker compose exec postgres`, as the demo seed does, and the
+second-chance test moves a lot's close and payment deadline into the past the same way. Starting the stack with
+`NEXBID_PAYMENT_EXPIRY_INTERVAL_MS=5000` (as CI does) spares that test a minute's wait for the expiry job. Point
 the tests elsewhere with `E2E_WEB_URL`, `E2E_API_URL` and `E2E_COMPOSE_FILE` (relative to `frontend/`, e.g.
 `../docker/compose.yaml` for the dev services). `E2E_BROWSER_CHANNEL=chrome` uses an installed Chrome
 instead of downloading Chromium.
@@ -569,7 +620,7 @@ mobile is JavaScript: about 290 KiB, a third of it React itself.
 ## Docs
 
 [`docs/decisions.md`](docs/decisions.md) explains the main design choices — concurrency, the event outbox,
-sessions, security, testing — with what each costs and the test that proves it.
+sessions, security, second-chance sales, tracing, testing — with what each costs and the test that proves it.
 
 The specification and the step-by-step implementation guide are in [`docs/`](docs/). What the specification
 asks for beyond the 40 guide functions is tracked in [`docs/NexBid_Backlog.md`](docs/NexBid_Backlog.md).

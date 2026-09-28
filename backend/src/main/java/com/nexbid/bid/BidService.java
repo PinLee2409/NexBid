@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -125,6 +126,23 @@ public class BidService {
      * EN: Everyone who bid on a lot at least once, for telling the ones who did not win.
      * VI: Mọi người đã trả giá lô này ít nhất một lần, để báo cho những ai không thắng.
      */
+    /** EN: The best bidder on a lot other than its winner, with their own highest bid. / VI: Người trả giá cao nhất trên lô ngoài người thắng, kèm lượt cao nhất của chính họ. */
+    public record RunnerUp(UUID bidderId, BigDecimal amount) {
+    }
+
+    /**
+     * EN: Who a second-chance offer would go to (spec §17). Their highest recorded bid, not an auto-bid ceiling
+     *     they never had to reach.
+     * VI: Đề nghị cơ hội thứ hai sẽ tới ai (spec §17). Lượt cao nhất đã ghi của họ, không phải trần auto bid mà họ
+     *     chưa từng phải chạm tới.
+     */
+    public Optional<RunnerUp> runnerUpOf(UUID auctionId, UUID winnerId) {
+        return bids.findHighestPerBidder(auctionId).stream()
+                .filter(row -> !row.getBidderId().equals(winnerId))
+                .findFirst()
+                .map(row -> new RunnerUp(row.getBidderId(), row.getHighest()));
+    }
+
     public List<UUID> biddersOf(UUID auctionId) {
         return bids.findDistinctBidderIds(auctionId);
     }

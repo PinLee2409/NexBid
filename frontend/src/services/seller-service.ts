@@ -8,11 +8,12 @@ import type {
   Product,
   ProductCondition,
   ProductImage,
+  SecondChanceOffer,
 } from "@/types";
 
-import type { ApiAuction, ApiImage, ApiOrder, ApiProduct } from "./api/dto";
+import type { ApiAuction, ApiImage, ApiOfferDetails, ApiOrder, ApiProduct, ApiSecondChance } from "./api/dto";
 import { api } from "./api/http";
-import { toAuction, toCategory, toImage, toProduct } from "./api/mappers";
+import { toAuction, toCategory, toImage, toOffer, toProduct } from "./api/mappers";
 import { toEntry, type OrderEntry } from "./order-service";
 import { getCurrentUser } from "./session-service";
 
@@ -240,4 +241,33 @@ export async function listSoldOrders(): Promise<OrderEntry[]> {
 /** `POST /api/seller/orders/{id}/ship` — PAID → PROCESSING. */
 export async function shipOrder(orderId: string): Promise<OrderEntry> {
   return toEntry(await api<ApiOrder>(`/api/seller/orders/${orderId}/ship`, { method: "POST" }));
+}
+
+/**
+ * EN: One of the seller's lots whose winner did not pay (spec §17): the next bid, if anyone else bid, whether it
+ *     can be offered now, and the offer once made.
+ * VI: Một lô của người bán mà người thắng không trả (spec §17): giá kế tiếp nếu có người khác trả giá, có đề nghị
+ *     được ngay không, và đề nghị khi đã gửi.
+ */
+export interface SecondChance {
+  auctionId: string;
+  runnerUpBid: number | null;
+  canOffer: boolean;
+  offer: SecondChanceOffer | null;
+}
+
+/** `GET /api/seller/second-chances` */
+export async function listSecondChances(): Promise<SecondChance[]> {
+  const rows = await api<ApiSecondChance[]>("/api/seller/second-chances");
+  return rows.map((row) => ({
+    auctionId: row.auctionId,
+    runnerUpBid: row.runnerUpBid === null ? null : Number(row.runnerUpBid),
+    canOffer: row.canOffer,
+    offer: row.offer ? toOffer(row.offer) : null,
+  }));
+}
+
+/** `POST /api/seller/auctions/{id}/second-chance` — once per lot. */
+export async function offerToRunnerUp(auctionId: string): Promise<SecondChanceOffer> {
+  return toOffer(await api<ApiOfferDetails>(`/api/seller/auctions/${auctionId}/second-chance`, { method: "POST" }));
 }

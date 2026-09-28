@@ -2,6 +2,7 @@
 
 import { Gavel, Heart, Loader2, Trophy, Wallet } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
+import Link from "next/link";
 import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 
@@ -22,6 +23,7 @@ import { useSession } from "@/services/session-service";
 export default function ProfilePage() {
   const t = useTranslations("account");
   const tc = useTranslations("common");
+  const tn = useTranslations("nav");
   const labels = useEnumLabels();
   const format = useFormatter();
 
@@ -159,6 +161,14 @@ export default function ProfilePage() {
                   </li>
                 ))}
               </ul>
+              {!user.roles.includes("SELLER") ? (
+                <Link
+                  href="/become-seller"
+                  className="label text-signal-text mt-3 inline-block underline-offset-4 hover:underline"
+                >
+                  {tn("becomeSeller")}
+                </Link>
+              ) : null}
             </div>
 
             <Button type="submit" disabled={isPending}>

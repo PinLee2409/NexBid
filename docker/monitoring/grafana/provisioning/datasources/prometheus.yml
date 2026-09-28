@@ -1,5 +1,5 @@
-# EN: The one data source, with a fixed uid so the provisioned dashboard can name it.
-# VI: Nguồn dữ liệu duy nhất, với uid cố định để dashboard dựng sẵn gọi đúng tên nó.
+# EN: Metrics, the default data source, with a fixed uid so the provisioned dashboard can name it.
+# VI: Metric, nguồn dữ liệu mặc định, với uid cố định để dashboard dựng sẵn gọi đúng tên nó.
 apiVersion: 1
 
 datasources:

@@ -177,13 +177,24 @@ public class Auction {
 
     /**
      * EN: Ends the bidding (spec §16). Whoever led when it stopped wins; with no bids there is no winner.
-     *     This is the only place a winner is ever set.
+     *     Apart from a second-chance sale below, this is the only place a winner is set.
      * VI: Kết thúc trả giá (spec §16). Ai đang dẫn lúc dừng thì thắng; không có lượt nào thì không có
-     *     người thắng. Đây là nơi duy nhất người thắng được gán.
+     *     người thắng. Ngoài giao dịch cơ hội thứ hai bên dưới, đây là nơi duy nhất người thắng được gán.
      */
     public void close() {
         this.status = AuctionStatus.ENDED;
         this.winnerId = this.leadingBidderId;
+    }
+
+    /**
+     * EN: The runner-up took a second-chance offer (spec §17): the lot is closed again, now in their name. The
+     *     price stays the hammer price; what they pay is on their own payment.
+     * VI: Người thứ hai nhận đề nghị cơ hội thứ hai (spec §17): lô đóng lại lần nữa, giờ đứng tên họ. Giá vẫn là
+     *     giá chốt; số họ phải trả nằm trên khoản thanh toán của riêng họ.
+     */
+    public void awardTo(UUID buyerId) {
+        this.status = AuctionStatus.ENDED;
+        this.winnerId = buyerId;
     }
 
     /**

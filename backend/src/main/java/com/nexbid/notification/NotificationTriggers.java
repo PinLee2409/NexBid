@@ -20,6 +20,7 @@ import com.nexbid.bid.OutbidEvent;
 import com.nexbid.payment.PaymentDue;
 import com.nexbid.payment.PaymentEvents;
 import com.nexbid.payment.PaymentService;
+import com.nexbid.payment.SecondChanceEvents;
 import com.nexbid.watchlist.WatchlistService;
 
 /**
@@ -149,6 +150,35 @@ class NotificationTriggers {
                 title + ": the sale to you was cancelled.", auctionId, event.at());
         notifications.notify(auctions.sellerOf(auctionId), NotificationType.AUCTION_CANCELLED, "Sale cancelled",
                 title + ": the winner did not pay in time, so the sale was cancelled.", auctionId, event.at());
+    }
+
+    /** EN: The runner-up hears the lot can still be theirs (spec §17). / VI: Người thứ hai được báo lô vẫn có thể là của họ (spec §17). */
+    @Transactional
+    void onOfferMade(SecondChanceEvents.Offered event) {
+        notifications.notify(event.buyerId(), NotificationType.SECOND_CHANCE_OFFER, "Second chance",
+                auctions.lotTitleOf(event.auctionId()) + ": the winner did not pay. It can be yours for your bid of "
+                        + money(event.amount()) + " if you accept within "
+                        + describe(Duration.between(event.at(), event.expiresAt())) + ".",
+                event.auctionId(), event.at());
+    }
+
+    /** EN: The seller hears the runner-up's answer, or that none came. / VI: Người bán được báo câu trả lời của người thứ hai, hoặc là không có. */
+    @Transactional
+    void onOfferAccepted(SecondChanceEvents.Accepted event) {
+        notifications.notify(event.sellerId(), NotificationType.SECOND_CHANCE_ACCEPTED, "Offer accepted",
+                auctions.lotTitleOf(event.auctionId()) + ": the next bidder accepted at " + money(event.amount())
+                        + ". Their payment is now open.",
+                event.auctionId(), event.at());
+    }
+
+    @Transactional
+    void onOfferDeclined(SecondChanceEvents.Declined event) {
+        String answer = event.lapsed() ? "did not answer in time" : "declined";
+        notifications.notify(event.sellerId(), NotificationType.SECOND_CHANCE_DECLINED,
+                event.lapsed() ? "Offer lapsed" : "Offer declined",
+                auctions.lotTitleOf(event.auctionId()) + ": the next bidder " + answer
+                        + ". The product is yours to list again.",
+                event.auctionId(), event.at());
     }
 
     /**

@@ -5,6 +5,8 @@ import {
   CalendarClock,
   CheckCircle2,
   CreditCard,
+  RotateCcw,
+  Store,
   Timer,
   Trophy,
   XCircle,
@@ -34,6 +36,11 @@ const ICONS: Record<NotificationType, LucideIcon> = {
   PAYMENT_SUCCESS: CheckCircle2,
   PAYMENT_EXPIRED: XCircle,
   AUCTION_CANCELLED: XCircle,
+  SELLER_APPROVED: Store,
+  SELLER_REJECTED: XCircle,
+  SECOND_CHANCE_OFFER: RotateCcw,
+  SECOND_CHANCE_ACCEPTED: CheckCircle2,
+  SECOND_CHANCE_DECLINED: XCircle,
 };
 
 /** Tone carries meaning: red only for things that cost the reader something. */
@@ -48,6 +55,11 @@ const TONES: Record<NotificationType, string> = {
   AUCTION_STARTING: "text-signal-text",
   AUCTION_WON: "text-success",
   PAYMENT_SUCCESS: "text-success",
+  SELLER_APPROVED: "text-success",
+  SELLER_REJECTED: "text-dim",
+  SECOND_CHANCE_OFFER: "text-signal-text",
+  SECOND_CHANCE_ACCEPTED: "text-success",
+  SECOND_CHANCE_DECLINED: "text-dim",
 };
 
 /**

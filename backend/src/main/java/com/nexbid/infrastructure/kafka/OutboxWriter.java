@@ -34,12 +34,14 @@ class OutboxWriter {
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
     private final OutboxRelay relay;
+    private final OutboxTracing tracing;
     private final Map<Class<?>, Optional<Route>> routes = new ConcurrentHashMap<>();
 
-    OutboxWriter(JdbcTemplate jdbc, ObjectMapper json, OutboxRelay relay) {
+    OutboxWriter(JdbcTemplate jdbc, ObjectMapper json, OutboxRelay relay, OutboxTracing tracing) {
         this.jdbc = jdbc;
         this.json = json;
         this.relay = relay;
+        this.tracing = tracing;
     }
 
     /**
@@ -76,15 +78,16 @@ class OutboxWriter {
         }
 
         jdbc.update("""
-                INSERT INTO outbox_events (id, topic, message_key, event_type, payload, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO outbox_events (id, topic, message_key, event_type, payload, created_at, trace_parent)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 UUID.randomUUID(),
                 route.topic(),
                 route.key() == null ? null : route.key().getValue(event, String.class),
                 route.type(),
                 json.writeValueAsString(event),
-                OffsetDateTime.now(ZoneOffset.UTC));
+                OffsetDateTime.now(ZoneOffset.UTC),
+                tracing.current());
 
         // EN: Nudge the relay the moment this commits, instead of waiting for its next poll.
         // VI: Đánh thức relay ngay khi commit xong, thay vì chờ tới lượt quét kế tiếp.

@@ -168,6 +168,80 @@ public class AuctionService {
         auctions.save(auction);
     }
 
+    /** EN: A lot its winner left unpaid (spec §17). / VI: Một lô bị người thắng bỏ không trả (spec §17). */
+    public record UnpaidLot(UUID auctionId, UUID sellerId, UUID productId, UUID winnerId) {
+    }
+
+    /** EN: The seller's lots cancelled because the winner did not pay. / VI: Các lô của người bán bị huỷ vì người thắng không trả. */
+    public List<UnpaidLot> unpaidLotsOf(UUID sellerId) {
+        return auctions.findBySellerIdOrderByCreatedAtDesc(sellerId).stream()
+                .filter(auction -> auction.getStatus() == AuctionStatus.CANCELLED)
+                .map(AuctionService::unpaid)
+                .toList();
+    }
+
+    /** EN: Whether the product behind an unpaid lot is still free to offer. / VI: Sản phẩm của lô bị bỏ không trả còn rảnh để đề nghị không. */
+    public boolean productFree(UnpaidLot lot) {
+        return products.getOwned(lot.sellerId(), lot.productId()).status() == ProductStatus.AVAILABLE
+                && !auctions.holdsProduct(lot.productId());
+    }
+
+    /**
+     * EN: Holds an unpaid lot for a second-chance offer and reserves its product, so it cannot be listed again
+     *     while the offer is open. Only the seller's own lot, and only while the product is still free.
+     * VI: Giữ một lô bị bỏ không trả cho đề nghị cơ hội thứ hai và giữ chỗ sản phẩm, để nó không bị đăng lại khi
+     *     đề nghị còn mở. Chỉ lô của chính người bán, và chỉ khi sản phẩm còn rảnh.
+     */
+    @Transactional
+    public UnpaidLot reserveForSecondChance(UUID sellerId, UUID auctionId) {
+        Auction auction = auctions.findByIdForUpdate(auctionId)
+                .filter(found -> found.isOwnedBy(sellerId))
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+        if (auction.getStatus() != AuctionStatus.CANCELLED) {
+            throw new BusinessException(ErrorCode.SECOND_CHANCE_UNAVAILABLE,
+                    "Only a lot cancelled for non-payment can be offered again");
+        }
+
+        UnpaidLot lot = unpaid(auction);
+        if (!productFree(lot)) {
+            throw new BusinessException(ErrorCode.SECOND_CHANCE_UNAVAILABLE,
+                    "The product has been listed or changed since the sale fell through");
+        }
+        products.markAuctionState(lot.productId(), ProductStatus.IN_AUCTION);
+        return lot;
+    }
+
+    /** EN: The offer was declined or lapsed: the product is the seller's again. / VI: Đề nghị bị từ chối hoặc hết hạn: sản phẩm lại thuộc về người bán. */
+    @Transactional
+    public void releaseSecondChance(UUID auctionId) {
+        auctions.findByIdForUpdate(auctionId)
+                .filter(auction -> auction.getStatus() == AuctionStatus.CANCELLED)
+                .ifPresent(auction -> products.markAuctionState(auction.getProductId(), ProductStatus.AVAILABLE));
+    }
+
+    /**
+     * EN: The runner-up accepted: the lot is closed again in their name, and from here it follows the usual
+     *     path — paid means COMPLETED, unpaid means CANCELLED once more.
+     * VI: Người thứ hai đã nhận: lô đóng lại lần nữa đứng tên họ, và từ đây đi theo đường quen thuộc — trả thì
+     *     COMPLETED, không trả thì lại CANCELLED.
+     */
+    @Transactional
+    public void awardToRunnerUp(UUID auctionId, UUID buyerId) {
+        Auction auction = auctions.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+        if (auction.getStatus() != AuctionStatus.CANCELLED) {
+            throw new IllegalStateException("A second-chance sale needs a cancelled lot, not " + auction.getStatus());
+        }
+        auction.awardTo(buyerId);
+        auctions.save(auction);
+    }
+
+    private static UnpaidLot unpaid(Auction auction) {
+        return new UnpaidLot(auction.getId(), auction.getSellerId(), auction.getProductId(), auction.getWinnerId());
+    }
+
     public UUID sellerOf(UUID auctionId) {
         return auctions.findById(auctionId)
                 .map(Auction::getSellerId)

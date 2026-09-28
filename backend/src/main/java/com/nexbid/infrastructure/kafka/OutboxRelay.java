@@ -42,11 +42,12 @@ class OutboxRelay implements SmartLifecycle {
 
     private static final RowMapper<Row> ROW = (rs, n) -> new Row(
             rs.getObject("id", UUID.class), rs.getString("topic"), rs.getString("message_key"),
-            rs.getString("event_type"), rs.getString("payload"));
+            rs.getString("event_type"), rs.getString("payload"), rs.getString("trace_parent"));
 
     private final JdbcTemplate jdbc;
     private final TransactionTemplate tx;
     private final KafkaTemplate<String, String> kafka;
+    private final OutboxTracing tracing;
     private final int batchSize;
     private final Duration interval;
     private final Duration retryAfter;
@@ -60,6 +61,7 @@ class OutboxRelay implements SmartLifecycle {
             JdbcTemplate jdbc,
             TransactionTemplate tx,
             KafkaTemplate<String, String> kafka,
+            OutboxTracing tracing,
             @Value("${nexbid.kafka.relay.batch-size}") int batchSize,
             @Value("${nexbid.kafka.relay.interval}") Duration interval,
             @Value("${nexbid.kafka.relay.retry-after}") Duration retryAfter,
@@ -68,13 +70,14 @@ class OutboxRelay implements SmartLifecycle {
         this.jdbc = jdbc;
         this.tx = tx;
         this.kafka = kafka;
+        this.tracing = tracing;
         this.batchSize = batchSize;
         this.interval = interval;
         this.retryAfter = retryAfter;
         this.sendTimeout = sendTimeout;
     }
 
-    record Row(UUID id, String topic, String key, String type, String payload) {
+    record Row(UUID id, String topic, String key, String type, String payload, String traceParent) {
     }
 
     private record Batch(int delivered, RuntimeException failure) {
@@ -148,7 +151,7 @@ class OutboxRelay implements SmartLifecycle {
             }
 
             List<Row> rows = jdbc.query(
-                    "SELECT id, topic, message_key, event_type, payload FROM outbox_events ORDER BY position LIMIT ?",
+                    "SELECT id, topic, message_key, event_type, payload, trace_parent FROM outbox_events ORDER BY position LIMIT ?",
                     ROW, batchSize);
 
             List<UUID> delivered = new ArrayList<>();
@@ -195,7 +198,8 @@ class OutboxRelay implements SmartLifecycle {
         record.headers().add(EventHeaders.ID, row.id().toString().getBytes(StandardCharsets.UTF_8));
         record.headers().add(EventHeaders.TYPE, row.type().getBytes(StandardCharsets.UTF_8));
         try {
-            return kafka.send(record);
+            // EN: Continues the trace the event was raised in. / VI: Nối tiếp trace mà sự kiện được phát ra trong đó.
+            return tracing.relay(row.topic(), row.type(), row.traceParent(), () -> kafka.send(record));
         } catch (RuntimeException ex) {
             return CompletableFuture.failedFuture(ex);
         }
