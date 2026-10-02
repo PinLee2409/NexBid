@@ -39,6 +39,23 @@ public interface BidRepository extends JpaRepository<Bid, UUID> {
             """)
     List<BidderLot> findLotsBidOnBy(@Param("bidderId") UUID bidderId);
 
+    /**
+     * EN: Each bidder's highest bid on one lot, highest first. Amounts never repeat within a lot, so the order is total.
+     * VI: Lượt cao nhất của mỗi người trên một lô, cao nhất trước. Số tiền không lặp trong một lô, nên thứ tự là tuyệt đối.
+     */
+    @Query("""
+            SELECT b.bidderId AS bidderId, MAX(b.amount) AS highest
+              FROM Bid b WHERE b.auctionId = :auctionId
+             GROUP BY b.bidderId ORDER BY MAX(b.amount) DESC
+            """)
+    List<BidderHighest> findHighestPerBidder(@Param("auctionId") UUID auctionId);
+
+    interface BidderHighest {
+        UUID getBidderId();
+
+        BigDecimal getHighest();
+    }
+
     interface BidderLot {
         UUID getAuctionId();
 

@@ -41,6 +41,11 @@ const PRIMARY_NAV = [
   { key: "sell", href: "/seller/products/create", live: false },
 ] as const;
 
+/** EN: Someone who cannot sell yet is sent to ask first. / VI: Người chưa được bán thì được đưa tới chỗ gửi yêu cầu trước. */
+function hrefOf(item: (typeof PRIMARY_NAV)[number], isSeller: boolean): string {
+  return item.key === "sell" && !isSeller ? "/become-seller" : item.href;
+}
+
 /**
  * A broadcast header: identity, three destinations, and the tools. It stays
  * transparent over the opening stage and only draws its rule once the page
@@ -68,6 +73,7 @@ export function SiteHeader({ liveCount = 0 }: SiteHeaderProps) {
   );
 
   const { user } = useSession();
+  const isSeller = hasRole(user, "SELLER");
   const unread = useUnreadNotificationCount();
   const watched = useWatchedAuctionIds().size;
 
@@ -97,11 +103,12 @@ export function SiteHeader({ liveCount = 0 }: SiteHeaderProps) {
 
           <nav aria-label={t("mainNav")} className="hidden items-center gap-7 lg:flex">
             {PRIMARY_NAV.map((item) => {
-              const active = pathname.startsWith(item.href.split("?")[0]);
+              const href = hrefOf(item, isSeller);
+              const active = pathname.startsWith(href.split("?")[0]);
               return (
                 <Link
                   key={item.key}
-                  href={item.href}
+                  href={href}
                   className={cn(
                     "label inline-flex items-center gap-2 transition-colors",
                     active
@@ -172,7 +179,7 @@ export function SiteHeader({ liveCount = 0 }: SiteHeaderProps) {
                 <MobileMenu
                   liveCount={liveCount}
                   signedIn={Boolean(user)}
-                  isSeller={hasRole(user, "SELLER")}
+                  isSeller={isSeller}
                   isAdmin={hasRole(user, "ADMIN")}
                 />
               </SheetContent>
@@ -294,7 +301,7 @@ function MobileMenu({
             <li key={item.key} className="border-line border-b last:border-b-0">
               <SheetClose asChild>
                 <Link
-                  href={item.href}
+                  href={hrefOf(item, isSeller)}
                   className="display hover:text-signal-text flex items-center justify-between px-5 py-5 text-3xl transition-colors"
                 >
                   <span className="inline-flex items-center gap-3">

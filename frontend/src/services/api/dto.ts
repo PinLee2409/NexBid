@@ -3,6 +3,7 @@ import type {
   AuditAction,
   IsoDateString,
   NotificationType,
+  OfferStatus,
   OrderStatus,
   PaymentStatus,
   ProductCondition,
@@ -180,6 +181,31 @@ export interface ApiPaymentDetails {
 export interface ApiPayment {
   payment: ApiPaymentDetails;
   auction: ApiAuctionSummary | null;
+}
+
+/** `OfferView.Details` (spec §17). */
+export interface ApiOfferDetails {
+  id: string;
+  auctionId: string;
+  amount: number;
+  status: OfferStatus;
+  expiresAt: IsoDateString;
+  createdAt: IsoDateString;
+  decidedAt: IsoDateString | null;
+}
+
+/** `GET /api/users/me/offers` */
+export interface ApiOffer {
+  offer: ApiOfferDetails;
+  auction: ApiAuctionSummary | null;
+}
+
+/** `GET /api/seller/second-chances` — one unpaid lot of the seller's. */
+export interface ApiSecondChance {
+  auctionId: string;
+  runnerUpBid: number | null;
+  canOffer: boolean;
+  offer: ApiOfferDetails | null;
 }
 
 export interface ApiOrder {

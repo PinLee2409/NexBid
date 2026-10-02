@@ -28,6 +28,10 @@ export const ERROR_CODES = [
   "ADMIN_NOT_BLOCKABLE",
   "REFRESH_TOKEN_INVALID",
   "LOGIN_RATE_LIMITED",
+  "ALREADY_SELLER",
+  "SELLER_APPLICATION_PENDING",
+  "SELLER_APPLICATION_NOT_FOUND",
+  "SELLER_APPLICATION_NOT_PENDING",
   "PRODUCT_NOT_FOUND",
   "CATEGORY_NOT_FOUND",
   "CATEGORY_ALREADY_EXISTS",
@@ -56,6 +60,11 @@ export const ERROR_CODES = [
   "PAYMENT_ALREADY_PAID",
   "ORDER_NOT_FOUND",
   "ORDER_STATUS_INVALID",
+  "SECOND_CHANCE_UNAVAILABLE",
+  "NO_RUNNER_UP",
+  "OFFER_ALREADY_MADE",
+  "OFFER_NOT_FOUND",
+  "OFFER_NOT_PENDING",
   "NOTIFICATION_NOT_FOUND",
   "ACCESS_DENIED",
   "NOT_AUTHENTICATED",
@@ -94,6 +103,40 @@ export interface User {
   roles: UserRole[];
   status: UserStatus;
   createdAt: IsoDateString;
+}
+
+export type SellerApplicationStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+/**
+ * EN: A request to become a seller (spec §7.1), with who sent it.
+ * VI: Một yêu cầu trở thành người bán (spec §7.1), kèm người gửi.
+ */
+export interface SellerApplication {
+  id: Id;
+  userId: Id;
+  fullName: string;
+  email: string;
+  note: string;
+  status: SellerApplicationStatus;
+  rejectionReason: string | null;
+  createdAt: IsoDateString;
+  decidedAt: IsoDateString | null;
+}
+
+export type OfferStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "EXPIRED";
+
+/**
+ * EN: A second-chance offer (spec §17): the lot at the runner-up's own highest bid, open until `expiresAt`.
+ * VI: Một đề nghị cơ hội thứ hai (spec §17): lô với giá cao nhất của chính người thứ hai, mở tới `expiresAt`.
+ */
+export interface SecondChanceOffer {
+  id: Id;
+  auctionId: Id;
+  amount: number;
+  status: OfferStatus;
+  expiresAt: IsoDateString;
+  createdAt: IsoDateString;
+  decidedAt: IsoDateString | null;
 }
 
 /** Public-facing seller summary shown on auction pages. */
@@ -365,7 +408,12 @@ export type NotificationType =
   | "PAYMENT_REQUIRED"
   | "PAYMENT_SUCCESS"
   | "PAYMENT_EXPIRED"
-  | "AUCTION_CANCELLED";
+  | "AUCTION_CANCELLED"
+  | "SELLER_APPROVED"
+  | "SELLER_REJECTED"
+  | "SECOND_CHANCE_OFFER"
+  | "SECOND_CHANCE_ACCEPTED"
+  | "SECOND_CHANCE_DECLINED";
 
 export interface AppNotification {
   id: Id;
@@ -435,7 +483,14 @@ export type AuditAction =
   | "ORDER_SHIPPED"
   | "ORDER_COMPLETED"
   | "USER_BLOCKED"
-  | "USER_UNBLOCKED";
+  | "USER_UNBLOCKED"
+  | "SELLER_APPLIED"
+  | "SELLER_APPROVED"
+  | "SELLER_REJECTED"
+  | "OFFER_MADE"
+  | "OFFER_ACCEPTED"
+  | "OFFER_DECLINED"
+  | "OFFER_EXPIRED";
 
 export interface AuditLog {
   id: Id;

@@ -173,3 +173,25 @@ Hiện không còn mục nào đang chờ.
 - **Tài liệu quyết định thiết kế** (`docs/decisions.md`, tiếng Anh): mười một quyết định chính — vấn đề, lựa chọn,
   cái giá phải trả, và test chứng minh — được README trỏ tới.
 
+
+## Đã làm (28/09/2026) — đợt 11: trở thành người bán, cơ hội thứ hai, tracing
+
+- **Trở thành người bán** (spec §7.1, "User có thể đăng ký Seller sau này"): người mua gửi yêu cầu kèm vài dòng về
+  thứ định bán; admin duyệt hoặc từ chối kèm lý do ở trang "Yêu cầu bán hàng"; bị từ chối thì gửi lại được. Mỗi người
+  chỉ một yêu cầu đang chờ (khoá dòng tài khoản + index duy nhất có điều kiện, có test bốn tab gửi cùng lúc). Duyệt thì
+  cấp vai trò SELLER trong cùng transaction với thông báo và audit. Vì vai trò nằm trong access token, trang đang mở tự
+  gia hạn token ngay khi nhận thông báo được duyệt — dùng được công cụ người bán mà không phải đăng nhập lại. Nút "Đăng
+  bán" ở header đưa người chưa là người bán tới trang gửi yêu cầu; khu vực người bán giải thích thay vì báo lỗi 403.
+- **Cơ hội thứ hai** (spec §17, "offer cho người trả giá cao thứ hai"), theo lựa chọn: người bán quyết định, giá là
+  giá cao nhất của chính người thứ hai, 24 giờ để nhận, mỗi lô một lần. Nhận thì lô đóng lại đứng tên người thứ hai
+  và đi đúng đường thanh toán 48 giờ / đơn hàng như mọi giao dịch; từ chối hoặc hết hạn thì sản phẩm trở về người bán.
+  Sản phẩm được giữ trong lúc chờ trả lời. Nút ở trang đơn hàng của người bán, mục "Đề nghị cơ hội thứ hai" ở My Wins;
+  thông báo cho cả hai bên qua Kafka, audit cho từng bước. Một lô giờ có thể có hơn một khoản thanh toán / đơn hàng,
+  nhưng không bao giờ hai cái cùng còn hiệu lực (index duy nhất có điều kiện).
+- **Tracing OpenTelemetry** (spec §34, bản nâng cao): một lượt trả giá là một trace — request, từng câu SQL, outbox
+  relay, lần gửi Kafka, và hai consumer cùng SQL của chúng — dù nửa sau chạy trên luồng khác. Outbox lưu
+  `traceparent` của request để relay nối tiếp trace. Tempo trong profile monitoring, Grafana đọc được; bật bằng
+  `NEXBID_TRACING_EXPORT=true`. Health check, lượt thu metric, lượt quét của relay và nhịp scheduler không tạo trace.
+  Dòng log luôn mang trace id.
+- **Kiểm chứng:** backend 384 test (độ phủ 95.1% dòng, 80.7% nhánh), frontend 110 unit test, E2E 33/33 trên stack
+  Docker riêng có Tempo. Trace thật từ stack: 0 trace rác trong 3272 trace của một lần chạy E2E.

@@ -1,6 +1,15 @@
 "use client";
 
-import type { Auction, AuctionStatus, AuctionSummary, AuditLog, OrderStatus, User } from "@/types";
+import type {
+  Auction,
+  AuctionStatus,
+  AuctionSummary,
+  AuditLog,
+  OrderStatus,
+  SellerApplication,
+  SellerApplicationStatus,
+  User,
+} from "@/types";
 
 import type {
   ApiAnalyticsReport,
@@ -117,4 +126,27 @@ export async function getActivity(hours = 24): Promise<ApiAnalyticsReport> {
 export async function listAuditLogs(): Promise<AuditLog[]> {
   const page = await api<ApiPage<ApiAuditLog>>("/api/admin/audit-logs", { query: { size: 100 } });
   return page.items.map(toAuditLog);
+}
+
+/**
+ * EN: `GET /api/admin/seller-applications?status=…` — waiting requests oldest first, decided ones newest first.
+ * VI: `GET /api/admin/seller-applications?status=…` — yêu cầu đang chờ cũ nhất trước, đã quyết định thì mới nhất trước.
+ */
+export async function listSellerApplications(status: SellerApplicationStatus): Promise<SellerApplication[]> {
+  const page = await api<ApiPage<SellerApplication>>("/api/admin/seller-applications", {
+    query: { status, size: 100 },
+  });
+  return page.items;
+}
+
+/** EN: Grants the SELLER role at once. / VI: Cấp vai trò SELLER ngay lập tức. */
+export async function approveSellerApplication(id: string): Promise<SellerApplication> {
+  return api<SellerApplication>(`/api/admin/seller-applications/${id}/approve`, { method: "POST" });
+}
+
+export async function rejectSellerApplication(id: string, reason: string): Promise<SellerApplication> {
+  return api<SellerApplication>(`/api/admin/seller-applications/${id}/reject`, {
+    method: "POST",
+    body: { reason: reason.trim() },
+  });
 }

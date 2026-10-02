@@ -1,10 +1,18 @@
 "use client";
 
-import type { AuctionSummary, Order, Payment, User } from "@/types";
+import type { AuctionSummary, Order, Payment, SecondChanceOffer, SellerApplication, User } from "@/types";
 
-import type { ApiAuctionSummary, ApiMyBid, ApiOrder, ApiPayment, ApiUser } from "./api/dto";
+import type {
+  ApiAuctionSummary,
+  ApiMyBid,
+  ApiOffer,
+  ApiOfferDetails,
+  ApiOrder,
+  ApiPayment,
+  ApiUser,
+} from "./api/dto";
 import { api } from "./api/http";
-import { toOrder, toPayment, toSummary } from "./api/mappers";
+import { toOffer, toOrder, toPayment, toSummary } from "./api/mappers";
 import { applyAccount } from "./session-service";
 import { listWatchlist } from "./watchlist-service";
 
@@ -55,7 +63,8 @@ export async function listMyWins(): Promise<MyWinEntry[]> {
     const order = orders.find((item) => item.order.auctionId === auction.id);
     return {
       auction,
-      winningBid: auction.currentPrice,
+      // EN: A second-chance buyer pays their own bid, not the hammer price. / VI: Người mua cơ hội thứ hai trả giá của chính họ, không phải giá chốt.
+      winningBid: payment ? Number(payment.payment.amount) : auction.currentPrice,
       payment: payment ? toPayment(payment.payment) : null,
       order: order ? toOrder(order.order) : null,
     };
@@ -97,4 +106,43 @@ export async function updateProfile(input: { fullName: string }): Promise<User> 
     body: { fullName: input.fullName.trim() },
   });
   return applyAccount(me);
+}
+
+/**
+ * EN: `GET /api/users/me/seller-application` — the latest request to become a seller, or null if none was sent.
+ * VI: `GET /api/users/me/seller-application` — yêu cầu trở thành người bán gần nhất, hoặc null nếu chưa gửi.
+ */
+export async function getSellerApplication(): Promise<SellerApplication | null> {
+  return (await api<SellerApplication | undefined>("/api/users/me/seller-application")) ?? null;
+}
+
+/** EN: `POST /api/users/me/seller-application`. / VI: `POST /api/users/me/seller-application`. */
+export async function applyToSell(note: string): Promise<SellerApplication> {
+  return api<SellerApplication>("/api/users/me/seller-application", {
+    method: "POST",
+    body: { note: note.trim() },
+  });
+}
+
+export interface OfferEntry {
+  offer: SecondChanceOffer;
+  auction: AuctionSummary | null;
+}
+
+/**
+ * EN: `GET /api/users/me/offers` — second-chance offers made to the reader (spec §17), newest first.
+ * VI: `GET /api/users/me/offers` — các đề nghị cơ hội thứ hai gửi tới người đọc (spec §17), mới nhất trước.
+ */
+export async function listMyOffers(): Promise<OfferEntry[]> {
+  const rows = await api<ApiOffer[]>("/api/users/me/offers");
+  return rows.map((row) => ({ offer: toOffer(row.offer), auction: row.auction ? toSummary(row.auction) : null }));
+}
+
+/** EN: The lot becomes the reader's and its payment opens. / VI: Lô thành của người đọc và khoản thanh toán được mở. */
+export async function acceptOffer(offerId: string): Promise<SecondChanceOffer> {
+  return toOffer(await api<ApiOfferDetails>(`/api/users/me/offers/${offerId}/accept`, { method: "POST" }));
+}
+
+export async function declineOffer(offerId: string): Promise<SecondChanceOffer> {
+  return toOffer(await api<ApiOfferDetails>(`/api/users/me/offers/${offerId}/decline`, { method: "POST" }));
 }

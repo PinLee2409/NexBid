@@ -20,11 +20,11 @@ export async function pagesFor(role: Role): Promise<string[]> {
     case "visitor":
       return ["/", "/auctions", `/auctions/${lot.id}`, "/how-it-works", "/legal/terms", "/login", "/register"];
     case "buyer":
-      return [`/auctions/${lot.id}`, "/my-bids", "/my-wins", "/watchlist", "/notifications", "/orders", "/payments", "/profile"];
+      return [`/auctions/${lot.id}`, "/my-bids", "/my-wins", "/watchlist", "/notifications", "/orders", "/payments", "/profile", "/become-seller"];
     case "seller":
       return ["/seller/dashboard", "/seller/products", "/seller/products/create", "/seller/auctions", "/seller/auctions/create", "/seller/orders"];
     case "admin":
-      return ["/admin", "/admin/auctions", "/admin/users", "/admin/orders", "/admin/audit-logs"];
+      return ["/admin", "/admin/auctions", "/admin/users", "/admin/sellers", "/admin/orders", "/admin/audit-logs"];
   }
 }
 

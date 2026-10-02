@@ -1,0 +1,10 @@
+# EN: Traces from Tempo (spec §34, advanced): Explore → Tempo → Search, or paste a trace id from a log line.
+# VI: Trace từ Tempo (spec §34, bản nâng cao): Explore → Tempo → Search, hoặc dán trace id lấy từ một dòng log.
+apiVersion: 1
+
+datasources:
+  - name: Tempo
+    uid: tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200

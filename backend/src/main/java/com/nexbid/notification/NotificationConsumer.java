@@ -13,6 +13,7 @@ import com.nexbid.bid.OutbidEvent;
 import com.nexbid.infrastructure.kafka.ConsumedEvents;
 import com.nexbid.infrastructure.kafka.EventHeaders;
 import com.nexbid.payment.PaymentEvents;
+import com.nexbid.payment.SecondChanceEvents;
 
 import tools.jackson.databind.ObjectMapper;
 
@@ -46,7 +47,13 @@ class NotificationConsumer {
                 EventHeaders.typeName(PaymentEvents.Succeeded.class),
                 body -> triggers.onPaymentSucceeded(read(body, PaymentEvents.Succeeded.class)),
                 EventHeaders.typeName(PaymentEvents.Expired.class),
-                body -> triggers.onPaymentExpired(read(body, PaymentEvents.Expired.class)));
+                body -> triggers.onPaymentExpired(read(body, PaymentEvents.Expired.class)),
+                EventHeaders.typeName(SecondChanceEvents.Offered.class),
+                body -> triggers.onOfferMade(read(body, SecondChanceEvents.Offered.class)),
+                EventHeaders.typeName(SecondChanceEvents.Accepted.class),
+                body -> triggers.onOfferAccepted(read(body, SecondChanceEvents.Accepted.class)),
+                EventHeaders.typeName(SecondChanceEvents.Declined.class),
+                body -> triggers.onOfferDeclined(read(body, SecondChanceEvents.Declined.class)));
     }
 
     @KafkaListener(

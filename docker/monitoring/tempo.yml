@@ -1,0 +1,27 @@
+# EN: Tempo as one process, for the monitoring profile (spec §34): receives traces over OTLP/HTTP from the backend and
+#     keeps them on the container's own disk — they last until the container is recreated, which suits a demo.
+# VI: Tempo chạy một tiến trình, cho profile monitoring (spec §34): nhận trace qua OTLP/HTTP từ backend và giữ trên đĩa
+#     của chính container — còn tới khi container được tạo lại, vừa đủ cho một bản demo.
+stream_over_http_enabled: true
+
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        http:
+          endpoint: 0.0.0.0:4318
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /tmp/tempo/wal
+    local:
+      path: /tmp/tempo/blocks
+
+compactor:
+  compaction:
+    block_retention: 24h

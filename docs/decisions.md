@@ -150,3 +150,48 @@ server renders dates in that zone, and the first visit renders once in UTC and t
   pinned back to UTC).
 
 **Cost.** The backend suite takes a few minutes and needs Docker.
+
+## 12. A second chance reuses the sale, rather than adding a parallel one
+
+**Problem.** When a winner does not pay, the spec suggests offering the lot to the runner-up (§17). A second,
+separate kind of sale would need its own payment, order, completion and expiry rules.
+
+**Decision.** The seller may offer an unpaid lot once, to the best other bidder, at that bidder's own highest
+bid; the product is held while the offer is open. Accepting closes the lot again in the runner-up's name
+(`CANCELLED → ENDED`) and opens an ordinary payment, so everything after that — the 48-hour window, the order,
+completion, expiry, reminders — is the path every sale already takes. A lot keeps at most one payment and one
+order alive at a time (partial unique indexes), and one offer ever (a unique index).
+
+**Cost.** The lot's price stays the hammer price; what the runner-up pays is on their own payment and order.
+An auto-bid ceiling the runner-up never had to reach is not their price: only recorded bids count.
+
+**Proof.** `SecondChanceApiTest` (accepted and paid, declined, lapsed, accepted and then unpaid again, and every
+refusal), `second-chance.spec.ts`.
+
+## 13. Becoming a seller: an admin decides, the token catches up
+
+**Problem.** Every account starts as a buyer (§7.1), and roles live inside the 15-minute access token, so a
+role granted later is refused until the token is replaced.
+
+**Decision.** A buyer sends one request at a time; an admin approves or rejects it with a reason, in the same
+transaction as the role change, the notice and the audit row. The page renews its token as soon as the approval
+notice arrives, or whenever the account shows a role its token lacks.
+
+**Proof.** `SellerApplicationApiTest` (including four tabs sending at once), `seller-application.spec.ts`.
+
+## 14. One trace across the outbox
+
+**Problem.** The outbox (decision 5) splits a bid in two: the request commits and answers, and later another
+thread sends the event to Kafka. A trace would stop at the commit.
+
+**Decision.** The outbox writer stores the W3C `traceparent` of the span that raised the event; the relay sends
+the event inside a span continuing that trace, and Kafka carries it on in a record header to both consumer
+groups. SQL statements are spans too. Health checks, metric scrapes, the relay's polling and scheduler ticks
+start no traces, so what Tempo holds is the work people do.
+
+**Cost.** Traces leave the app only when `NEXBID_TRACING_EXPORT=true`; every request is sampled, which suits a
+demo, not heavy traffic (`NEXBID_TRACING_SAMPLING`).
+
+**Proof.** `BidTraceTest` (one bid: the request, its SQL, the relay, the Kafka send, the consumer and the notice it
+writes, all under the trace id the caller sent; checked by breaking the relay's link), and that the relay's polling
+leaves no spans.

@@ -113,6 +113,11 @@ describe("where a notification leads", () => {
     ["PAYMENT_EXPIRED", "/orders"],
     ["OUTBID", "/auctions/a1"],
     ["AUCTION_EXTENDED", "/auctions/a1"],
+    ["SELLER_APPROVED", "/seller/products/create"],
+    ["SELLER_REJECTED", "/become-seller"],
+    ["SECOND_CHANCE_OFFER", "/my-wins"],
+    ["SECOND_CHANCE_ACCEPTED", "/seller/orders"],
+    ["SECOND_CHANCE_DECLINED", "/seller/orders"],
   ] as const)("%s opens %s", (type, href) => {
     expect(toNotification(notice(type), "u1").href).toBe(href);
   });

@@ -27,5 +27,15 @@ public enum NotificationType {
     /** EN: You did not pay in time; the lot was cancelled. / VI: Bạn không thanh toán kịp; lô đã bị huỷ. */
     PAYMENT_EXPIRED,
     /** EN: A sale fell through unpaid — told to the seller and the winner. / VI: Giao dịch đổ vì không thanh toán — báo người bán và người thắng. */
-    AUCTION_CANCELLED
+    AUCTION_CANCELLED,
+    /** EN: Your request to sell was approved; the seller tools are open. / VI: Yêu cầu bán hàng của bạn đã được duyệt; công cụ người bán đã mở. */
+    SELLER_APPROVED,
+    /** EN: Your request to sell was rejected, with the reason. / VI: Yêu cầu bán hàng của bạn bị từ chối, kèm lý do. */
+    SELLER_REJECTED,
+    /** EN: The winner did not pay; the lot is offered to you at your own bid (spec §17). / VI: Người thắng không trả; lô được đề nghị cho bạn với giá của chính bạn (spec §17). */
+    SECOND_CHANCE_OFFER,
+    /** EN: The runner-up took your offer. / VI: Người thứ hai đã nhận đề nghị của bạn. */
+    SECOND_CHANCE_ACCEPTED,
+    /** EN: The runner-up declined, or let the offer lapse. / VI: Người thứ hai từ chối, hoặc để đề nghị hết hạn. */
+    SECOND_CHANCE_DECLINED
 }

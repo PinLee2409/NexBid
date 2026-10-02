@@ -22,10 +22,15 @@ class PaymentScheduler {
     private static final Logger log = LoggerFactory.getLogger(PaymentScheduler.class);
 
     private final PaymentService payments;
+    private final SecondChanceService offers;
     private final int batchSize;
 
-    PaymentScheduler(PaymentService payments, @Value("${nexbid.scheduler.batch-size}") int batchSize) {
+    PaymentScheduler(
+            PaymentService payments,
+            SecondChanceService offers,
+            @Value("${nexbid.scheduler.batch-size}") int batchSize) {
         this.payments = payments;
+        this.offers = offers;
         this.batchSize = batchSize;
     }
 
@@ -35,6 +40,12 @@ class PaymentScheduler {
 
         if (expired > 0) {
             log.info("Expired {} unpaid payment(s)", expired);
+        }
+
+        // EN: Second-chance offers keep the same clock. / VI: Đề nghị cơ hội thứ hai dùng chung nhịp này.
+        int lapsed = offers.expireOverdue(Instant.now(), batchSize);
+        if (lapsed > 0) {
+            log.info("Closed {} unanswered second-chance offer(s)", lapsed);
         }
     }
 }

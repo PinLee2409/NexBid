@@ -9,7 +9,7 @@ import type { ApiNotification, ApiNotificationInbox } from "./api/dto";
 import { api } from "./api/http";
 import { toNotification } from "./api/mappers";
 import { subscribeToInbox } from "./realtime-service";
-import { getCurrentUser, onSessionChange } from "./session-service";
+import { getCurrentUser, onSessionChange, reloadAccount } from "./session-service";
 
 /**
  * Notification centre (spec §18).
@@ -67,6 +67,8 @@ function receive(notice: ApiNotification): void {
     };
   });
   if (isNew) for (const listener of arrivals) listener(item);
+  // EN: The seller tools open without signing in again. / VI: Công cụ người bán mở ra mà không cần đăng nhập lại.
+  if (isNew && item.type === "SELLER_APPROVED") void reloadAccount().catch(() => undefined);
 }
 
 /**

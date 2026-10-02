@@ -72,6 +72,12 @@ spring:
       # EN: While Kafka is down, knock every 10 s rather than every second — the relay waits that long anyway.
       # VI: Khi Kafka sập, 10 giây mới gõ cửa một lần thay vì mỗi giây — relay vốn cũng chờ ngần ấy.
       reconnect.backoff.max.ms: 10000
+    # EN: Sends and receives join the trace: the record carries a traceparent header across Kafka.
+    # VI: Việc gửi và nhận gia nhập trace: bản ghi mang header traceparent đi qua Kafka.
+    template:
+      observation-enabled: true
+    listener:
+      observation-enabled: true
 
 server:
   port: ${NEXBID_PORT:8080}
@@ -108,6 +114,42 @@ management:
       # EN: A cache outage is not an outage (spec §20) — the probe must not report the app as down for it.
       # VI: Cache sập không phải là app sập (spec §20) — probe không được báo app hỏng vì chuyện đó.
       enabled: false
+  # EN: Traces (spec §34, advanced). Every request is traced; they leave the app only when NEXBID_TRACING_EXPORT is
+  #     true, to the OTLP endpoint below (Tempo in the monitoring profile). Log lines carry the trace id either way.
+  # VI: Trace (spec §34, bản nâng cao). Mọi request đều được trace; chúng chỉ rời app khi NEXBID_TRACING_EXPORT là true,
+  #     tới endpoint OTLP bên dưới (Tempo trong profile monitoring). Dòng log luôn mang trace id.
+  tracing:
+    sampling:
+      probability: ${NEXBID_TRACING_SAMPLING:1.0}
+    export:
+      enabled: ${NEXBID_TRACING_EXPORT:false}
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: ${NEXBID_OTLP_TRACES_URL:http://localhost:4318/v1/traces}
+  otlp:
+    metrics:
+      export:
+        # EN: Metrics stay with Prometheus; the OpenTelemetry starter would also push them over OTLP.
+        # VI: Metric vẫn do Prometheus lo; starter OpenTelemetry sẽ đẩy thêm chúng qua OTLP nếu không tắt.
+        enabled: false
+  observations:
+    enable:
+      # EN: One span per security filter would bury the ones that matter. / VI: Mỗi filter bảo mật một span sẽ che lấp những span quan trọng.
+      spring.security: false
+      # EN: Scheduler ticks that mostly find nothing to do. / VI: Các nhịp scheduler mà phần lớn không có việc gì.
+      tasks.scheduled.execution: false
+      # EN: Redis calls from socket joins and leaves would each start a trace of their own.
+      # VI: Các lệnh Redis khi socket vào và rời lô sẽ mỗi lệnh tự mở một trace riêng.
+      lettuce: false
+
+# EN: A span per SQL statement (datasource-micrometer), without the values bound to it.
+# VI: Mỗi câu SQL một span (datasource-micrometer), không kèm giá trị được gắn vào nó.
+jdbc:
+  includes: QUERY
+  datasource-proxy:
+    include-parameter-values: false
 
 nexbid:
   auth:
@@ -193,6 +235,9 @@ nexbid:
     # VI: Người thắng có bao lâu để trả, tính từ lúc đóng phiên. Khớp với dữ liệu demo của frontend.
     window: ${NEXBID_PAYMENT_WINDOW:48h}
     expiry-interval: ${NEXBID_PAYMENT_EXPIRY_INTERVAL_MS:60000}
+    # EN: How long the runner-up has to take a second-chance offer; the expiry job above closes it too.
+    # VI: Người trả giá cao thứ hai có bao lâu để nhận đề nghị cơ hội thứ hai; job hết hạn ở trên cũng đóng nó.
+    offer-window: ${NEXBID_OFFER_WINDOW:24h}
 
   storage:
     # EN: Outside the source tree — uploads are data, not code, and must never reach a commit.
@@ -217,6 +262,9 @@ nexbid:
     issuer: nexbid
 
 logging:
+  # EN: Every line names its trace and span, also when traces are not exported (Boot ties the two by default).
+  # VI: Mỗi dòng log ghi trace và span của nó, kể cả khi trace không được gửi đi (mặc định Boot gắn hai việc này với nhau).
+  expect-correlation-id: true
   level:
     com.nexbid: ${NEXBID_LOG_LEVEL:DEBUG}
     # EN: Kafka's clients print their whole config, and every reconnect attempt, at INFO.

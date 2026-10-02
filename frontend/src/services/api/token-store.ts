@@ -101,6 +101,21 @@ export function subjectOf(token: string | null): string | null {
   }
 }
 
+/**
+ * EN: The roles the token was issued with. A role granted later is only honoured by a renewed token.
+ * VI: Các vai trò có trong token lúc được cấp. Vai trò được cấp sau đó chỉ có hiệu lực với token đã gia hạn.
+ */
+export function rolesOf(token: string | null): string[] {
+  if (!token) return [];
+  try {
+    const payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const roles = (JSON.parse(atob(payload)) as { roles?: unknown }).roles;
+    return Array.isArray(roles) ? roles.filter((role): role is string => typeof role === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 export function setToken(token: string, expiresAt: string): void {
   watchOtherTabs();
   current = { token, expiresAt };

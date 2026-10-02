@@ -11,8 +11,8 @@ async function freshStore() {
 }
 
 /** EN: A JWT-shaped token for a subject; the signature is never checked here. / VI: Một token dạng JWT cho một subject; chữ ký không được kiểm ở đây. */
-function jwtFor(sub: string): string {
-  const payload = btoa(JSON.stringify({ sub })).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+function jwtFor(sub: string, claims: Record<string, unknown> = {}): string {
+  const payload = btoa(JSON.stringify({ sub, ...claims })).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
   return `header.${payload}.signature`;
 }
 
@@ -71,5 +71,14 @@ describe("the access token store", () => {
     expect(store.subjectOf(jwtFor("user-42"))).toBe("user-42");
     expect(store.subjectOf("not-a-jwt")).toBeNull();
     expect(store.subjectOf(null)).toBeNull();
+  });
+
+  it("reads the roles a token was issued with, and none from a malformed one", async () => {
+    const store = await freshStore();
+    expect(store.rolesOf(jwtFor("user-42", { roles: ["BUYER", "SELLER"] }))).toEqual(["BUYER", "SELLER"]);
+    expect(store.rolesOf(jwtFor("user-42"))).toEqual([]);
+    expect(store.rolesOf(jwtFor("user-42", { roles: "ADMIN" }))).toEqual([]);
+    expect(store.rolesOf("not-a-jwt")).toEqual([]);
+    expect(store.rolesOf(null)).toEqual([]);
   });
 });

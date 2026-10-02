@@ -82,6 +82,36 @@ export function grantRoles(grants: Array<[email: string, role: string]>): void {
   );
 }
 
+/** EN: One SQL statement in the stack's database; returns the rows it printed. / VI: Một câu SQL trong database của stack; trả về các dòng nó in ra. */
+function sql(statement: string): string[] {
+  const output = execFileSync(
+    "docker",
+    ["compose", "-f", COMPOSE_FILE, "exec", "-T", "postgres", "psql", "-U", "nexbid", "-d", "nexbid",
+      "-v", "ON_ERROR_STOP=1", "-tAq", "-c", statement],
+    { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] },
+  );
+  return output.split("\n").filter(Boolean);
+}
+
+/**
+ * EN: Moves a lot's close into the past, as two days of waiting would; the scheduler ends it within seconds.
+ * VI: Dời giờ đóng của lô về quá khứ, như thể đã chờ hai ngày; scheduler sẽ đóng nó trong vài giây.
+ */
+export function endLotNow(auctionId: string): void {
+  sql(`UPDATE auctions SET end_time = now() - interval '1 second' WHERE id = '${auctionId}'`);
+}
+
+/**
+ * EN: Lets the open payment on a lot run out; the expiry job cancels the sale on its next run. Returns how many
+ *     payments it found, which stays 0 until the scheduler has closed the lot.
+ * VI: Cho khoản thanh toán đang mở của lô quá hạn; job hết hạn sẽ huỷ giao dịch ở lần chạy kế tiếp. Trả về số khoản
+ *     tìm thấy, vẫn là 0 cho tới khi scheduler đóng lô.
+ */
+export function lapsePayment(auctionId: string): number {
+  return sql(`UPDATE payments SET expired_at = now() - interval '1 second'
+               WHERE auction_id = '${auctionId}' AND status IN ('PENDING', 'FAILED') RETURNING id`).length;
+}
+
 /**
  * EN: A lot with no photos. `open` approves it with a start time already passed, so it is live at once
  *     (spec §7.5); otherwise it waits in the approval queue.
