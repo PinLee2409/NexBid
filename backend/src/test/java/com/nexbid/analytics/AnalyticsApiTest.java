@@ -86,7 +86,7 @@ class AnalyticsApiTest {
         BigDecimal price = new BigDecimal(amount);
         return new BidPlacedEvent(new PlacedBidView(
                 new BidView(UUID.randomUUID(), lot, "ann***", false, price, at),
-                price, 1, price.add(new BigDecimal("500000")), at.plus(Duration.ofHours(1)), at, true),
+                price, 1, price.add(new BigDecimal("500000")), at.plus(Duration.ofHours(1)), at, true, null),
                 UUID.randomUUID());
     }
 

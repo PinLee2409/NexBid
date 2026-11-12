@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nexbid.auction.dto.CreateAuctionRequest;
+import com.nexbid.auction.dto.ReserveDecisionRequest;
 import com.nexbid.common.response.ApiResponse;
 import com.nexbid.common.security.CurrentUser;
 
@@ -74,6 +75,18 @@ public class SellerAuctionController {
             @AuthenticationPrincipal CurrentUser seller, @PathVariable UUID id) {
 
         return ApiResponse.of(auctions.submitForApproval(seller.id(), id), "Sent for approval");
+    }
+
+    /**
+     * EN: Sell anyway, or not, a lot that closed below its reserve. / VI: Vẫn bán, hay không, một lô đóng dưới giá sàn.
+     */
+    @PostMapping("/{id}/reserve-decision")
+    public ApiResponse<AuctionView> decideReserve(
+            @AuthenticationPrincipal CurrentUser seller,
+            @PathVariable UUID id,
+            @Valid @RequestBody ReserveDecisionRequest request) {
+        return ApiResponse.of(auctions.decideReserve(seller.id(), id, request.accept()),
+                request.accept() ? "Sold to the highest bidder" : "Not sold");
     }
 
     @DeleteMapping("/{id}")

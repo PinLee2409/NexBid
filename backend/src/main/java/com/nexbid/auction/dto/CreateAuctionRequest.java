@@ -46,5 +46,14 @@ public record CreateAuctionRequest(
 
         @Min(value = 5, message = "Extension must be at least 5 seconds")
         @Max(value = 600, message = "Extension must be at most 10 minutes")
-        Integer extensionSeconds) {
+        Integer extensionSeconds,
+
+        // EN: Optional. Kept from bidders; how it relates to the other prices is checked by the service.
+        // VI: Không bắt buộc. Giấu người trả giá; quan hệ với các giá khác do service kiểm.
+        @DecimalMin(value = "0", inclusive = false, message = "Reserve price must be greater than zero")
+        BigDecimal reservePrice,
+
+        // EN: Optional. Offered until the first bid. / VI: Không bắt buộc. Có hiệu lực tới lượt trả giá đầu tiên.
+        @DecimalMin(value = "0", inclusive = false, message = "Buy-now price must be greater than zero")
+        BigDecimal buyNowPrice) {
 }

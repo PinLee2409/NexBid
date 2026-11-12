@@ -20,6 +20,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import com.nexbid.auction.AuctionAuditEvent;
 import com.nexbid.auction.AuctionLifecycleEvent;
+import com.nexbid.auction.ReserveEvents;
 import com.nexbid.auction.PageView;
 import com.nexbid.auth.SuccessfulLoginEvent;
 import com.nexbid.bid.BidPlacedEvent;
@@ -144,6 +145,25 @@ public class AuditLogService {
         } else {
             record(event.buyerId(), AuditAction.OFFER_DECLINED, "SecondChanceOffer", event.offerId(), "PENDING", "DECLINED");
         }
+    }
+
+    @EventListener
+    void onReserveAccepted(ReserveEvents.Accepted event) {
+        record(event.sellerId(), AuditAction.RESERVE_ACCEPTED, "Auction", event.auctionId(),
+                "PENDING", event.price().toPlainString());
+    }
+
+    /** EN: A lapsed decision has no actor: the clock ran out. / VI: Quyết định hết hạn không có người làm: đồng hồ đã hết. */
+    @EventListener
+    void onReserveRefused(ReserveEvents.Refused event) {
+        record(event.lapsed() ? null : event.sellerId(),
+                event.lapsed() ? AuditAction.RESERVE_LAPSED : AuditAction.RESERVE_REFUSED,
+                "Auction", event.auctionId(), "PENDING", event.lapsed() ? "LAPSED" : "DECLINED");
+    }
+
+    @EventListener
+    void onBoughtNow(ReserveEvents.BoughtNow event) {
+        record(event.buyerId(), AuditAction.BOUGHT_NOW, "Auction", event.auctionId(), null, event.price().toPlainString());
     }
 
     public PageView<AuditLogView> list(AuditLogQuery query) {

@@ -4,8 +4,8 @@ import Link from "next/link";
 import { ProductPhoto } from "@/components/common/product-photo";
 import { formatLot } from "@/components/nexbid/lot-number";
 import { SectionHead } from "@/components/nexbid/section-head";
-import { formatCurrency } from "@/lib/format";
 import type { AuctionSummary } from "@/types";
+import { useMoney } from "@/hooks/use-money";
 
 interface ScheduleSectionProps {
   auctions: AuctionSummary[];
@@ -17,6 +17,7 @@ interface ScheduleSectionProps {
  * yet, so nothing is racing.
  */
 export function ScheduleSection({ auctions }: ScheduleSectionProps) {
+  const money = useMoney();
   const t = useTranslations("schedule");
   const format = useFormatter();
 
@@ -62,7 +63,7 @@ export function ScheduleSection({ auctions }: ScheduleSectionProps) {
                 </h3>
                 <div className="mt-3 flex items-baseline justify-between gap-3">
                   <span className="figure text-sm">
-                    {formatCurrency(auction.startingPrice)}
+                    {money.currency(auction.startingPrice)}
                   </span>
                   <span className="mono-figure text-dim text-[11px]">
                     {format.dateTime(new Date(auction.startTime), {

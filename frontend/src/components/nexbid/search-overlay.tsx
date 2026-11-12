@@ -8,8 +8,8 @@ import { useEffect, useState } from "react";
 
 import { LotNumber } from "@/components/nexbid/lot-number";
 import { useAsyncData } from "@/hooks/use-async-data";
-import { formatCurrency } from "@/lib/format";
 import { listAuctions } from "@/services/auction-service";
+import { useMoney } from "@/hooks/use-money";
 
 interface SearchOverlayProps {
   open: boolean;
@@ -21,6 +21,7 @@ interface SearchOverlayProps {
  * prompt, and results that build underneath as the query is typed.
  */
 export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
+  const money = useMoney();
   const t = useTranslations("search");
   const tc = useTranslations("common");
   const [query, setQuery] = useState("");
@@ -133,7 +134,7 @@ export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
                           {auction.product.name}
                         </span>
                         <span className="mono-figure text-muted-foreground shrink-0 text-sm">
-                          {formatCurrency(auction.currentPrice)}
+                          {money.currency(auction.currentPrice)}
                         </span>
                       </Link>
                     </m.li>

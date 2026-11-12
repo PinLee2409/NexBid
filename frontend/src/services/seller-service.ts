@@ -204,6 +204,10 @@ export interface AuctionInput {
   antiSnipingEnabled: boolean;
   antiSnipingWindowSeconds: number;
   extensionSeconds: number;
+  /** EN: Optional; hidden from bidders. / VI: Không bắt buộc; giấu người trả giá. */
+  reservePrice?: number;
+  /** EN: Optional; until the first bid. / VI: Không bắt buộc; tới lượt trả giá đầu tiên. */
+  buyNowPrice?: number;
 }
 
 /** `POST /api/seller/auctions`, and `…/submit` straight after when asked. */
@@ -222,6 +226,8 @@ export async function createAuction(
       antiSnipingEnabled: input.antiSnipingEnabled,
       antiSnipingWindowSeconds: input.antiSnipingEnabled ? input.antiSnipingWindowSeconds : undefined,
       extensionSeconds: input.antiSnipingEnabled ? input.extensionSeconds : undefined,
+      reservePrice: input.reservePrice,
+      buyNowPrice: input.buyNowPrice,
     },
   });
   if (!submitForApproval) return toAuction(created);
@@ -238,9 +244,17 @@ export async function listSoldOrders(): Promise<OrderEntry[]> {
   return (await api<ApiOrder[]>("/api/seller/orders")).map(toEntry);
 }
 
-/** `POST /api/seller/orders/{id}/ship` — PAID → PROCESSING. */
-export async function shipOrder(orderId: string): Promise<OrderEntry> {
-  return toEntry(await api<ApiOrder>(`/api/seller/orders/${orderId}/ship`, { method: "POST" }));
+/** `POST /api/seller/orders/{id}/ship` — PAID → PROCESSING, with the carrier and tracking number if there are any. */
+export async function shipOrder(
+  orderId: string,
+  parcel: { carrier: string; trackingNumber: string } = { carrier: "", trackingNumber: "" },
+): Promise<OrderEntry> {
+  return toEntry(
+    await api<ApiOrder>(`/api/seller/orders/${orderId}/ship`, {
+      method: "POST",
+      body: { carrier: parcel.carrier.trim() || null, trackingNumber: parcel.trackingNumber.trim() || null },
+    }),
+  );
 }
 
 /**
@@ -270,4 +284,14 @@ export async function listSecondChances(): Promise<SecondChance[]> {
 /** `POST /api/seller/auctions/{id}/second-chance` — once per lot. */
 export async function offerToRunnerUp(auctionId: string): Promise<SecondChanceOffer> {
   return toOffer(await api<ApiOfferDetails>(`/api/seller/auctions/${auctionId}/second-chance`, { method: "POST" }));
+}
+
+/**
+ * EN: `POST /api/seller/auctions/{id}/reserve-decision` — sell anyway, or keep a lot that closed below its reserve.
+ * VI: `POST /api/seller/auctions/{id}/reserve-decision` — vẫn bán, hay giữ lại một lô đóng dưới giá sàn.
+ */
+export async function decideReserve(auctionId: string, accept: boolean): Promise<Auction> {
+  return toAuction(
+    await api<ApiAuction>(`/api/seller/auctions/${auctionId}/reserve-decision`, { method: "POST", body: { accept } }),
+  );
 }

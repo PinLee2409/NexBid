@@ -11,7 +11,7 @@ import com.nexbid.payment.PaymentView;
  * EN: An order with its payment and lot — the frontend's OrderEntry, field for field.
  * VI: Một đơn hàng kèm khoản thanh toán và lô của nó — đúng từng trường với OrderEntry của frontend.
  */
-public record OrderView(Details order, PaymentView.Details payment, AuctionSummaryView auction) {
+public record OrderView(Details order, PaymentView.Details payment, AuctionSummaryView auction, ReviewView review) {
 
     public record Details(
             UUID id,
@@ -22,6 +22,14 @@ public record OrderView(Details order, PaymentView.Details payment, AuctionSumma
             BigDecimal amount,
             OrderStatus status,
             Instant createdAt,
-            Instant updatedAt) {
+            Instant updatedAt,
+            Shipping shipping,
+            String carrier,
+            String trackingNumber,
+            Instant shippedAt) {
+    }
+
+    /** EN: Where it goes, as it was when the buyer paid. / VI: Nơi giao tới, theo lúc người mua thanh toán. */
+    public record Shipping(String recipient, String phone, String address) {
     }
 }

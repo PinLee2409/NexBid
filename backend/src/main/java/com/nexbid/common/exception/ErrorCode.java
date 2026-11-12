@@ -57,6 +57,10 @@ public enum ErrorCode {
     // EN: A decision was made on a lot that is not waiting for one.
     // VI: Có người ra quyết định trên một lô vốn không chờ quyết định.
     AUCTION_NOT_PENDING(HttpStatus.CONFLICT),
+    // EN: Reserve below the starting price, or a buy-now price below either. / VI: Giá sàn thấp hơn giá khởi điểm, hoặc giá mua ngay thấp hơn một trong hai.
+    AUCTION_PRICES_INVALID(HttpStatus.UNPROCESSABLE_ENTITY),
+    // EN: The lot is not waiting for the seller to accept a bid below its reserve. / VI: Lô không chờ người bán nhận một giá dưới giá sàn.
+    RESERVE_DECISION_CLOSED(HttpStatus.CONFLICT),
 
     /* --- Bidding / Trả giá -------------------------------------------- */
     SELLER_CANNOT_BID(HttpStatus.FORBIDDEN),
@@ -72,12 +76,18 @@ public enum ErrorCode {
     // VI: Spec §14 chỉ cho mỗi người một auto bid đang bật trên mỗi lô; muốn đổi thì dùng PUT.
     AUTO_BID_EXISTS(HttpStatus.CONFLICT),
     AUTO_BID_NOT_FOUND(HttpStatus.NOT_FOUND),
+    // EN: No buy-now price, or someone has already bid. / VI: Không có giá mua ngay, hoặc đã có người trả giá.
+    BUY_NOW_UNAVAILABLE(HttpStatus.CONFLICT),
 
     /* --- Settlement / Thanh toán -------------------------------------- */
     PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND),
     PAYMENT_EXPIRED(HttpStatus.CONFLICT),
     // EN: Already settled — paying twice would charge twice. / VI: Đã thanh toán rồi — trả lần nữa là trừ tiền hai lần.
     PAYMENT_ALREADY_PAID(HttpStatus.CONFLICT),
+    // EN: A VNPay callback whose signature or amount does not check out. / VI: Lời gọi lại từ VNPay có chữ ký hoặc số tiền không khớp.
+    PAYMENT_GATEWAY_INVALID(HttpStatus.BAD_REQUEST),
+    // EN: Checkout needs somewhere to deliver to. / VI: Checkout cần có nơi giao hàng.
+    ADDRESS_REQUIRED(HttpStatus.CONFLICT),
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND),
     // EN: A step out of order, e.g. confirming receipt of an order never shipped. / VI: Sai thứ tự bước, ví dụ xác nhận đã nhận một đơn chưa gửi.
     ORDER_STATUS_INVALID(HttpStatus.CONFLICT),
@@ -89,6 +99,9 @@ public enum ErrorCode {
     OFFER_NOT_FOUND(HttpStatus.NOT_FOUND),
     // EN: Already accepted, declined, or past its 24 hours. / VI: Đã nhận, đã từ chối, hoặc đã quá 24 giờ.
     OFFER_NOT_PENDING(HttpStatus.CONFLICT),
+    // EN: Reviews: only a received order, and only once. / VI: Đánh giá: chỉ đơn đã nhận hàng, và chỉ một lần.
+    REVIEW_NOT_ALLOWED(HttpStatus.CONFLICT),
+    REVIEW_EXISTS(HttpStatus.CONFLICT),
 
     /* --- Notifications / Thông báo ------------------------------------ */
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND),

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.nexbid.auction.AuctionLifecycleEvent;
+import com.nexbid.auction.ReserveEvents;
 import com.nexbid.bid.OutbidEvent;
 import com.nexbid.infrastructure.kafka.ConsumedEvents;
 import com.nexbid.infrastructure.kafka.EventHeaders;
@@ -53,7 +54,13 @@ class NotificationConsumer {
                 EventHeaders.typeName(SecondChanceEvents.Accepted.class),
                 body -> triggers.onOfferAccepted(read(body, SecondChanceEvents.Accepted.class)),
                 EventHeaders.typeName(SecondChanceEvents.Declined.class),
-                body -> triggers.onOfferDeclined(read(body, SecondChanceEvents.Declined.class)));
+                body -> triggers.onOfferDeclined(read(body, SecondChanceEvents.Declined.class)),
+                EventHeaders.typeName(ReserveEvents.NotMet.class),
+                body -> triggers.onReserveNotMet(read(body, ReserveEvents.NotMet.class)),
+                EventHeaders.typeName(ReserveEvents.Accepted.class),
+                body -> triggers.onReserveAccepted(read(body, ReserveEvents.Accepted.class)),
+                EventHeaders.typeName(ReserveEvents.Refused.class),
+                body -> triggers.onReserveRefused(read(body, ReserveEvents.Refused.class)));
     }
 
     @KafkaListener(

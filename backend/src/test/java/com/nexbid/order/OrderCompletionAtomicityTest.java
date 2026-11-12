@@ -24,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.nexbid.auction.AuctionService;
 import com.nexbid.support.TestInfrastructure;
+import com.nexbid.support.VnpayTestSupport;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserService;
 
@@ -111,8 +112,7 @@ class OrderCompletionAtomicityTest {
 
         doThrow(new IllegalStateException("auction store is down")).when(auctions).completeSale(any());
 
-        mockMvc.perform(post("/api/payments/" + paymentId + "/pay").header("Authorization", "Bearer " + winner)
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"outcome\":\"SUCCESS\"}"))
+        VnpayTestSupport.pay(mockMvc, winner, String.valueOf(paymentId), "SUCCESS")
                 .andExpect(status().isInternalServerError());
 
         // EN: Nothing half-done: the payment is still open, the order still waiting, the lot still ENDED.
@@ -126,8 +126,7 @@ class OrderCompletionAtomicityTest {
 
         doCallRealMethod().when(auctions).completeSale(any());
 
-        mockMvc.perform(post("/api/payments/" + paymentId + "/pay").header("Authorization", "Bearer " + winner)
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"outcome\":\"SUCCESS\"}"))
+        VnpayTestSupport.pay(mockMvc, winner, String.valueOf(paymentId), "SUCCESS")
                 .andExpect(status().isOk());
 
         assertThat(jdbc.queryForObject("SELECT status FROM orders WHERE payment_id = ?::uuid", String.class, paymentId))

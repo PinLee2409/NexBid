@@ -39,6 +39,7 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import com.nexbid.auction.ViewerCountMessage;
 import com.nexbid.support.TestInfrastructure;
+import com.nexbid.support.VnpayTestSupport;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserService;
 
@@ -353,11 +354,30 @@ class AuctionFlowIntegrationTest {
         assertThat(Instant.parse(payment.get("expiredAt").asString())).isAfter(end.plus(Duration.ofHours(47)));
 
         assertThat(get("/api/users/me/payments", ben).data().size()).isZero();
-        Reply stolen = post("/api/payments/" + paymentId + "/pay", ben, Map.of("outcome", "SUCCESS"));
+        Reply stolen = post("/api/payments/" + paymentId + "/vnpay", ben, Map.of("locale", "en"));
         assertThat(stolen.status()).isEqualTo(404);
         assertThat(stolen.code()).isEqualTo("PAYMENT_NOT_FOUND");
 
-        Reply paid = post("/api/payments/" + paymentId + "/pay", anna, Map.of("outcome", "SUCCESS"));
+        // EN: No delivery address, no checkout. / VI: Chưa có địa chỉ nhận hàng thì không checkout được.
+        Reply homeless = post("/api/payments/" + paymentId + "/vnpay", anna, Map.of("locale", "en"));
+        assertThat(homeless.status()).isEqualTo(409);
+        assertThat(homeless.code()).isEqualTo("ADDRESS_REQUIRED");
+        assertThat(call(HttpMethod.PUT, "/api/users/me/address", anna, Map.of(
+                "recipient", "Anna Buyer", "phone", "0901234567", "line", "12 Nguyen Hue",
+                "district", "District 1", "province", "Ho Chi Minh City")).status()).isEqualTo(200);
+
+        // EN: Anna goes to VNPay; VNPay's server reports back (IPN). / VI: Anna sang VNPay; server VNPay báo lại (IPN).
+        Reply checkout = post("/api/payments/" + paymentId + "/vnpay", anna, Map.of("locale", "en"));
+        assertThat(checkout.status()).isEqualTo(200);
+        Map<String, String> reply = VnpayTestSupport.reply(
+                checkout.data().get("paymentUrl").asString(), VnpayTestSupport.PAID);
+        String query = reply.entrySet().stream()
+                .map(field -> field.getKey() + "=" + java.net.URLEncoder.encode(field.getValue(), java.nio.charset.StandardCharsets.UTF_8))
+                .collect(java.util.stream.Collectors.joining("&"));
+        Reply ipn = get("/api/payments/vnpay/ipn?" + query, null);
+        assertThat(ipn.body().get("RspCode").asString()).isEqualTo("00");
+
+        Reply paid = get("/api/payments/" + paymentId, anna);
         assertThat(paid.status()).isEqualTo(200);
         assertThat(paid.data().get("payment").get("status").asString()).isEqualTo("SUCCESS");
 
@@ -367,6 +387,10 @@ class AuctionFlowIntegrationTest {
         assertThat(orders.getFirst().get("order").get("status").asString()).isEqualTo("PAID");
         assertThat(orders.getFirst().get("order").get("sellerId").asString()).isEqualTo(seller.id().toString());
         assertThat(orders.getFirst().get("order").get("amount").decimalValue()).isEqualByComparingTo("11000000");
+        // EN: The paid order keeps where to deliver. / VI: Đơn đã trả giữ nơi giao hàng.
+        JsonNode shipping = orders.getFirst().get("order").get("shipping");
+        assertThat(shipping.get("recipient").asString()).isEqualTo("Anna Buyer");
+        assertThat(shipping.get("address").asString()).isEqualTo("12 Nguyen Hue, District 1, Ho Chi Minh City");
         await().atMost(Duration.ofSeconds(15)).until(() -> noticesOf(anna).contains("PAYMENT_SUCCESS"));
 
         // EN: 8. The admin can trace every step. / VI: 8. Admin lần lại được từng bước.

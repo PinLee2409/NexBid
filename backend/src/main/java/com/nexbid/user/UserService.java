@@ -183,6 +183,21 @@ public class UserService {
         return toAccount(user);
     }
 
+    /**
+     * EN: "Nguyen Van A" becomes "ngu***" (spec §37): the public handle in bid history and reviews. Enough for
+     *     people to recognise their own line, not enough for anyone else to work out who they are.
+     * VI: "Nguyen Van A" thành "ngu***" (spec §37): tên công khai trong lịch sử trả giá và đánh giá. Đủ để người
+     *     đó nhận ra dòng của mình, không đủ để người khác suy ra họ là ai.
+     */
+    public static String handleOf(String fullName) {
+        String trimmed = fullName == null ? "" : fullName.trim();
+        if (trimmed.isEmpty()) {
+            return "***";
+        }
+        String head = trimmed.length() <= 3 ? trimmed : trimmed.substring(0, 3);
+        return head.toLowerCase(java.util.Locale.ROOT) + "***";
+    }
+
     private static UserAccount toAccount(User user) {
         return new UserAccount(
                 user.getId(),

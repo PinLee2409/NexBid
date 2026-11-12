@@ -5,11 +5,12 @@ import type {
   AuctionSummary,
   Category,
   Page,
+  SellerReputation,
 } from "@/types";
 
-import type { ApiAuctionDetail, ApiAuctionSummary, ApiBid, ApiCategory, ApiPage } from "./api/dto";
+import type { ApiAuctionDetail, ApiAuctionSummary, ApiBid, ApiCategory, ApiPage, ApiSellerReviews } from "./api/dto";
 import { ApiError, api } from "./api/http";
-import { toAuction, toBid, toCategory, toImage, toSummary } from "./api/mappers";
+import { toAuction, toBid, toCategory, toImage, toReputation, toSummary } from "./api/mappers";
 
 /**
  * Read APIs for the public marketplace (spec §27). They run on the server for
@@ -88,6 +89,20 @@ export async function getAuction(auctionId: string): Promise<AuctionDetail | nul
     watched: false,
     recentBids: bids.items.map((bid) => toBid(bid, null)),
   };
+}
+
+/**
+ * EN: `GET /api/sellers/{id}/reviews` — the seller's score and latest reviews, for their lot pages. Null when it
+ *     cannot be read: the lot page renders without it.
+ * VI: `GET /api/sellers/{id}/reviews` — điểm và các đánh giá mới nhất của người bán, cho trang lô. Null khi không
+ *     đọc được: trang lô vẫn hiển thị khi thiếu nó.
+ */
+export async function getSellerReputation(sellerId: string, latest = 3): Promise<SellerReputation | null> {
+  try {
+    return toReputation(await api<ApiSellerReviews>(`/api/sellers/${sellerId}/reviews`, { query: { size: latest } }));
+  } catch {
+    return null;
+  }
 }
 
 /** Lots open right now, for the header's "LIVE 09" counter. */

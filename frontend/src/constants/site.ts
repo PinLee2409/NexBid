@@ -8,6 +8,7 @@ import {
   Package,
   Receipt,
   Store,
+  Tags,
   Trophy,
   UserRound,
   Wallet,
@@ -56,6 +57,7 @@ export const SELLER_NAV: AccountNavItem[] = [
 export const ADMIN_NAV: AccountNavItem[] = [
   { labelKey: "overview", href: "/admin", icon: LayoutDashboard },
   { labelKey: "auctions", href: "/admin/auctions", icon: Gavel },
+  { labelKey: "categories", href: "/admin/categories", icon: Tags },
   { labelKey: "users", href: "/admin/users", icon: UserRound },
   { labelKey: "sellerRequests", href: "/admin/sellers", icon: Store },
   { labelKey: "orders", href: "/admin/orders", icon: Receipt },

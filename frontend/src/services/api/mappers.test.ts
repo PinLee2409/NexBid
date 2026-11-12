@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { NotificationType } from "@/types";
 
 import type { ApiAuction, ApiAuctionSummary, ApiBid, ApiNotification } from "./dto";
-import { maskName, toBid, toNotification, toOrder, toPayment, toSummary, toUser } from "./mappers";
+import { maskName, toBid, toCategory, toNotification, toOrder, toPayment, toReputation, toSummary, toUser } from "./mappers";
 
 /** EN: Spring sends BigDecimal amounts; JSON may carry them as strings. / VI: Spring gửi số tiền BigDecimal; JSON có thể mang chúng dưới dạng chuỗi. */
 const decimal = (value: string) => value as unknown as number;
@@ -23,6 +23,27 @@ describe("accounts from the API", () => {
   it("carry the masked handle, and a join date even when the answer has none", () => {
     const user = toUser({ id: "u1", fullName: "Sara Novak", email: "sara@nexbid.test", roles: ["BUYER"], status: "ACTIVE" });
     expect(user).toMatchObject({ displayName: "sar***", createdAt: new Date(0).toISOString() });
+  });
+});
+
+describe("categories from the API", () => {
+  it("keep their status and turn missing text into blanks", () => {
+    const category = toCategory({
+      id: "c1",
+      name: "Watches",
+      slug: "watches",
+      description: null,
+      imageUrl: null,
+      status: "ARCHIVED",
+    });
+    expect(category).toEqual({
+      id: "c1",
+      name: "Watches",
+      slug: "watches",
+      description: "",
+      imageUrl: "",
+      status: "ARCHIVED",
+    });
   });
 });
 
@@ -93,6 +114,37 @@ describe("catalogue cards from the API", () => {
     expect(summary.watched).toBe(true);
     expect(summary.rejectionReason).toBeUndefined();
   });
+
+  it("know nothing of a reserve or buy-now price the API did not send", () => {
+    expect(toSummary(card)).toMatchObject({ hasReserve: false, reserveMet: null, buyNowPrice: null, boughtNow: false, reserveDecision: null });
+    expect(toSummary(card).reservePrice).toBeUndefined();
+  });
+
+  it("turn the reserve and buy-now prices into numbers when they are there", () => {
+    const priced = toSummary({
+      ...card,
+      auction: { ...auction, reservePrice: decimal("2000000.00"), hasReserve: true, reserveMet: false, buyNowPrice: decimal("3000000.00") },
+    });
+    expect(priced).toMatchObject({ reservePrice: 2_000_000, hasReserve: true, reserveMet: false, buyNowPrice: 3_000_000 });
+  });
+});
+
+describe("a seller's reputation from the API", () => {
+  const review = { id: "r1", orderId: "o1", auctionId: "a1", rating: 4, reviewer: "qui***", createdAt: "2026-09-27T00:00:00Z" };
+  const page = { items: [review], page: 1, pageSize: 3, totalItems: 1, totalPages: 1 };
+
+  it("reads the average as a number and fills the blanks of a review", () => {
+    expect(toReputation({ average: decimal("4.5"), reviewCount: 2, sales: 3, reviews: page })).toEqual({
+      average: 4.5,
+      reviewCount: 2,
+      sales: 3,
+      reviews: [{ ...review, comment: null, lotName: null }],
+    });
+  });
+
+  it("has no average before the first review", () => {
+    expect(toReputation({ reviewCount: 0, sales: 1, reviews: { ...page, items: [] } }).average).toBeNull();
+  });
 });
 
 describe("where a notification leads", () => {
@@ -118,6 +170,7 @@ describe("where a notification leads", () => {
     ["SECOND_CHANCE_OFFER", "/my-wins"],
     ["SECOND_CHANCE_ACCEPTED", "/seller/orders"],
     ["SECOND_CHANCE_DECLINED", "/seller/orders"],
+    ["NEW_REVIEW", "/seller/orders"],
   ] as const)("%s opens %s", (type, href) => {
     expect(toNotification(notice(type), "u1").href).toBe(href);
   });

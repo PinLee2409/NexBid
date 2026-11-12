@@ -45,6 +45,7 @@ class ProxyBidding {
      */
     BiddingState settleAndAnnounce(UUID auctionId, Instant at, LeadTracker leads) {
         settle(auctionId, at, leads);
+        reachReserve(auctionId, at, leads);
 
         BiddingState lot = auctions.lockBiddingState(auctionId, at);
         Set<UUID> outbid = leads.outbidBy(lot.leaderId());
@@ -86,6 +87,26 @@ class ProxyBidding {
 
             exchange(lot, challenger, defender, at, leads);
         }
+    }
+
+    /**
+     * EN: An auto bid whose ceiling covers the reserve does not leave the lot below it: nobody else can pay more than
+     *     it already bid, so it lifts its own bid to the reserve. Without this a lone auto bidder willing to pay the
+     *     reserve would lose the lot at the starting price.
+     * VI: Auto bid có mức trần đủ giá sàn thì không để lô dừng dưới giá sàn: không ai khác trả hơn mức nó đã trả, nên nó
+     *     tự nâng lượt của mình lên giá sàn. Không có bước này, một người đặt auto bid duy nhất sẵn lòng trả giá sàn sẽ
+     *     mất lô ở giá khởi điểm.
+     */
+    private void reachReserve(UUID auctionId, Instant at, LeadTracker leads) {
+        BiddingState lot = auctions.lockBiddingState(auctionId, at);
+        if (!lot.open() || lot.leaderId() == null || !Boolean.FALSE.equals(lot.reserveMet())) {
+            return;
+        }
+        BigDecimal target = lot.reservePrice().max(lot.minimumNextBid());
+        autoBids.findByAuctionIdAndUserId(auctionId, lot.leaderId())
+                .filter(AutoBid::isActive)
+                .filter(proxy -> proxy.getMaxAmount().compareTo(target) >= 0)
+                .ifPresent(proxy -> recorder.record(auctionId, proxy.getUserId(), target, at, leads));
     }
 
     /**

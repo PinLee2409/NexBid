@@ -8,6 +8,7 @@ import org.hibernate.annotations.Generated;
 import org.hibernate.generator.EventType;
 
 import com.nexbid.auction.AuctionStatus;
+import com.nexbid.auction.ReserveDecision;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -110,6 +111,27 @@ public class Auction {
     private String rejectionReason;
 
     /**
+     * EN: The lowest price the seller will sell at without being asked. Never shown to bidders — only whether it is met.
+     * VI: Giá thấp nhất người bán chịu bán mà không cần được hỏi lại. Không bao giờ cho người trả giá thấy — chỉ cho biết đã đạt chưa.
+     */
+    @Column(name = "reserve_price", precision = 15, scale = 2)
+    private BigDecimal reservePrice;
+
+    /** EN: Ends the lot at once for this price, until the first bid. / VI: Kết thúc lô ngay với giá này, cho tới lượt trả giá đầu tiên. */
+    @Column(name = "buy_now_price", precision = 15, scale = 2)
+    private BigDecimal buyNowPrice;
+
+    @Column(name = "bought_now", nullable = false)
+    private boolean boughtNow;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "reserve_decision", length = 16)
+    private ReserveDecision reserveDecision;
+
+    @Column(name = "reserve_decision_until")
+    private Instant reserveDecisionUntil;
+
+    /**
      * EN: Optimistic locking (spec §9). Two bids read the same price and both try to write; the second
      *     write fails and is retried against the price the first one set.
      * VI: Khoá lạc quan (spec §9). Hai lượt trả giá cùng đọc một mức giá rồi cùng ghi; lượt sau ghi hỏng
@@ -203,6 +225,45 @@ public class Auction {
      * VI: Lùi giờ đóng sau một lượt trả giá phút chót (spec §13). Cộng từ giờ đóng cũ chứ không từ lúc trả
      *     giá: 21:00:00 thành 21:02:00 dù lượt trả giá tới lúc 20:59:45 hay 20:59:59.
      */
+    /** EN: Null without a reserve; otherwise whether the price has reached it. / VI: Null nếu không có giá sàn; ngược lại là giá đã chạm giá sàn chưa. */
+    public Boolean reserveMet() {
+        return reservePrice == null ? null : bidCount > 0 && currentPrice.compareTo(reservePrice) >= 0;
+    }
+
+    /**
+     * EN: The bidding stopped below the reserve: no winner yet, the seller has until {@code until} to accept the
+     *     highest bid.
+     * VI: Việc trả giá dừng dưới giá sàn: chưa có người thắng, người bán có tới {@code until} để nhận giá cao nhất.
+     */
+    public void closeBelowReserve(Instant until) {
+        this.status = AuctionStatus.ENDED;
+        this.winnerId = null;
+        this.reserveDecision = ReserveDecision.PENDING;
+        this.reserveDecisionUntil = until;
+    }
+
+    /** EN: The seller took the highest bid after all. / VI: Rốt cuộc người bán nhận giá cao nhất. */
+    public void acceptBelowReserve() {
+        this.winnerId = this.leadingBidderId;
+        this.reserveDecision = ReserveDecision.ACCEPTED;
+    }
+
+    /** EN: Not sold: refused, or not answered in time. / VI: Không bán: bị từ chối, hoặc không trả lời kịp. */
+    public void refuseBelowReserve(boolean lapsed) {
+        this.reserveDecision = lapsed ? ReserveDecision.LAPSED : ReserveDecision.DECLINED;
+    }
+
+    /**
+     * EN: Buy-now: the buyer's bid at the buy-now price closes the lot on the spot, in their name.
+     * VI: Mua ngay: lượt trả giá bằng giá mua ngay đóng lô tại chỗ, đứng tên người mua.
+     */
+    public void closeBoughtNow(Instant at) {
+        this.status = AuctionStatus.ENDED;
+        this.endTime = at;
+        this.winnerId = this.leadingBidderId;
+        this.boughtNow = true;
+    }
+
     public void extendForLastMinuteBid() {
         this.endTime = this.endTime.plusSeconds(this.extensionSeconds);
         this.extensionCount += 1;
@@ -315,6 +376,34 @@ public class Auction {
 
     public UUID getLeadingBidderId() {
         return leadingBidderId;
+    }
+
+    public BigDecimal getReservePrice() {
+        return reservePrice;
+    }
+
+    public void setReservePrice(BigDecimal reservePrice) {
+        this.reservePrice = reservePrice;
+    }
+
+    public BigDecimal getBuyNowPrice() {
+        return buyNowPrice;
+    }
+
+    public void setBuyNowPrice(BigDecimal buyNowPrice) {
+        this.buyNowPrice = buyNowPrice;
+    }
+
+    public boolean isBoughtNow() {
+        return boughtNow;
+    }
+
+    public ReserveDecision getReserveDecision() {
+        return reserveDecision;
+    }
+
+    public Instant getReserveDecisionUntil() {
+        return reserveDecisionUntil;
     }
 
     public String getRejectionReason() {

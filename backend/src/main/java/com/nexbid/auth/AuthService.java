@@ -21,6 +21,9 @@ import com.nexbid.common.exception.BusinessException;
 import com.nexbid.common.exception.ErrorCode;
 import java.time.Instant;
 
+import com.nexbid.mail.MailFacts;
+import com.nexbid.mail.MailKind;
+import com.nexbid.mail.Mailer;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserAccount;
 import com.nexbid.user.UserCredentials;
@@ -41,6 +44,7 @@ public class AuthService {
     private final ApplicationEventPublisher events;
     private final RefreshTokenService refreshTokens;
     private final LoginAttempts attempts;
+    private final Mailer mailer;
 
     /**
      * EN: What a sign-in or a renewal hands back: the access token in the body, the refresh token for the cookie.
@@ -57,7 +61,8 @@ public class AuthService {
             AuthenticationManager authenticationManager,
             ApplicationEventPublisher events,
             RefreshTokenService refreshTokens,
-            LoginAttempts attempts) {
+            LoginAttempts attempts,
+            Mailer mailer) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -66,6 +71,7 @@ public class AuthService {
         this.events = events;
         this.refreshTokens = refreshTokens;
         this.attempts = attempts;
+        this.mailer = mailer;
     }
 
     public RegisterResponse register(RegisterRequest request) {
@@ -86,6 +92,7 @@ public class AuthService {
                     // VI: Ai cũng bắt đầu là người mua; quyền bán cấp sau (guide §6).
                     RoleName.BUYER);
 
+            mailer.send(account.id(), MailKind.WELCOME, MailFacts.none());
             return RegisterResponse.from(account);
 
         } catch (DataIntegrityViolationException ex) {

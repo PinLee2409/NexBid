@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.nexbid.auction.AuctionLifecycleEvent;
+import com.nexbid.auction.ReserveEvents;
 import com.nexbid.bid.BidPlacedEvent;
 import com.nexbid.infrastructure.kafka.ConsumedEvents;
 import com.nexbid.infrastructure.kafka.EventHeaders;
@@ -50,6 +51,10 @@ class AnalyticsConsumer {
                         analytics.add(event.endTime(), 0, 1, event.winnerId() == null ? 0 : 1, 0, BigDecimal.ZERO);
                     }
                 },
+                // EN: Counted as unsold when it closed below the reserve; a later yes makes it a sale.
+                // VI: Được tính là không bán lúc đóng dưới giá sàn; người bán đồng ý sau đó thì thành một lượt bán.
+                EventHeaders.typeName(ReserveEvents.Accepted.class),
+                body -> analytics.add(read(body, ReserveEvents.Accepted.class).at(), 0, 0, 1, 0, BigDecimal.ZERO),
                 EventHeaders.typeName(PaymentEvents.Succeeded.class),
                 body -> {
                     PaymentEvents.Succeeded paid = read(body, PaymentEvents.Succeeded.class);

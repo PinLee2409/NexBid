@@ -7,9 +7,9 @@ import { ProductPhoto } from "@/components/common/product-photo";
 import { AuctionClock } from "@/components/nexbid/auction-clock";
 import { LivePulse } from "@/components/nexbid/live-pulse";
 import { formatLot } from "@/components/nexbid/lot-number";
-import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { AuctionSummary } from "@/types";
+import { useMoney } from "@/hooks/use-money";
 
 type Scale = "hero" | "large" | "standard" | "wide";
 
@@ -49,6 +49,7 @@ export function AuctionCatalogueItem({
   priority = false,
   className,
 }: AuctionCatalogueItemProps) {
+  const money = useMoney();
   const t = useTranslations("stage");
   const cover = auction.product.images[0];
   const isLive = auction.status === "ACTIVE";
@@ -117,7 +118,7 @@ export function AuctionCatalogueItem({
               </p>
               {/* Price rises into place on hover — the lot reacting to you. */}
               <p className="figure text-xl transition-transform duration-300 group-hover:-translate-y-0.5 sm:text-2xl">
-                {formatCurrency(
+                {money.currency(
                   isUpcoming ? auction.startingPrice : auction.currentPrice,
                 )}
               </p>

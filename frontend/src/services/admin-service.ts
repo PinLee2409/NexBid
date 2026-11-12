@@ -5,6 +5,8 @@ import type {
   AuctionStatus,
   AuctionSummary,
   AuditLog,
+  Category,
+  CategoryStatus,
   OrderStatus,
   SellerApplication,
   SellerApplicationStatus,
@@ -16,12 +18,13 @@ import type {
   ApiAuction,
   ApiAuctionSummary,
   ApiAuditLog,
+  ApiCategory,
   ApiOrder,
   ApiPage,
   ApiUser,
 } from "./api/dto";
 import { api } from "./api/http";
-import { toAuction, toAuditLog, toSummary, toUser } from "./api/mappers";
+import { toAuction, toAuditLog, toCategory, toSummary, toUser } from "./api/mappers";
 import { toEntry, type OrderEntry } from "./order-service";
 
 /**
@@ -149,4 +152,48 @@ export async function rejectSellerApplication(id: string, reason: string): Promi
     method: "POST",
     body: { reason: reason.trim() },
   });
+}
+
+/** EN: What an admin may set on a category. / VI: Những gì admin được đặt cho một danh mục. */
+export interface CategoryInput {
+  name: string;
+  /** EN: Blank lets the server derive it from the name. / VI: Để trống thì server tự sinh từ tên. */
+  slug: string;
+  description: string;
+  imageUrl: string;
+}
+
+function toCategoryBody(input: CategoryInput) {
+  const orNull = (value: string) => value.trim() || null;
+  return {
+    name: input.name.trim(),
+    slug: orNull(input.slug),
+    description: orNull(input.description),
+    imageUrl: orNull(input.imageUrl),
+  };
+}
+
+/** EN: `GET /api/admin/categories` — archived ones included, unlike the public list. / VI: Gồm cả mục đã lưu trữ. */
+export async function listAllCategories(): Promise<Category[]> {
+  const categories = await api<ApiCategory[]>("/api/admin/categories");
+  return categories.map(toCategory);
+}
+
+/** `POST /api/admin/categories` */
+export async function createCategory(input: CategoryInput): Promise<Category> {
+  return toCategory(await api<ApiCategory>("/api/admin/categories", { method: "POST", body: toCategoryBody(input) }));
+}
+
+/** `PUT /api/admin/categories/{id}` */
+export async function updateCategory(id: string, input: CategoryInput): Promise<Category> {
+  return toCategory(
+    await api<ApiCategory>(`/api/admin/categories/${id}`, { method: "PUT", body: toCategoryBody(input) }),
+  );
+}
+
+/** EN: Archiving keeps the products but hides the category from browsing. / VI: Lưu trữ giữ sản phẩm nhưng ẩn danh mục khỏi trang duyệt. */
+export async function setCategoryStatus(id: string, status: CategoryStatus): Promise<Category> {
+  return toCategory(
+    await api<ApiCategory>(`/api/admin/categories/${id}/status`, { method: "PUT", body: { status } }),
+  );
 }

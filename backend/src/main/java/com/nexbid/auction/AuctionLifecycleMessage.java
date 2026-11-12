@@ -15,11 +15,14 @@ public record AuctionLifecycleMessage(
         AuctionStatus status,
         Instant startTime,
         Instant endTime,
+        // EN: On a close, whether it sold — false with bids means below the reserve. Never who bought it.
+        // VI: Khi đóng, có bán được không — false mà có lượt trả giá nghĩa là dưới giá sàn. Không bao giờ nói ai mua.
+        boolean sold,
         Instant serverTime) {
 
     static AuctionLifecycleMessage of(AuctionLifecycleEvent event) {
         return new AuctionLifecycleMessage(
                 event.type(), event.auctionId(), event.status(),
-                event.startTime(), event.endTime(), Instant.now());
+                event.startTime(), event.endTime(), event.winnerId() != null, Instant.now());
     }
 }

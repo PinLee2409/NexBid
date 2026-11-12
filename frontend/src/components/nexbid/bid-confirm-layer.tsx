@@ -5,8 +5,8 @@ import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
 import { formatLot } from "@/components/nexbid/lot-number";
-import { formatCurrency } from "@/lib/format";
 import type { AuctionDetail } from "@/types";
+import { useMoney } from "@/hooks/use-money";
 
 interface BidConfirmLayerProps {
   open: boolean;
@@ -31,6 +31,7 @@ export function BidConfirmLayer({
   onConfirm,
   onCancel,
 }: BidConfirmLayerProps) {
+  const money = useMoney();
   const t = useTranslations("terminal");
   const tc = useTranslations("common");
 
@@ -74,7 +75,7 @@ export function BidConfirmLayer({
             <p className="label text-muted-foreground">{t("confirmTitle")}</p>
 
             <p className="display text-signal-text mt-6 text-[clamp(3.5rem,13vw,10rem)] leading-[0.85]">
-              {formatCurrency(amount)}
+              {money.currency(amount)}
             </p>
 
             <div className="border-line mt-8 flex flex-wrap items-baseline gap-x-8 gap-y-2 border-t pt-5">

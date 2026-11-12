@@ -5,6 +5,7 @@ import java.text.NumberFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -15,8 +16,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.nexbid.auction.AuctionLifecycleEvent;
 import com.nexbid.auction.AuctionService;
+import com.nexbid.auction.ReserveEvents;
 import com.nexbid.bid.BidService;
 import com.nexbid.bid.OutbidEvent;
+import com.nexbid.mail.MailFacts;
+import com.nexbid.mail.MailKind;
+import com.nexbid.mail.Mailer;
 import com.nexbid.payment.PaymentDue;
 import com.nexbid.payment.PaymentEvents;
 import com.nexbid.payment.PaymentService;
@@ -37,8 +42,10 @@ class NotificationTriggers {
     private final BidService bids;
     private final WatchlistService watchlist;
     private final PaymentService payments;
+    private final Mailer mailer;
     private final Duration headsUp;
     private final Duration paymentReminder;
+    private final Duration paymentWindow;
 
     NotificationTriggers(
             NotificationService notifications,
@@ -46,8 +53,10 @@ class NotificationTriggers {
             BidService bids,
             WatchlistService watchlist,
             PaymentService payments,
+            Mailer mailer,
             @Value("${nexbid.notification.heads-up}") Duration headsUp,
-            @Value("${nexbid.notification.payment-reminder}") Duration paymentReminder) {
+            @Value("${nexbid.notification.payment-reminder}") Duration paymentReminder,
+            @Value("${nexbid.payment.window}") Duration paymentWindow) {
 
         this.notifications = notifications;
         this.auctions = auctions;
@@ -56,6 +65,8 @@ class NotificationTriggers {
         this.payments = payments;
         this.headsUp = headsUp;
         this.paymentReminder = paymentReminder;
+        this.mailer = mailer;
+        this.paymentWindow = paymentWindow;
     }
 
     /**
@@ -66,11 +77,16 @@ class NotificationTriggers {
      */
     @Transactional
     void onOutbid(OutbidEvent event) {
-        String message = auctions.lotTitleOf(event.auctionId()) + ": someone bid " + money(event.currentPrice()) + ".";
+        String title = auctions.lotTitleOf(event.auctionId());
+        String message = title + ": someone bid " + money(event.currentPrice()) + ".";
+        Instant endsAt = auctions.participantSummariesOf(List.of(event.auctionId()))
+                .get(event.auctionId()).auction().endTime();
+        MailFacts facts = MailFacts.lot(event.auctionId(), title, event.currentPrice());
 
         for (UUID outbid : event.outbid()) {
             notifications.notify(outbid, NotificationType.OUTBID, "You've been outbid", message,
                     event.auctionId(), event.at());
+            mailer.sendOutbid(outbid, facts, endsAt, event.at());
         }
     }
 
@@ -95,10 +111,16 @@ class NotificationTriggers {
         String title = auctions.lotTitleOf(auctionId);
         String price = money(event.currentPrice());
 
-        if (winner != null) {
-            notifications.notify(winner, NotificationType.AUCTION_WON,
-                    "You won", title + ": winning bid " + price + ".", auctionId, event.endTime());
+        if (winner == null) {
+            // EN: Unsold. With bids, it closed below the reserve; that has its own notices.
+            // VI: Không bán được. Có lượt trả giá thì là đóng dưới giá sàn; chuyện đó có thông báo riêng.
+            return;
         }
+        notifications.notify(winner, NotificationType.AUCTION_WON,
+                "You won", title + ": winning bid " + price + ".", auctionId, event.endTime());
+        // EN: The payment opened at the close with the same window. / VI: Khoản thanh toán mở lúc đóng phiên với cùng thời hạn.
+        mailer.send(winner, MailKind.AUCTION_WON, MailFacts.lot(auctionId, title, event.currentPrice())
+                .withUntil(event.endTime().plus(paymentWindow)));
 
         for (UUID bidder : bids.biddersOf(auctionId)) {
             if (!bidder.equals(winner)) {
@@ -130,9 +152,10 @@ class NotificationTriggers {
     /** EN: The payer hears it went through (spec §18). / VI: Người trả được báo là đã thành công (spec §18). */
     @Transactional
     void onPaymentSucceeded(PaymentEvents.Succeeded event) {
+        String title = auctions.lotTitleOf(event.auctionId());
         notifications.notify(event.userId(), NotificationType.PAYMENT_SUCCESS, "Payment successful",
-                auctions.lotTitleOf(event.auctionId()) + ": " + money(event.amount()) + " paid.",
-                event.auctionId(), event.at());
+                title + ": " + money(event.amount()) + " paid.", event.auctionId(), event.at());
+        mailer.send(event.userId(), MailKind.PAYMENT_RECEIPT, MailFacts.lot(event.auctionId(), title, event.amount()));
     }
 
     /**
@@ -148,15 +171,69 @@ class NotificationTriggers {
                 title + ": not paid in time, so the sale was cancelled.", auctionId, event.at());
         notifications.notify(event.userId(), NotificationType.AUCTION_CANCELLED, "Auction cancelled",
                 title + ": the sale to you was cancelled.", auctionId, event.at());
-        notifications.notify(auctions.sellerOf(auctionId), NotificationType.AUCTION_CANCELLED, "Sale cancelled",
+        UUID seller = auctions.sellerOf(auctionId);
+        notifications.notify(seller, NotificationType.AUCTION_CANCELLED, "Sale cancelled",
                 title + ": the winner did not pay in time, so the sale was cancelled.", auctionId, event.at());
+        MailFacts facts = MailFacts.lot(auctionId, title, event.amount());
+        mailer.send(event.userId(), MailKind.PAYMENT_EXPIRED, facts);
+        mailer.send(seller, MailKind.SALE_CANCELLED, facts);
+    }
+
+    /**
+     * EN: Closed below the reserve: the highest bidder and the seller hear who decides and by when; everyone else lost.
+     * VI: Đóng dưới giá sàn: người trả cao nhất và người bán được báo ai quyết định và tới khi nào; những người khác đã thua.
+     */
+    @Transactional
+    void onReserveNotMet(ReserveEvents.NotMet event) {
+        UUID auctionId = event.auctionId();
+        String title = auctions.lotTitleOf(auctionId);
+        String window = describe(Duration.between(event.at(), event.decideBy()));
+
+        notifications.notify(event.leaderId(), NotificationType.RESERVE_NOT_MET, "Reserve not met",
+                title + ": your bid of " + money(event.price()) + " is below the seller's reserve. The seller has "
+                        + window + " to accept it.", auctionId, event.at());
+        notifications.notify(event.sellerId(), NotificationType.RESERVE_NOT_MET, "Reserve not met",
+                title + ": the highest bid, " + money(event.price()) + ", is below your reserve. Accept it within "
+                        + window + " or the lot goes unsold.", auctionId, event.at());
+        for (UUID bidder : bids.biddersOf(auctionId)) {
+            if (!bidder.equals(event.leaderId())) {
+                notifications.notify(bidder, NotificationType.AUCTION_LOST, "Auction lost",
+                        title + ": another bidder bid higher.", auctionId, event.at());
+            }
+        }
+    }
+
+    @Transactional
+    void onReserveAccepted(ReserveEvents.Accepted event) {
+        String title = auctions.lotTitleOf(event.auctionId());
+        notifications.notify(event.buyerId(), NotificationType.AUCTION_WON, "You won",
+                title + ": the seller accepted your bid of " + money(event.price()) + ".",
+                event.auctionId(), event.at());
+        mailer.send(event.buyerId(), MailKind.AUCTION_WON, MailFacts.lot(event.auctionId(), title, event.price())
+                .withUntil(event.at().plus(paymentWindow)));
+    }
+
+    @Transactional
+    void onReserveRefused(ReserveEvents.Refused event) {
+        String title = auctions.lotTitleOf(event.auctionId());
+        notifications.notify(event.leaderId(), NotificationType.AUCTION_LOST, "Not sold",
+                title + ": the seller did not accept your bid of " + money(event.price()) + ".",
+                event.auctionId(), event.at());
+        if (event.lapsed()) {
+            notifications.notify(event.sellerId(), NotificationType.RESERVE_NOT_MET, "Lot not sold",
+                    title + ": the highest bid was not accepted in time, so the lot went unsold.",
+                    event.auctionId(), event.at());
+        }
     }
 
     /** EN: The runner-up hears the lot can still be theirs (spec §17). / VI: Người thứ hai được báo lô vẫn có thể là của họ (spec §17). */
     @Transactional
     void onOfferMade(SecondChanceEvents.Offered event) {
+        String title = auctions.lotTitleOf(event.auctionId());
+        mailer.send(event.buyerId(), MailKind.SECOND_CHANCE_OFFER,
+                MailFacts.lot(event.auctionId(), title, event.amount()).withUntil(event.expiresAt()));
         notifications.notify(event.buyerId(), NotificationType.SECOND_CHANCE_OFFER, "Second chance",
-                auctions.lotTitleOf(event.auctionId()) + ": the winner did not pay. It can be yours for your bid of "
+                title + ": the winner did not pay. It can be yours for your bid of "
                         + money(event.amount()) + " if you accept within "
                         + describe(Duration.between(event.at(), event.expiresAt())) + ".",
                 event.auctionId(), event.at());
@@ -189,10 +266,17 @@ class NotificationTriggers {
     int sendPaymentReminders(Instant now) {
         int sent = 0;
         for (PaymentDue due : payments.openDueBetween(now, now.plus(paymentReminder))) {
-            sent += notifications.notify(due.userId(), NotificationType.PAYMENT_REQUIRED, "Payment due soon",
-                    auctions.lotTitleOf(due.auctionId()) + ": less than " + describe(paymentReminder) + " left to pay "
-                            + money(due.amount()) + ".",
+            String title = auctions.lotTitleOf(due.auctionId());
+            int written = notifications.notify(due.userId(), NotificationType.PAYMENT_REQUIRED, "Payment due soon",
+                    title + ": less than " + describe(paymentReminder) + " left to pay " + money(due.amount()) + ".",
                     due.auctionId(), now);
+            // EN: Once per lot, like the notice: the index said whether this is the first.
+            // VI: Mỗi lô một lần, như thông báo: index cho biết đây có phải lần đầu.
+            if (written == 1) {
+                mailer.send(due.userId(), MailKind.PAYMENT_REMINDER,
+                        MailFacts.lot(due.auctionId(), title, due.amount()).withUntil(due.deadline()));
+            }
+            sent += written;
         }
         return sent;
     }

@@ -1,5 +1,6 @@
 package com.nexbid.order;
 
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -12,10 +13,15 @@ public final class OrderEvents {
     }
 
     /** EN: The seller shipped it: PAID → PROCESSING. / VI: Người bán đã gửi hàng: PAID → PROCESSING. */
-    public record Shipped(UUID orderId, UUID actorId) {
+    public record Shipped(UUID orderId, UUID actorId, UUID buyerId, UUID auctionId, String carrier, String trackingNumber) {
     }
 
     /** EN: The buyer received it: PROCESSING → COMPLETED. / VI: Người mua đã nhận hàng: PROCESSING → COMPLETED. */
     public record Received(UUID orderId, UUID actorId) {
+    }
+
+    /** EN: The buyer reviewed the seller; the seller hears of it. / VI: Người mua đã đánh giá người bán; người bán được báo. */
+    public record Reviewed(
+            UUID reviewId, UUID orderId, UUID auctionId, UUID sellerId, UUID buyerId, int rating, Instant at) {
     }
 }

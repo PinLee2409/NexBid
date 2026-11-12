@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 
+import { DeliveryAndEmailSettings } from "@/components/account/delivery-and-email-settings";
 import { FormField } from "@/components/common/form-field";
 import { StatTileSkeleton } from "@/components/common/loading-skeleton";
 import { StatTile } from "@/components/common/stat-tile";
@@ -15,12 +16,13 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useEnumLabels } from "@/hooks/use-labels";
-import { formatCompactCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { getAccountStats, updateProfile } from "@/services/account-service";
 import { useSession } from "@/services/session-service";
+import { useMoney } from "@/hooks/use-money";
 
 export default function ProfilePage() {
+  const money = useMoney();
   const t = useTranslations("account");
   const tc = useTranslations("common");
   const tn = useTranslations("nav");
@@ -79,7 +81,7 @@ export default function ProfilePage() {
                 {
                   icon: Wallet,
                   label: t("statSpent"),
-                  value: formatCompactCurrency(stats.totalSpent),
+                  value: money.compactCurrency(stats.totalSpent),
                 },
               ].map((tile) => (
                 <StatTile key={tile.label} {...tile} />
@@ -178,6 +180,8 @@ export default function ProfilePage() {
           </form>
         )}
       </section>
+
+      <DeliveryAndEmailSettings />
     </>
   );
 }

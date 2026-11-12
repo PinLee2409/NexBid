@@ -1,10 +1,8 @@
 "use client";
 
-import { CreditCard, Loader2, Wallet } from "lucide-react";
+import { Wallet } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
-import { useState, useTransition } from "react";
-import { toast } from "sonner";
 
 import { ProductPhoto } from "@/components/common/product-photo";
 import { ApiErrorState } from "@/components/common/api-error-state";
@@ -14,19 +12,12 @@ import { PageHeader } from "@/components/layout/page-header";
 import { AuctionClock } from "@/components/nexbid/auction-clock";
 import { formatLot } from "@/components/nexbid/lot-number";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useEnumLabels } from "@/hooks/use-labels";
-import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { listPayments, payPayment, type PaymentEntry } from "@/services/payment-service";
+import { PayWithVnpay } from "@/components/payment/pay-with-vnpay";
+import { listPayments, type PaymentEntry } from "@/services/payment-service";
+import { useMoney } from "@/hooks/use-money";
 
 /**
  * Settlement, split from the order record (spec §36 lists both).
@@ -36,11 +27,11 @@ import { listPayments, payPayment, type PaymentEntry } from "@/services/payment-
  * carries the closing window rather than a fulfilment state.
  */
 export default function PaymentsPage() {
+  const money = useMoney();
   const t = useTranslations("account");
   const tc = useTranslations("common");
 
-  const { state, refresh } = useAsyncData("payments", listPayments);
-  const [settling, setSettling] = useState<PaymentEntry | null>(null);
+  const { state } = useAsyncData("payments", listPayments);
 
   const entries = state.status === "success" ? state.data : [];
   const outstanding = entries
@@ -58,7 +49,7 @@ export default function PaymentsPage() {
         <div className="border-line mt-10 flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2 border-b pb-6">
           <span className="label-sm text-dim">{t("paymentTotalDue")}</span>
           <span className="display text-signal-text text-[clamp(2rem,5vw,3.5rem)]">
-            {formatCurrency(outstanding)}
+            {money.currency(outstanding)}
           </span>
         </div>
       ) : null}
@@ -82,32 +73,17 @@ export default function PaymentsPage() {
         ) : (
           <ul>
             {entries.map((entry) => (
-              <PaymentRow
-                key={entry.payment.id}
-                entry={entry}
-                onSettle={() => setSettling(entry)}
-              />
+              <PaymentRow key={entry.payment.id} entry={entry} />
             ))}
           </ul>
         )}
       </div>
-
-      <SettleDialog
-        entry={settling}
-        onClose={() => setSettling(null)}
-        onSettled={refresh}
-      />
     </>
   );
 }
 
-function PaymentRow({
-  entry,
-  onSettle,
-}: {
-  entry: PaymentEntry;
-  onSettle: () => void;
-}) {
+function PaymentRow({ entry }: { entry: PaymentEntry }) {
+  const money = useMoney();
   const t = useTranslations("account");
   const labels = useEnumLabels();
   const format = useFormatter();
@@ -160,7 +136,7 @@ function PaymentRow({
             {t("paymentAmount")}
           </span>
           <span className="figure block text-lg">
-            {formatCurrency(payment.amount)}
+            {money.currency(payment.amount)}
           </span>
         </span>
 
@@ -195,10 +171,7 @@ function PaymentRow({
 
         <span className="flex shrink-0 items-center gap-2">
           {due || payment.status === "FAILED" ? (
-            <Button onClick={onSettle}>
-              <CreditCard className="size-4" />
-              {t("payNow")}
-            </Button>
+            <PayWithVnpay paymentId={payment.id} />
           ) : order ? (
             <Button asChild variant="outline">
               <Link href="/orders">{t("viewOrder")}</Link>
@@ -216,70 +189,3 @@ function PaymentRow({
   );
 }
 
-function SettleDialog({
-  entry,
-  onClose,
-  onSettled,
-}: {
-  entry: PaymentEntry | null;
-  onClose: () => void;
-  onSettled: () => void;
-}) {
-  const t = useTranslations("account");
-  const [isPending, startTransition] = useTransition();
-
-  function settle(outcome: "SUCCESS" | "FAILED") {
-    if (!entry) return;
-    const paymentId = entry.payment.id;
-
-    startTransition(async () => {
-      const result = await payPayment(paymentId, outcome);
-      onClose();
-      onSettled();
-
-      if (result.ok) {
-        toast.success(t("paymentSucceeded"), {
-          description: t("paymentSucceededBody"),
-        });
-      } else {
-        toast.error(t("paymentFailed"), {
-          description: t("paymentFailedBody"),
-        });
-      }
-    });
-  }
-
-  return (
-    <Dialog open={entry !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="display text-2xl">{t("payTitle")}</DialogTitle>
-          <DialogDescription>{t("payBody")}</DialogDescription>
-        </DialogHeader>
-
-        {entry ? (
-          <div className="border-line flex items-center justify-between border-y px-4 py-4">
-            <span className="label-sm text-dim">{t("paymentAmount")}</span>
-            <span className="figure text-2xl">
-              {formatCurrency(entry.payment.amount)}
-            </span>
-          </div>
-        ) : null}
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => settle("FAILED")}
-            disabled={isPending}
-          >
-            {t("payFailed")}
-          </Button>
-          <Button onClick={() => settle("SUCCESS")} disabled={isPending}>
-            {isPending ? <Loader2 className="size-4 animate-spin" /> : null}
-            {t("paySuccess")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}

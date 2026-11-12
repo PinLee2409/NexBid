@@ -1,7 +1,9 @@
 import type {
   AuctionStatus,
   AuditAction,
+  CategoryStatus,
   IsoDateString,
+  ReserveDecision,
   NotificationType,
   OfferStatus,
   OrderStatus,
@@ -48,7 +50,7 @@ export interface ApiCategory {
   slug: string;
   description: string | null;
   imageUrl: string | null;
-  status: "ACTIVE" | "INACTIVE";
+  status: CategoryStatus;
 }
 
 export interface ApiAuction {
@@ -67,6 +69,13 @@ export interface ApiAuction {
   bidCount: number;
   winnerId: string | null;
   rejectionReason: string | null;
+  reservePrice?: number | null;
+  hasReserve?: boolean;
+  reserveMet?: boolean | null;
+  buyNowPrice?: number | null;
+  boughtNow?: boolean;
+  reserveDecision?: ReserveDecision | null;
+  reserveDecisionUntil?: IsoDateString | null;
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
 }
@@ -208,6 +217,26 @@ export interface ApiSecondChance {
   offer: ApiOfferDetails | null;
 }
 
+/** `ReviewView` */
+export interface ApiReview {
+  id: string;
+  orderId: string;
+  auctionId: string;
+  rating: number;
+  comment?: string | null;
+  reviewer: string;
+  lotName?: string | null;
+  createdAt: IsoDateString;
+}
+
+/** `GET /api/sellers/{id}/reviews` */
+export interface ApiSellerReviews {
+  average?: number | string | null;
+  reviewCount: number;
+  sales: number;
+  reviews: ApiPage<ApiReview>;
+}
+
 export interface ApiOrder {
   order: {
     id: string;
@@ -219,9 +248,14 @@ export interface ApiOrder {
     status: OrderStatus;
     createdAt: IsoDateString;
     updatedAt: IsoDateString;
+    shipping?: { recipient: string; phone: string; address: string } | null;
+    carrier?: string | null;
+    trackingNumber?: string | null;
+    shippedAt?: IsoDateString | null;
   };
   payment: ApiPaymentDetails | null;
   auction: ApiAuctionSummary | null;
+  review?: ApiReview | null;
 }
 
 export interface ApiProduct {
@@ -259,6 +293,7 @@ export type ApiAuctionMessage =
       minimumNextBid: number;
       bidder: string;
       createdAt: IsoDateString;
+      reserveMet?: boolean | null;
     }
   | {
       type: "AUCTION_STARTED" | "AUCTION_ENDED" | "AUCTION_EXTENDED";
@@ -266,6 +301,17 @@ export type ApiAuctionMessage =
       status: AuctionStatus;
       startTime: IsoDateString;
       endTime: IsoDateString;
+      sold?: boolean;
       serverTime: IsoDateString;
     }
   | { type: "VIEWER_COUNT"; auctionId: string; viewerCount: number };
+
+/** EN: `/api/users/me/address`; empty parts arrive as null. / VI: Các phần trống tới dưới dạng null. */
+export interface ApiShippingAddress {
+  recipient: string;
+  phone: string;
+  line: string;
+  ward: string | null;
+  district: string | null;
+  province: string;
+}

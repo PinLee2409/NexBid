@@ -37,5 +37,13 @@ public enum NotificationType {
     /** EN: The runner-up took your offer. / VI: Người thứ hai đã nhận đề nghị của bạn. */
     SECOND_CHANCE_ACCEPTED,
     /** EN: The runner-up declined, or let the offer lapse. / VI: Người thứ hai từ chối, hoặc để đề nghị hết hạn. */
-    SECOND_CHANCE_DECLINED
+    SECOND_CHANCE_DECLINED,
+    /** EN: A buyer reviewed you. / VI: Một người mua vừa đánh giá bạn. */
+    NEW_REVIEW,
+    /**
+     * EN: A lot closed below its reserve — to the highest bidder and the seller, and to the seller again if they let
+     *     the decision lapse. / VI: Lô đóng dưới giá sàn — báo người trả cao nhất và người bán, và báo lại người bán nếu họ
+     *     để quá hạn quyết định.
+     */
+    RESERVE_NOT_MET
 }

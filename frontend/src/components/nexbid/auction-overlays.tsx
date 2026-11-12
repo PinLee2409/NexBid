@@ -6,8 +6,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { formatLot } from "@/components/nexbid/lot-number";
-import { formatCurrency, padTwo } from "@/lib/format";
+import { padTwo } from "@/lib/format";
 import type { AuctionDetail } from "@/types";
+import { useMoney } from "@/hooks/use-money";
 
 /* -------------------------------------------------------------------------- */
 /*                             Auction extended                               */
@@ -203,6 +204,8 @@ interface SoldOverlayProps {
   winnerName: string | null;
   /** True when the signed-in user took the lot. */
   viewerWon: boolean;
+  /** EN: Closed below the reserve: the top bid has not won, yet. / VI: Đóng dưới giá sàn: giá cao nhất chưa thắng, ít nhất là lúc này. */
+  belowReserve?: boolean;
   onClose: () => void;
 }
 
@@ -213,8 +216,10 @@ export function SoldOverlay({
   finalPrice,
   winnerName,
   viewerWon,
+  belowReserve = false,
   onClose,
 }: SoldOverlayProps) {
+  const money = useMoney();
   const t = useTranslations("overlay");
 
   return (
@@ -236,11 +241,11 @@ export function SoldOverlay({
             className="w-full max-w-4xl px-5 sm:px-8"
           >
             <p className="label text-signal-text">
-              {viewerWon ? t("yoursTitle") : t("sold")}
+              {belowReserve ? t("reserveNotMet") : viewerWon ? t("yoursTitle") : t("sold")}
             </p>
 
             <p className="display mt-6 text-[clamp(3.5rem,14vw,11rem)] leading-[0.85]">
-              {winnerName ? formatCurrency(finalPrice) : t("gone")}
+              {winnerName ? money.currency(finalPrice) : t("gone")}
             </p>
 
             <dl className="border-line mt-10 grid gap-x-12 gap-y-5 border-t pt-6 sm:grid-cols-3">
@@ -251,10 +256,14 @@ export function SoldOverlay({
                 </dd>
               </div>
               <div className="sm:col-span-2">
-                <dt className="label-sm text-dim mb-2">{t("winner")}</dt>
+                <dt className="label-sm text-dim mb-2">{belowReserve ? t("highestBidder") : t("winner")}</dt>
                 <dd className="display text-lg">{winnerName ?? "—"}</dd>
               </div>
             </dl>
+
+            {belowReserve ? (
+              <p className="text-muted-foreground mt-6 max-w-xl text-sm">{t("reserveNotMetBody")}</p>
+            ) : null}
 
             <div className="mt-10 flex flex-wrap gap-3">
               {viewerWon ? (

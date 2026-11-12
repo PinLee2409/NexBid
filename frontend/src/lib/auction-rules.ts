@@ -4,6 +4,7 @@ import type {
   AuctionStatus,
   AuctionSummary,
   ErrorCode,
+  ReserveDecision,
   User,
 } from "@/types";
 
@@ -98,6 +99,22 @@ export function applyExtension(
   extensionSeconds: number,
 ): string {
   return new Date(new Date(endTime).getTime() + extensionSeconds * 1000).toISOString();
+}
+
+/**
+ * EN: Closed below the reserve and not (yet) sold: the highest bidder has not won, whatever the tape shows. Known
+ *     from the live reserve flag as soon as the clock runs out, before the server's close arrives.
+ * VI: Đóng dưới giá sàn và chưa (hoặc không) bán: người trả cao nhất chưa thắng, dù dải giá hiển thị gì. Biết được từ
+ *     cờ giá sàn trực tiếp ngay khi hết giờ, trước cả khi server báo đóng.
+ */
+export function isBelowReserve(lot: {
+  ended: boolean;
+  bidCount: number;
+  reserveMet: boolean | null;
+  reserveDecision: ReserveDecision | null;
+}): boolean {
+  if (!lot.ended || lot.bidCount === 0 || lot.reserveDecision === "ACCEPTED") return false;
+  return lot.reserveDecision !== null || lot.reserveMet === false;
 }
 
 /** Seller-side rule: auctions are only editable while still a draft (§7.4). */

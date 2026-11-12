@@ -16,5 +16,7 @@ public record PlacedBidView(
         BigDecimal minimumNextBid,
         Instant endTime,
         Instant serverTime,
-        boolean leading) {
+        boolean leading,
+        // EN: Null without a reserve; never the reserve itself. / VI: Null nếu không có giá sàn; không bao giờ là chính giá sàn.
+        Boolean reserveMet) {
 }

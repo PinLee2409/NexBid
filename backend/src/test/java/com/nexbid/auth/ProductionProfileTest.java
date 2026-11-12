@@ -22,7 +22,10 @@ import com.nexbid.support.TestInfrastructure;
  */
 @SpringBootTest(properties = {
         "nexbid.scheduler.enabled=false",
-        "nexbid.jwt.secret=c2f1b7e04a9d6e3f8b2c5a7d1e9f0b3c4d6a8e2f1b7c9d0e"
+        "nexbid.jwt.secret=c2f1b7e04a9d6e3f8b2c5a7d1e9f0b3c4d6a8e2f1b7c9d0e",
+        // EN: Production also refuses VNPay's placeholder keys. / VI: Production cũng từ chối khoá VNPay giữ chỗ.
+        "nexbid.payment.vnpay.tmn-code=TESTTMN1",
+        "nexbid.payment.vnpay.hash-secret=7f3a9c2e5b8d1f4a6c9e2b5d8f1a4c7e"
 })
 @ActiveProfiles("prod")
 @AutoConfigureMockMvc

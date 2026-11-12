@@ -1,6 +1,6 @@
 import { test as base, expect, type BrowserContext, type BrowserContextOptions } from "@playwright/test";
 
-import { createLot, login, TOKEN_STORAGE_KEY } from "./stack";
+import { createLot, login, TOKEN_STORAGE_KEY, type LotPrices } from "./stack";
 
 export { expect };
 
@@ -73,9 +73,9 @@ export function unique(label: string): string {
  * VI: Một lô mới cho một test: mở ngay nếu `open`, không thì chờ duyệt. Token được lấy sau khi global setup đã
  *     cấp vai trò, nên mang theo vai trò đó.
  */
-export async function newLot(label: string, open: boolean): Promise<Lot> {
+export async function newLot(label: string, open: boolean, prices: LotPrices = {}): Promise<Lot> {
   const name = unique(`E2E ${data.run} ${label}`);
-  const lot = await createLot(await login(data.users.seller), await login(data.users.admin), name, open);
+  const lot = await createLot(await login(data.users.seller), await login(data.users.admin), name, open, prices);
   return { ...lot, name };
 }
 

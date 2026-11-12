@@ -47,12 +47,16 @@ class AuctionScheduler {
         //     nhưng một "bây giờ" cho mỗi lượt giúp các quyết định trong cùng lượt nhất quán với nhau.
         int ended = auctions.endDueAuctions(now, batchSize);
         int started = auctions.startDueAuctions(now, batchSize);
+        int lapsed = auctions.lapseReserveDecisions(now, batchSize);
 
         if (ended > 0) {
             log.info("Closed {} auction(s)", ended);
         }
         if (started > 0) {
             log.info("Opened {} auction(s) for bidding", started);
+        }
+        if (lapsed > 0) {
+            log.info("Closed {} unanswered reserve decision(s)", lapsed);
         }
     }
 }

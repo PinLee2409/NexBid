@@ -7,8 +7,8 @@ import { AuctionClock } from "@/components/nexbid/auction-clock";
 import { LiveTag } from "@/components/nexbid/live-pulse";
 import { LotNumber } from "@/components/nexbid/lot-number";
 import { AuctionPriceTicker } from "@/components/nexbid/price-ticker";
-import { formatCompactNumber } from "@/lib/format";
 import type { AuctionSummary } from "@/types";
+import { useMoney } from "@/hooks/use-money";
 
 interface OpeningStageProps {
   auction: AuctionSummary;
@@ -28,6 +28,7 @@ export function OpeningStage({
   serverTime,
   liveCount,
 }: OpeningStageProps) {
+  const money = useMoney();
   const t = useTranslations("stage");
   const cover = auction.product.images[0];
 
@@ -114,7 +115,7 @@ export function OpeningStage({
                     {t("watching", { count: "" }).trim()}
                   </p>
                   <p className="mono-figure text-lg">
-                    {formatCompactNumber(auction.viewerCount)}
+                    {money.compactNumber(auction.viewerCount)}
                   </p>
                 </div>
               ) : null}

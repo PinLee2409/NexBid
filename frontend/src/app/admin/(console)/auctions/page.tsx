@@ -27,13 +27,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage } from "@/hooks/use-labels";
-import { formatCurrency } from "@/lib/format";
 import {
   approveAuction,
   listAuctionsForReview,
   rejectAuction,
 } from "@/services/admin-service";
 import type { AuctionSummary } from "@/types";
+import { useMoney } from "@/hooks/use-money";
 
 type ReviewTab = "PENDING_APPROVAL" | "SCHEDULED" | "REJECTED";
 
@@ -118,6 +118,7 @@ function ReviewCard({
   onApproved: () => void;
   onRejectRequested: () => void;
 }) {
+  const money = useMoney();
   const t = useTranslations("admin");
   const tc = useTranslations("common");
   const format = useFormatter();
@@ -181,15 +182,27 @@ function ReviewCard({
             <div>
               <dt className="label-sm text-dim">{tc("startingPrice")}</dt>
               <dd className="figure mt-1 text-sm">
-                {formatCurrency(auction.startingPrice)}
+                {money.currency(auction.startingPrice)}
               </dd>
             </div>
             <div>
               <dt className="label-sm text-dim">{tc("bidIncrement")}</dt>
               <dd className="figure mt-1 text-sm">
-                {formatCurrency(auction.minimumIncrement)}
+                {money.currency(auction.minimumIncrement)}
               </dd>
             </div>
+            {auction.reservePrice !== undefined ? (
+              <div>
+                <dt className="label-sm text-dim">{t("reviewReserve")}</dt>
+                <dd className="figure mt-1 text-sm">{money.currency(auction.reservePrice)}</dd>
+              </div>
+            ) : null}
+            {auction.buyNowPrice !== null ? (
+              <div>
+                <dt className="label-sm text-dim">{t("reviewBuyNow")}</dt>
+                <dd className="figure mt-1 text-sm">{money.currency(auction.buyNowPrice)}</dd>
+              </div>
+            ) : null}
             <div>
               <dt className="label-sm text-dim">{t("schedule")}</dt>
               <dd className="mono-figure mt-1 text-xs">

@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import type { BidRejection } from "@/lib/auction-rules";
-import { formatCurrency } from "@/lib/format";
+import { useMoney } from "@/hooks/use-money";
 import { ApiError } from "@/services/api/http";
 import type {
   AuctionStatus,
@@ -60,11 +60,12 @@ export function useCategoryLabels() {
 /** Turns a bid rejection code into the message a bidder should read. */
 export function useBidRejectionMessage() {
   const t = useTranslations("bidErrors");
+  const money = useMoney();
 
   return (rejection: BidRejection): string => {
     if (rejection.code === "BID_TOO_LOW" || rejection.code === "AUTO_BID_INVALID") {
       return t(rejection.code, {
-        amount: formatCurrency(rejection.minimumAmount ?? 0),
+        amount: money.currency(rejection.minimumAmount ?? 0),
       });
     }
     return t(rejection.code);

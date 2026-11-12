@@ -6,6 +6,7 @@ import {
   getQuickBidAmounts,
   getUrgency,
   isAuctionEditable,
+  isBelowReserve,
   isEndingSoon,
   validateAutoBid,
   validateBid,
@@ -135,5 +136,23 @@ describe("seller editing (spec §7.4)", () => {
     expect(isAuctionEditable("REJECTED")).toBe(true);
     expect(isAuctionEditable("PENDING_APPROVAL")).toBe(false);
     expect(isAuctionEditable("ACTIVE")).toBe(false);
+  });
+});
+
+describe("a lot that closed below its reserve", () => {
+  const closed = { ended: true, bidCount: 2, reserveMet: false, reserveDecision: null };
+
+  it("is known the moment the clock runs out, from the live reserve flag", () => {
+    expect(isBelowReserve(closed)).toBe(true);
+    expect(isBelowReserve({ ...closed, reserveDecision: "PENDING" })).toBe(true);
+    expect(isBelowReserve({ ...closed, reserveMet: null, reserveDecision: "LAPSED" })).toBe(true);
+  });
+
+  it("is not, while running, without bids, once the reserve was met, or once the seller sold anyway", () => {
+    expect(isBelowReserve({ ...closed, ended: false })).toBe(false);
+    expect(isBelowReserve({ ...closed, bidCount: 0 })).toBe(false);
+    expect(isBelowReserve({ ...closed, reserveMet: true })).toBe(false);
+    expect(isBelowReserve({ ...closed, reserveMet: null })).toBe(false);
+    expect(isBelowReserve({ ...closed, reserveDecision: "ACCEPTED" })).toBe(false);
   });
 });

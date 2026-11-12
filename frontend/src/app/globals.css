@@ -199,15 +199,20 @@
     @apply font-sans;
     background: var(--background);
     -webkit-tap-highlight-color: transparent;
-    /* EN: Full-bleed sections measure against 100vw, which counts the scrollbar; clip absorbs the few
-       stray pixels without creating a scroll container, so the sticky header keeps working.
-       VI: Các khối tràn lề đo theo 100vw vốn tính cả thanh cuộn; clip nuốt phần dư mà không tạo
-       scroll container, nên header sticky vẫn hoạt động. */
-    overflow-x: clip;
   }
 
   body {
     @apply bg-background text-foreground;
+    /* EN: Full-bleed sections measure against 100vw, which counts the scrollbar; clip absorbs the few
+       stray pixels. It sits on body, not html: html must stay `visible` so that the `overflow: hidden`
+       menus and dialogs put on body while open passes to the viewport. On html, body became its own
+       scroll box instead, the sticky header jumped back to the top of the page, and menus opened from
+       it were placed off screen.
+       VI: Các khối tràn lề đo theo 100vw vốn tính cả thanh cuộn; clip nuốt phần dư. Nó nằm ở body chứ
+       không ở html: html phải giữ `visible` để `overflow: hidden` mà menu và dialog gắn lên body khi mở
+       được chuyển lên viewport. Đặt ở html thì body thành một vùng cuộn riêng, header sticky nhảy về đầu
+       trang, và menu mở từ header bị đặt ra ngoài màn hình. */
+    overflow-x: clip;
     font-feature-settings: "cv11", "ss01";
     text-rendering: optimizeLegibility;
   }

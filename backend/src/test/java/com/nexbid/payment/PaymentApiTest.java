@@ -7,11 +7,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -32,6 +34,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import com.nexbid.auction.AuctionService;
 import com.nexbid.support.TestInfrastructure;
+import com.nexbid.support.VnpayTestSupport;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserService;
 
@@ -56,6 +59,9 @@ class PaymentApiTest {
 
     @Autowired
     private PaymentService payments;
+
+    @Autowired
+    private VnpayService vnpay;
 
     @Autowired
     private UserService users;
@@ -163,11 +169,19 @@ class PaymentApiTest {
                 .andExpect(status().isCreated());
     }
 
+    /** EN: Checkout and VNPay's answer on the return URL. / VI: Checkout và câu trả lời của VNPay ở return URL. */
     private ResultActions pay(String token, String paymentId, String outcome) throws Exception {
-        return mockMvc.perform(post("/api/payments/" + paymentId + "/pay")
-                .header("Authorization", "Bearer " + token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outcome\":\"" + outcome + "\"}"));
+        return VnpayTestSupport.pay(mockMvc, token, paymentId, outcome);
+    }
+
+    /** EN: VNPay's server reporting to the IPN endpoint. / VI: Server VNPay báo về endpoint IPN. */
+    private ResultActions ipn(Map<String, String> fields) throws Exception {
+        return mockMvc.perform(VnpayTestSupport.withParams(get("/api/payments/vnpay/ipn"), fields));
+    }
+
+    private String checkoutUrl(Won won) throws Exception {
+        return VnpayTestSupport.paymentUrlOf(VnpayTestSupport.checkout(mockMvc, won.winner(), won.paymentId())
+                .andExpect(status().isOk()));
     }
 
     private String stored(String paymentId) {
@@ -360,13 +374,13 @@ class PaymentApiTest {
     }
 
     @Test
-    void tenSimultaneousPaymentsChargeOnce() throws Exception {
+    void tenSimultaneousReportsChargeOnce() throws Exception {
         Won won = wonLot("double");
         UUID winnerId = idOf(won.winner());
-        UUID paymentId = UUID.fromString(won.paymentId());
+        Map<String, String> reply = VnpayTestSupport.reply(checkoutUrl(won), VnpayTestSupport.PAID);
 
-        // EN: A double-click, a retrying client, two tabs: the lock lets exactly one through.
-        // VI: Bấm đúp, client tự thử lại, hai tab: khoá chỉ cho đúng một lần đi qua.
+        // EN: VNPay retrying its IPN while the buyer's browser lands on the return page: the lock settles it once.
+        // VI: VNPay gửi lại IPN trong lúc trình duyệt người mua về trang return: khoá chỉ chốt đúng một lần.
         List<String> results = Collections.synchronizedList(new ArrayList<>());
         CountDownLatch start = new CountDownLatch(1);
         CountDownLatch done = new CountDownLatch(10);
@@ -376,10 +390,7 @@ class PaymentApiTest {
                 pool.submit(() -> {
                     try {
                         start.await();
-                        payments.pay(winnerId, paymentId, PaymentOutcome.SUCCESS);
-                        results.add("PAID");
-                    } catch (com.nexbid.common.exception.BusinessException ex) {
-                        results.add(ex.code().name());
+                        results.add(vnpay.confirm(reply).outcome().name());
                     } catch (Exception ex) {
                         results.add("UNEXPECTED " + ex);
                     } finally {
@@ -391,8 +402,9 @@ class PaymentApiTest {
             assertThat(done.await(30, TimeUnit.SECONDS)).isTrue();
         }
 
-        assertThat(results).filteredOn("PAID"::equals).hasSize(1);
-        assertThat(results).filteredOn("PAYMENT_ALREADY_PAID"::equals).hasSize(9);
+        assertThat(results).filteredOn("CONFIRMED"::equals).hasSize(1);
+        assertThat(results).filteredOn("ALREADY_CONFIRMED"::equals).hasSize(9);
+        assertThat(stored(won.paymentId())).isEqualTo("SUCCESS");
 
         await().during(Duration.ofMillis(800)).atMost(Duration.ofSeconds(5))
                 .until(() -> notices(winnerId, "PAYMENT_SUCCESS") == 1);
@@ -438,23 +450,84 @@ class PaymentApiTest {
     }
 
     @Test
-    void theOutcomeMustBeOneOfTheTwoDemoChoices() throws Exception {
-        Won won = wonLot("bad-body");
+    void checkoutSendsTheBuyerToVnpayWithASignedLink() throws Exception {
+        Won won = wonLot("link");
+        Map<String, String> sent = VnpayTestSupport.fieldsOf(checkoutUrl(won));
 
-        pay(won.winner(), won.paymentId(), "MAYBE").andExpect(status().isBadRequest());
-        mockMvc.perform(post("/api/payments/" + won.paymentId() + "/pay")
-                        .header("Authorization", "Bearer " + won.winner())
-                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+        assertThat(sent.get("vnp_Command")).isEqualTo("pay");
+        assertThat(sent.get("vnp_CurrCode")).isEqualTo("VND");
+        // EN: VNPay counts in hundredths even for VND. / VI: VNPay tính theo phần trăm đơn vị kể cả với VND.
+        assertThat(sent.get("vnp_Amount")).isEqualTo(
+                new BigDecimal(jdbc.queryForObject("SELECT amount::text FROM payments WHERE id = ?::uuid", String.class,
+                        won.paymentId())).movePointRight(2).toBigInteger().toString());
+        // EN: The test signs the same fields on its own and must get the same hash. / VI: Test tự ký cùng các trường và phải ra cùng hash.
+        assertThat(VnpayTestSupport.signed(sent).get("vnp_SecureHash")).isEqualTo(sent.get("vnp_SecureHash"));
+    }
+
+    @Test
+    void theIpnAnswersInVnpaysOwnCodesAndPaysOnce() throws Exception {
+        Won won = wonLot("ipn");
+        Map<String, String> reply = VnpayTestSupport.reply(checkoutUrl(won), VnpayTestSupport.PAID);
+
+        ipn(reply).andExpect(status().isOk()).andExpect(jsonPath("$.RspCode").value("00"));
+        assertThat(stored(won.paymentId())).isEqualTo("SUCCESS");
+
+        // EN: VNPay retries until it hears 00 or 02; a repeat changes nothing. / VI: VNPay gửi lại tới khi nghe 00 hoặc 02; lần lặp không đổi gì.
+        ipn(reply).andExpect(jsonPath("$.RspCode").value("02"));
+        // EN: The buyer's return after the IPN still shows the paid payment. / VI: Người mua quay về sau IPN vẫn thấy khoản đã trả.
+        mockMvc.perform(VnpayTestSupport.withParams(get("/api/payments/vnpay/return"), reply))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.payment.status").value("SUCCESS"));
+
+        UUID winnerId = idOf(won.winner());
+        await().atMost(Duration.ofSeconds(10)).until(() -> notices(winnerId, "PAYMENT_SUCCESS") == 1);
+    }
+
+    @Test
+    void aForgedOrAlteredReplyPaysNothing() throws Exception {
+        Won won = wonLot("forged");
+        Map<String, String> reply = VnpayTestSupport.reply(checkoutUrl(won), VnpayTestSupport.PAID);
+
+        Map<String, String> tampered = new java.util.TreeMap<>(reply);
+        tampered.put("vnp_SecureHash", "00" + reply.get("vnp_SecureHash").substring(2));
+        ipn(tampered).andExpect(jsonPath("$.RspCode").value("97"));
+        mockMvc.perform(VnpayTestSupport.withParams(get("/api/payments/vnpay/return"), tampered))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+                .andExpect(jsonPath("$.code").value("PAYMENT_GATEWAY_INVALID"));
+
+        // EN: Signed, but for a smaller amount than the attempt. / VI: Có chữ ký, nhưng số tiền nhỏ hơn lần thử.
+        Map<String, String> cheaper = new java.util.TreeMap<>(reply);
+        cheaper.put("vnp_Amount", "100");
+        ipn(VnpayTestSupport.signed(cheaper)).andExpect(jsonPath("$.RspCode").value("04"));
+
+        Map<String, String> unknown = new java.util.TreeMap<>(reply);
+        unknown.put("vnp_TxnRef", "NOPE" + System.nanoTime());
+        ipn(VnpayTestSupport.signed(unknown)).andExpect(jsonPath("$.RspCode").value("01"));
+
+        assertThat(stored(won.paymentId())).isEqualTo("PENDING");
+    }
+
+    @Test
+    void cancellingOnVnpaysPageLeavesThePaymentOpen() throws Exception {
+        Won won = wonLot("cancel");
+        Map<String, String> cancelled = VnpayTestSupport.reply(checkoutUrl(won), VnpayTestSupport.CANCELLED);
+
+        mockMvc.perform(VnpayTestSupport.withParams(get("/api/payments/vnpay/return"), cancelled))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.payment.status").value("FAILED"))
+                .andExpect(jsonPath("$.message").value("Payment failed"));
+
+        pay(won.winner(), won.paymentId(), "SUCCESS").andExpect(jsonPath("$.data.payment.status").value("SUCCESS"));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM payment_transactions WHERE payment_id = ?::uuid",
+                Integer.class, won.paymentId())).isEqualTo(2);
     }
 
     @Test
     void theEndpointsNeedASignedInCaller() throws Exception {
         mockMvc.perform(get("/api/users/me/payments")).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/payments/" + UUID.randomUUID())).andExpect(status().isUnauthorized());
-        mockMvc.perform(post("/api/payments/" + UUID.randomUUID() + "/pay")
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"outcome\":\"SUCCESS\"}"))
+        mockMvc.perform(post("/api/payments/" + UUID.randomUUID() + "/vnpay")
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isUnauthorized());
     }
 }

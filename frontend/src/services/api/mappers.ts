@@ -10,6 +10,8 @@ import type {
   Product,
   ProductImage,
   SecondChanceOffer,
+  SellerReputation,
+  SellerReview,
   User,
 } from "@/types";
 
@@ -25,6 +27,8 @@ import type {
   ApiOrder,
   ApiPaymentDetails,
   ApiProduct,
+  ApiReview,
+  ApiSellerReviews,
   ApiUser,
 } from "./dto";
 
@@ -64,6 +68,7 @@ export function toCategory(category: ApiCategory | null): Category {
     name: category.name,
     description: category.description ?? "",
     imageUrl: category.imageUrl ?? "",
+    status: category.status,
   };
 }
 
@@ -88,6 +93,13 @@ export function toAuction(auction: ApiAuction): Auction {
     antiSniping: auction.antiSniping,
     extensionCount: auction.extensionCount,
     rejectionReason: auction.rejectionReason ?? undefined,
+    reservePrice: auction.reservePrice === null || auction.reservePrice === undefined ? undefined : Number(auction.reservePrice),
+    hasReserve: auction.hasReserve ?? false,
+    reserveMet: auction.reserveMet ?? null,
+    buyNowPrice: auction.buyNowPrice === null || auction.buyNowPrice === undefined ? null : Number(auction.buyNowPrice),
+    boughtNow: auction.boughtNow ?? false,
+    reserveDecision: auction.reserveDecision ?? null,
+    reserveDecisionUntil: auction.reserveDecisionUntil ?? null,
     createdAt: auction.createdAt,
     updatedAt: auction.updatedAt,
   };
@@ -160,6 +172,7 @@ function hrefFor(notification: ApiNotification): string | undefined {
       return "/my-wins";
     case "SECOND_CHANCE_ACCEPTED":
     case "SECOND_CHANCE_DECLINED":
+    case "NEW_REVIEW":
       return "/seller/orders";
     default:
       return notification.auctionId ? `/auctions/${notification.auctionId}` : undefined;
@@ -179,6 +192,20 @@ export function toNotification(notification: ApiNotification, userId: string): A
   };
 }
 
+export function toReview(review: ApiReview): SellerReview {
+  return { ...review, comment: review.comment ?? null, lotName: review.lotName ?? null };
+}
+
+/** EN: The average may arrive as a string from BigDecimal, and is absent before the first review. / VI: Điểm trung bình có thể tới dạng chuỗi, và vắng mặt khi chưa có đánh giá. */
+export function toReputation(view: ApiSellerReviews): SellerReputation {
+  return {
+    average: view.average === null || view.average === undefined ? null : Number(view.average),
+    reviewCount: view.reviewCount,
+    sales: view.sales,
+    reviews: view.reviews.items.map(toReview),
+  };
+}
+
 /** EN: Money may arrive as a string from BigDecimal. / VI: Tiền có thể tới dạng chuỗi từ BigDecimal. */
 export function toOffer(offer: ApiOfferDetails): SecondChanceOffer {
   return { ...offer, amount: Number(offer.amount) };
@@ -189,7 +216,14 @@ export function toPayment(payment: ApiPaymentDetails): Payment {
 }
 
 export function toOrder(order: ApiOrder["order"]): Order {
-  return { ...order, amount: Number(order.amount) };
+  return {
+    ...order,
+    amount: Number(order.amount),
+    shipping: order.shipping ?? null,
+    carrier: order.carrier ?? null,
+    trackingNumber: order.trackingNumber ?? null,
+    shippedAt: order.shippedAt ?? null,
+  };
 }
 
 export function toProduct(product: ApiProduct, images: ProductImage[] = []): Product {

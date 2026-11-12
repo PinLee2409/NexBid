@@ -17,10 +17,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useApiErrorMessage, useBidRejectionMessage } from "@/hooks/use-labels";
-import { CURRENCY, formatCurrency, parseCurrencyInput } from "@/lib/format";
+import { CURRENCY, parseCurrencyInput } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { removeAutoBid, saveAutoBid } from "@/services/bid-service";
 import type { AutoBid } from "@/types";
+import { useMoney } from "@/hooks/use-money";
 
 interface AutoBidDialogProps {
   auctionId: string;
@@ -45,6 +46,7 @@ export function AutoBidDialog({
   disabled = false,
   triggerClassName,
 }: AutoBidDialogProps) {
+  const money = useMoney();
   const t = useTranslations("auction");
   const tc = useTranslations("common");
   const rejectionMessage = useBidRejectionMessage();
@@ -73,7 +75,7 @@ export function AutoBidDialog({
       onChange?.();
       toast.success(t("autoBidSaved"), {
         description: t("autoBidActive", {
-          amount: formatCurrency(response.autoBid.maxAmount),
+          amount: money.currency(response.autoBid.maxAmount),
         }),
       });
     });
@@ -105,7 +107,7 @@ export function AutoBidDialog({
         )}
       >
         <Bot className="size-3.5" />
-        {autoBid ? t("autoBidActive", { amount: formatCurrency(autoBid.maxAmount) }) : t("setAutoBid")}
+        {autoBid ? t("autoBidActive", { amount: money.currency(autoBid.maxAmount) }) : t("setAutoBid")}
       </button>
 
       <DialogContent className="sm:max-w-md">
@@ -147,7 +149,7 @@ export function AutoBidDialog({
               className="text-muted-foreground flex items-start gap-1.5 text-xs"
             >
               <Info className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
-              {tc("minimumNextBid")}: {formatCurrency(minimumNextBid)}
+              {tc("minimumNextBid")}: {money.currency(minimumNextBid)}
             </p>
           )}
         </div>

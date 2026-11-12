@@ -1,6 +1,7 @@
 package com.nexbid.auction;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
@@ -61,6 +63,7 @@ public class AuctionService {
     private final ApplicationEventPublisher events;
     private final LotCache cards;
     private final LotViewers viewers;
+    private final Duration reserveWindow;
 
     AuctionService(
             AuctionRepository auctions,
@@ -69,7 +72,8 @@ public class AuctionService {
             UserService users,
             ApplicationEventPublisher events,
             LotCache cards,
-            LotViewers viewers) {
+            LotViewers viewers,
+            @Value("${nexbid.auction.reserve-decision-window}") Duration reserveWindow) {
         this.auctions = auctions;
         this.products = products;
         this.images = images;
@@ -77,6 +81,7 @@ public class AuctionService {
         this.events = events;
         this.cards = cards;
         this.viewers = viewers;
+        this.reserveWindow = reserveWindow;
     }
 
     /**
@@ -109,6 +114,16 @@ public class AuctionService {
         List<Auction> due = auctions.findDueToEnd(now, PageRequest.of(0, batchSize));
 
         for (Auction auction : due) {
+            if (auction.getLeadingBidderId() != null && Boolean.FALSE.equals(auction.reserveMet())) {
+                // EN: Stopped below the reserve: no winner yet; the product stays held while the seller decides.
+                // VI: Dừng dưới giá sàn: chưa có người thắng; sản phẩm vẫn được giữ trong lúc người bán quyết định.
+                auction.closeBelowReserve(now.plus(reserveWindow));
+                events.publishEvent(AuctionLifecycleEvent.ended(auction));
+                events.publishEvent(new ReserveEvents.NotMet(auction.getId(), auction.getSellerId(),
+                        auction.getLeadingBidderId(), auction.getCurrentPrice(), auction.getReserveDecisionUntil(), now));
+                continue;
+            }
+
             // EN: Winner chosen inside the same lock that closed the bidding (guide §27, spec §12).
             // VI: Người thắng được chọn trong cùng khoá đã đóng việc trả giá (guide §27, spec §12).
             auction.close();
@@ -166,6 +181,106 @@ public class AuctionService {
         auction.setStatus(AuctionStatus.COMPLETED);
         products.markAuctionState(auction.getProductId(), ProductStatus.SOLD);
         auctions.save(auction);
+    }
+
+    /**
+     * EN: The seller answers a lot that closed below its reserve: accepting sells it to the highest bidder at their bid,
+     *     with the usual payment; refusing gives the product back. Only while the window is open.
+     * VI: Người bán trả lời một lô đóng dưới giá sàn: nhận thì bán cho người trả cao nhất với giá của họ, kèm khoản thanh
+     *     toán như thường lệ; từ chối thì sản phẩm trở về. Chỉ khi hạn còn mở.
+     */
+    @Transactional
+    public AuctionView decideReserve(UUID sellerId, UUID auctionId, boolean accept) {
+        Auction auction = auctions.findByIdForUpdate(auctionId)
+                .filter(found -> found.isOwnedBy(sellerId))
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+        Instant now = Instant.now();
+        if (auction.getReserveDecision() != ReserveDecision.PENDING || !now.isBefore(auction.getReserveDecisionUntil())) {
+            throw new BusinessException(ErrorCode.RESERVE_DECISION_CLOSED, "This lot is not waiting for your decision");
+        }
+
+        if (accept) {
+            auction.acceptBelowReserve();
+            events.publishEvent(new ReserveEvents.Accepted(
+                    auction.getId(), sellerId, auction.getWinnerId(), auction.getCurrentPrice(), now));
+        } else {
+            refuse(auction, false, now);
+        }
+        return toView(auctions.save(auction));
+    }
+
+    /**
+     * EN: Closes decisions the seller let run out: not sold, the product goes back to them.
+     * VI: Đóng các quyết định người bán để quá hạn: không bán, sản phẩm trở về với họ.
+     */
+    @Transactional
+    public int lapseReserveDecisions(Instant now, int batchSize) {
+        List<Auction> overdue = auctions.findReserveDecisionsDue(now, PageRequest.of(0, batchSize));
+        overdue.forEach(auction -> refuse(auction, true, now));
+        auctions.saveAll(overdue);
+        return overdue.size();
+    }
+
+    private void refuse(Auction auction, boolean lapsed, Instant now) {
+        auction.refuseBelowReserve(lapsed);
+        products.markAuctionState(auction.getProductId(), ProductStatus.AVAILABLE);
+        events.publishEvent(new ReserveEvents.Refused(auction.getId(), auction.getSellerId(),
+                auction.getLeadingBidderId(), auction.getCurrentPrice(), lapsed, now));
+    }
+
+    /**
+     * EN: Buy-now, first half: the buyer's bid at the buy-now price, under the bidding lock. Only while bidding is open
+     *     and before anyone has bid. The bid module records it, then calls {@link #closeBoughtNow}.
+     * VI: Mua ngay, nửa đầu: lượt trả giá của người mua bằng giá mua ngay, trong khoá trả giá. Chỉ khi đang mở trả giá
+     *     và chưa ai trả giá. Module bid ghi lại lượt đó, rồi gọi {@link #closeBoughtNow}.
+     */
+    @Transactional
+    public AcceptedBid buyNow(UUID auctionId, UUID buyerId) {
+        Auction auction = auctions.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+        Instant now = Instant.now();
+
+        if (auction.getStatus() == AuctionStatus.ENDED
+                || auction.getStatus() == AuctionStatus.COMPLETED
+                || !now.isBefore(auction.getEndTime())) {
+            throw new BusinessException(ErrorCode.AUCTION_ALREADY_ENDED, "This auction has already ended");
+        }
+        if (!AuctionRules.isOpenForBidding(auction, now)) {
+            throw new BusinessException(ErrorCode.AUCTION_NOT_ACTIVE, "This auction is not open for bidding");
+        }
+        if (auction.isOwnedBy(buyerId)) {
+            throw new BusinessException(ErrorCode.SELLER_CANNOT_BID, "You cannot buy your own lot");
+        }
+        if (auction.getBuyNowPrice() == null || auction.getBidCount() > 0) {
+            throw new BusinessException(ErrorCode.BUY_NOW_UNAVAILABLE, "This lot can no longer be bought outright");
+        }
+
+        auction.applyBid(buyerId, auction.getBuyNowPrice());
+        auctions.save(auction);
+        return new AcceptedBid(auction.getId(), auction.getCurrentPrice(), auction.getBidCount(),
+                AuctionRules.minimumNextBid(auction), auction.getEndTime(), now, null, auction.reserveMet());
+    }
+
+    /**
+     * EN: Buy-now, second half: the lot closes at once in the buyer's name, and the usual payment opens.
+     * VI: Mua ngay, nửa sau: lô đóng ngay đứng tên người mua, và khoản thanh toán như thường lệ được mở.
+     */
+    @Transactional
+    public void closeBoughtNow(UUID auctionId, UUID buyerId, Instant at) {
+        Auction auction = auctions.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+        if (auction.getStatus() != AuctionStatus.ACTIVE || auction.getBidCount() != 1
+                || !buyerId.equals(auction.getLeadingBidderId())
+                || auction.getCurrentPrice().compareTo(auction.getBuyNowPrice()) != 0) {
+            throw new IllegalStateException("closeBoughtNow must follow buyNow for the same buyer");
+        }
+        auction.closeBoughtNow(at);
+        auctions.save(auction);
+        events.publishEvent(new ReserveEvents.BoughtNow(auctionId, buyerId, auction.getCurrentPrice(), at));
+        events.publishEvent(AuctionLifecycleEvent.ended(auction));
     }
 
     /** EN: A lot its winner left unpaid (spec §17). / VI: Một lô bị người thắng bỏ không trả (spec §17). */
@@ -259,6 +374,7 @@ public class AuctionService {
 
         requireSellableProduct(product);
         requireSaneSchedule(request.startTime(), request.endTime());
+        requireSanePrices(request);
 
         if (auctions.holdsProduct(product.id())) {
             throw new BusinessException(
@@ -276,6 +392,8 @@ public class AuctionService {
                 Boolean.TRUE.equals(request.antiSnipingEnabled()),
                 request.antiSnipingWindowSeconds() == null ? 30 : request.antiSnipingWindowSeconds(),
                 request.extensionSeconds() == null ? 120 : request.extensionSeconds());
+        auction.setReservePrice(request.reservePrice());
+        auction.setBuyNowPrice(request.buyNowPrice());
 
         try {
             // EN: Flushed here so the unique index answers inside this try, and the lot number comes back.
@@ -325,8 +443,11 @@ public class AuctionService {
         }
 
         requireSaneSchedule(request.startTime(), request.endTime());
+        requireSanePrices(request);
 
         auction.setStartingPrice(request.startingPrice());
+        auction.setReservePrice(request.reservePrice());
+        auction.setBuyNowPrice(request.buyNowPrice());
         auction.setMinimumIncrement(request.minimumIncrement());
         auction.setStartTime(request.startTime());
         auction.setEndTime(request.endTime());
@@ -402,7 +523,7 @@ public class AuctionService {
         List<Auction> won = auctions.findByWinnerIdAndStatusInOrderByEndTimeDesc(
                 userId, List.of(AuctionStatus.ENDED, AuctionStatus.COMPLETED));
 
-        return won.stream().map(summarize(won, AuctionService::toView)).toList();
+        return won.stream().map(summarize(won, AuctionService::toParticipantView)).toList();
     }
 
     /**
@@ -435,7 +556,8 @@ public class AuctionService {
                 AuctionRules.minimumNextBid(auction),
                 auction.getBidCount(),
                 auction.getLeadingBidderId(),
-                auction.getEndTime());
+                auction.getEndTime(),
+                auction.getReservePrice());
     }
 
     private static boolean hasEnded(Auction auction, Instant at) {
@@ -499,8 +621,12 @@ public class AuctionService {
     public Map<UUID, BidStanding> standingsOf(UUID bidderId, Collection<UUID> auctionIds) {
         return auctions.findAllById(auctionIds).stream().collect(Collectors.toMap(Auction::getId, auction ->
                 switch (auction.getStatus()) {
-                    case ENDED, COMPLETED, CANCELLED ->
-                            bidderId.equals(auction.getWinnerId()) ? BidStanding.WON : BidStanding.LOST;
+                    case ENDED, COMPLETED, CANCELLED -> bidderId.equals(auction.getWinnerId())
+                            ? BidStanding.WON
+                            : auction.getReserveDecision() == ReserveDecision.PENDING
+                                    && bidderId.equals(auction.getLeadingBidderId())
+                                    ? BidStanding.AWAITING_SELLER
+                                    : BidStanding.LOST;
                     default -> bidderId.equals(auction.getLeadingBidderId()) ? BidStanding.WINNING : BidStanding.OUTBID;
                 }));
     }
@@ -638,7 +764,8 @@ public class AuctionService {
                 AuctionRules.minimumNextBid(auction),
                 auction.getEndTime(),
                 now,
-                previousLeader);
+                previousLeader,
+                auction.reserveMet());
     }
 
     /** EN: What the caller learns once a bid is in. / VI: Những gì bên gọi biết được sau khi lượt trả giá vào. */
@@ -653,7 +780,9 @@ public class AuctionService {
             Instant acceptedAt,
             // EN: Who led before this bid; null for the first bid. May be the bidder themselves.
             // VI: Ai dẫn trước lượt này; null nếu là lượt đầu. Có thể chính là người vừa trả giá.
-            UUID previousLeaderId) {
+            UUID previousLeaderId,
+            // EN: Null without a reserve. / VI: Null nếu không có giá sàn.
+            Boolean reserveMet) {
     }
 
     /**
@@ -879,6 +1008,26 @@ public class AuctionService {
         }
     }
 
+    /**
+     * EN: A reserve below the starting price means nothing; a buy-now price must beat the opening bid and cannot
+     *     undercut the reserve. The database repeats all three as CHECK constraints.
+     * VI: Giá sàn thấp hơn giá khởi điểm thì vô nghĩa; giá mua ngay phải cao hơn giá mở và không được thấp hơn giá sàn.
+     *     Database nhắc lại cả ba bằng ràng buộc CHECK.
+     */
+    private static void requireSanePrices(CreateAuctionRequest request) {
+        BigDecimal start = request.startingPrice();
+        BigDecimal reserve = request.reservePrice();
+        BigDecimal buyNow = request.buyNowPrice();
+        if (reserve != null && reserve.compareTo(start) < 0) {
+            throw new BusinessException(ErrorCode.AUCTION_PRICES_INVALID,
+                    "The reserve price cannot be below the starting price");
+        }
+        if (buyNow != null && (buyNow.compareTo(start) <= 0 || (reserve != null && buyNow.compareTo(reserve) < 0))) {
+            throw new BusinessException(ErrorCode.AUCTION_PRICES_INVALID,
+                    "The buy-now price must be above the starting price and at least the reserve");
+        }
+    }
+
     private static void requireSaneSchedule(Instant startTime, Instant endTime) {
         // EN: Spec §7.4, and the database repeats it as a CHECK constraint.
         // VI: Spec §7.4, và database nhắc lại bằng một ràng buộc CHECK.
@@ -895,8 +1044,14 @@ public class AuctionService {
         }
     }
 
+    /** EN: For the seller and admins: everything, the reserve included. / VI: Cho người bán và admin: mọi thứ, kể cả giá sàn. */
     private static AuctionView toView(Auction auction) {
-        return toView(auction, auction.getWinnerId());
+        return toView(auction, auction.getWinnerId(), true);
+    }
+
+    /** EN: For the winner: their own win, but never the reserve. / VI: Cho người thắng: chiến thắng của họ, nhưng không bao giờ lộ giá sàn. */
+    private static AuctionView toParticipantView(Auction auction) {
+        return toView(auction, auction.getWinnerId(), false);
     }
 
     /**
@@ -906,10 +1061,10 @@ public class AuctionService {
      *     một id gốc công bố cạnh kết quả sẽ phá bỏ điều đó chỉ bằng một lần tra.
      */
     private static AuctionView toPublicView(Auction auction) {
-        return toView(auction, null);
+        return toView(auction, null, false);
     }
 
-    private static AuctionView toView(Auction auction, UUID winnerShown) {
+    private static AuctionView toView(Auction auction, UUID winnerShown, boolean reserveShown) {
         return new AuctionView(
                 auction.getId(),
                 auction.getLotNumber(),
@@ -929,6 +1084,13 @@ public class AuctionService {
                 auction.getBidCount(),
                 winnerShown,
                 auction.getRejectionReason(),
+                reserveShown ? auction.getReservePrice() : null,
+                auction.getReservePrice() != null,
+                auction.reserveMet(),
+                auction.getBuyNowPrice(),
+                auction.isBoughtNow(),
+                auction.getReserveDecision(),
+                auction.getReserveDecisionUntil(),
                 auction.getCreatedAt(),
                 auction.getUpdatedAt());
     }

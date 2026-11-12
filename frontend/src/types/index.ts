@@ -48,6 +48,8 @@ export const ERROR_CODES = [
   "AUCTION_NOT_EDITABLE",
   "AUCTION_SCHEDULE_INVALID",
   "AUCTION_NOT_PENDING",
+  "AUCTION_PRICES_INVALID",
+  "RESERVE_DECISION_CLOSED",
   "SELLER_CANNOT_BID",
   "BID_TOO_LOW",
   "BID_CONFLICT",
@@ -55,9 +57,12 @@ export const ERROR_CODES = [
   "AUTO_BID_INVALID",
   "AUTO_BID_EXISTS",
   "AUTO_BID_NOT_FOUND",
+  "BUY_NOW_UNAVAILABLE",
   "PAYMENT_NOT_FOUND",
   "PAYMENT_EXPIRED",
   "PAYMENT_ALREADY_PAID",
+  "PAYMENT_GATEWAY_INVALID",
+  "ADDRESS_REQUIRED",
   "ORDER_NOT_FOUND",
   "ORDER_STATUS_INVALID",
   "SECOND_CHANCE_UNAVAILABLE",
@@ -65,6 +70,8 @@ export const ERROR_CODES = [
   "OFFER_ALREADY_MADE",
   "OFFER_NOT_FOUND",
   "OFFER_NOT_PENDING",
+  "REVIEW_NOT_ALLOWED",
+  "REVIEW_EXISTS",
   "NOTIFICATION_NOT_FOUND",
   "ACCESS_DENIED",
   "NOT_AUTHENTICATED",
@@ -139,14 +146,36 @@ export interface SecondChanceOffer {
   decidedAt: IsoDateString | null;
 }
 
+/**
+ * EN: A buyer's review of a seller, as anyone may read it: the reviewer by public handle only.
+ * VI: Đánh giá của người mua về người bán mà ai cũng đọc được: người viết chỉ hiện tên công khai.
+ */
+export interface SellerReview {
+  id: Id;
+  orderId: Id;
+  auctionId: Id;
+  /** 1–5 stars. */
+  rating: number;
+  comment: string | null;
+  reviewer: string;
+  lotName: string | null;
+  createdAt: IsoDateString;
+}
+
+/** EN: A seller's standing, shown on their lots. / VI: Uy tín của người bán, hiện trên các lô của họ. */
+export interface SellerReputation {
+  /** One decimal; null before the first review. */
+  average: number | null;
+  reviewCount: number;
+  sales: number;
+  reviews: SellerReview[];
+}
+
 /** Public-facing seller summary shown on auction pages. */
 interface SellerSummary {
   id: Id;
   displayName: string;
   avatarUrl?: string;
-  /** 0–5, one decimal. Not provided by the API yet; the UI hides it when absent. */
-  rating?: number;
-  totalSales?: number;
   memberSince?: IsoDateString;
   verified?: boolean;
 }
@@ -155,12 +184,17 @@ interface SellerSummary {
 /*                              Category & Product                            */
 /* -------------------------------------------------------------------------- */
 
+/** EN: ARCHIVED categories keep their products but leave the browse list. / VI: Danh mục ARCHIVED giữ sản phẩm nhưng rời khỏi danh sách duyệt. */
+export type CategoryStatus = "ACTIVE" | "ARCHIVED";
+
 export interface Category {
   id: Id;
   slug: string;
   name: string;
   description: string;
   imageUrl: string;
+  /** Known when the API sent it; only the admin list includes archived ones. */
+  status?: CategoryStatus;
   /** Lots live in this category, when the caller asked for it. */
   auctionCount?: number;
 }
@@ -213,6 +247,9 @@ interface AntiSnipingConfig {
   extensionSeconds: number;
 }
 
+/** EN: A lot that closed below its reserve: waiting for the seller, sold anyway, or not sold. / VI: Lô đóng dưới giá sàn: chờ người bán, vẫn bán, hoặc không bán. */
+export type ReserveDecision = "PENDING" | "ACCEPTED" | "DECLINED" | "LAPSED";
+
 export interface Auction {
   id: Id;
   productId: Id;
@@ -239,6 +276,18 @@ export interface Auction {
 
   /** Admin decision context, present on REJECTED auctions. */
   rejectionReason?: string;
+
+  /** EN: The amount, for the seller and admins only. / VI: Con số, chỉ cho người bán và admin. */
+  reservePrice?: number;
+  hasReserve: boolean;
+  /** EN: Null without a reserve. / VI: Null nếu không có giá sàn. */
+  reserveMet: boolean | null;
+  /** EN: Offered until the first bid. / VI: Có hiệu lực tới lượt trả giá đầu tiên. */
+  buyNowPrice: number | null;
+  boughtNow: boolean;
+  /** EN: Set once the lot closed below its reserve. / VI: Có giá trị khi lô đã đóng dưới giá sàn. */
+  reserveDecision: ReserveDecision | null;
+  reserveDecisionUntil: IsoDateString | null;
 
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
@@ -350,6 +399,8 @@ export type AuctionEvent =
       currentPrice: number;
       totalBids: number;
       bid: Bid;
+      /** Null without a reserve. */
+      reserveMet: boolean | null;
       serverTime: IsoDateString;
     }
   | {
@@ -369,6 +420,9 @@ export type AuctionEvent =
       auctionId: Id;
       winnerId: Id | null;
       finalPrice: number;
+      /** False with bids means it closed below the reserve. */
+      sold: boolean;
+      endTime: IsoDateString;
       serverTime: IsoDateString;
     }
   | {
@@ -413,7 +467,9 @@ export type NotificationType =
   | "SELLER_REJECTED"
   | "SECOND_CHANCE_OFFER"
   | "SECOND_CHANCE_ACCEPTED"
-  | "SECOND_CHANCE_DECLINED";
+  | "SECOND_CHANCE_DECLINED"
+  | "NEW_REVIEW"
+  | "RESERVE_NOT_MET";
 
 export interface AppNotification {
   id: Id;
@@ -464,6 +520,27 @@ export interface Order {
   status: OrderStatus;
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
+  /** EN: Where it goes, copied when the buyer paid. / VI: Nơi giao tới, chép lại lúc người mua thanh toán. */
+  shipping: OrderShipping | null;
+  carrier: string | null;
+  trackingNumber: string | null;
+  shippedAt: IsoDateString | null;
+}
+
+interface OrderShipping {
+  recipient: string;
+  phone: string;
+  address: string;
+}
+
+/** EN: A buyer's delivery address, as edited on the profile. / VI: Địa chỉ nhận hàng của người mua, sửa trong hồ sơ. */
+export interface ShippingAddress {
+  recipient: string;
+  phone: string;
+  line: string;
+  ward: string;
+  district: string;
+  province: string;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -490,7 +567,11 @@ export type AuditAction =
   | "OFFER_MADE"
   | "OFFER_ACCEPTED"
   | "OFFER_DECLINED"
-  | "OFFER_EXPIRED";
+  | "OFFER_EXPIRED"
+  | "RESERVE_ACCEPTED"
+  | "RESERVE_REFUSED"
+  | "RESERVE_LAPSED"
+  | "BOUGHT_NOW";
 
 export interface AuditLog {
   id: Id;

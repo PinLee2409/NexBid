@@ -8,5 +8,7 @@ public enum BidStanding {
     WINNING,
     OUTBID,
     WON,
-    LOST
+    LOST,
+    /** EN: Highest bid, but below the reserve: the seller is deciding. / VI: Giá cao nhất nhưng dưới giá sàn: người bán đang quyết định. */
+    AWAITING_SELLER
 }

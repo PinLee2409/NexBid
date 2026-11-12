@@ -2,11 +2,12 @@
 
 import { Heart } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { loginHref } from "@/lib/redirect";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/services/session-service";
 import { toggleWatch, useIsWatched } from "@/services/watchlist-service";
@@ -29,6 +30,7 @@ export function WatchButton({
   const watched = useIsWatched(auctionId);
   const { user } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
 
   function handleToggle(event: React.MouseEvent) {
@@ -38,7 +40,7 @@ export function WatchButton({
 
     // A watchlist belongs to an account.
     if (!user) {
-      router.push("/login");
+      router.push(loginHref(pathname));
       return;
     }
 

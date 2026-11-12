@@ -3,7 +3,6 @@ package com.nexbid.bid;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -91,7 +90,23 @@ public class BidService {
                 lot.minimumNextBid(),
                 lot.endTime(),
                 Instant.now(),
-                bidderId.equals(lot.leaderId()));
+                bidderId.equals(lot.leaderId()),
+                lot.reserveMet());
+    }
+
+    /**
+     * EN: Buys the lot outright at its buy-now price, before anyone has bid: the bid is recorded like any other,
+     *     then the lot closes in the buyer's name and the usual payment opens — one transaction.
+     * VI: Mua đứt lô với giá mua ngay, trước khi có ai trả giá: lượt đó được ghi như mọi lượt khác, rồi lô đóng đứng
+     *     tên người mua và khoản thanh toán như thường lệ được mở — trong một transaction.
+     */
+    @Transactional
+    public PlacedBidView buyNow(UUID auctionId, UUID buyerId) {
+        AuctionService.AcceptedBid accepted = auctions.buyNow(auctionId, buyerId);
+        PlacedBidView placed = recorder.recordAccepted(accepted, buyerId);
+        auctions.closeBoughtNow(auctionId, buyerId, accepted.acceptedAt());
+        return new PlacedBidView(placed.bid(), placed.currentPrice(), placed.bidCount(), placed.minimumNextBid(),
+                accepted.acceptedAt(), Instant.now(), true, placed.reserveMet());
     }
 
     /**
@@ -147,19 +162,8 @@ public class BidService {
         return bids.findDistinctBidderIds(auctionId);
     }
 
-    /**
-     * EN: "Nguyen Van A" becomes "ngu***" (spec §37). Enough for a bidder to recognise their own line,
-     *     not enough for anyone else to work out who they are.
-     * VI: "Nguyen Van A" thành "ngu***" (spec §37). Đủ để người trả giá nhận ra dòng của mình, không đủ để
-     *     người khác suy ra họ là ai.
-     */
+    /** EN: A bidder's public handle (spec §37). / VI: Tên công khai của người trả giá (spec §37). */
     static String mask(String name) {
-        String trimmed = name == null ? "" : name.trim();
-        if (trimmed.isEmpty()) {
-            return "***";
-        }
-
-        String head = trimmed.length() <= 3 ? trimmed : trimmed.substring(0, 3);
-        return head.toLowerCase(Locale.ROOT) + "***";
+        return UserService.handleOf(name);
     }
 }

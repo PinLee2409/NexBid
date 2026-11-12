@@ -96,6 +96,14 @@ services:
       # EN: A demo default. Anything reachable by others must pass its own 32+ byte secret.
       # VI: Giá trị mặc định cho demo. Bất cứ nơi nào người khác truy cập được phải truyền secret riêng từ 32 byte.
       NEXBID_JWT_SECRET: ${NEXBID_JWT_SECRET:-nexbid-docker-demo-secret-key-change-me}
+      # EN: VNPay and Brevo keys, passed through from your shell or a .env file next to this one (never committed).
+      # VI: Khoá VNPay và Brevo, lấy từ shell hoặc file .env cạnh file này (không bao giờ commit).
+      NEXBID_VNPAY_TMN_CODE: ${NEXBID_VNPAY_TMN_CODE:-change-me}
+      NEXBID_VNPAY_HASH_SECRET: ${NEXBID_VNPAY_HASH_SECRET:-change-me-local-vnpay-secret}
+      NEXBID_VNPAY_RETURN_URL: http://localhost:${NEXBID_FRONTEND_PORT:-3000}/payments/vnpay-return
+      NEXBID_BREVO_API_KEY: ${NEXBID_BREVO_API_KEY:-}
+      NEXBID_MAIL_SENDER_EMAIL: ${NEXBID_MAIL_SENDER_EMAIL:-no-reply@nexbid.test}
+      NEXBID_SITE_URL: http://localhost:${NEXBID_FRONTEND_PORT:-3000}
       NEXBID_ADMIN_EMAILS: ${NEXBID_ADMIN_EMAILS:-}
       NEXBID_SELLER_EMAILS: ${NEXBID_SELLER_EMAILS:-}
       NEXBID_LOG_LEVEL: INFO

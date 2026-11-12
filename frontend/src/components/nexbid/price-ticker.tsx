@@ -1,8 +1,10 @@
 "use client";
 
-import { m } from "framer-motion";
-import { useState } from "react";
+import { animate, m, useReducedMotion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 
+import { useMoney } from "@/hooks/use-money";
+import { LOCALE_INTL } from "@/i18n/config";
 import { CURRENCY } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +16,38 @@ interface AuctionPriceTickerProps {
 }
 
 const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+/** EN: How long the figure takes to count up to a new price. / VI: Thời gian con số đếm lên tới giá mới. */
+const COUNT_SECONDS = 0.9;
+
+/**
+ * EN: The figure shown while the price moves: it counts from the old price to the new one, so a jump from
+ *     2.000.000 to 3.000.000 runs through every value in between and all the digits spin, not just the one
+ *     that changed. The first paint shows the price as it is, and readers who ask for reduced motion get the
+ *     new price at once.
+ * VI: Con số hiển thị khi giá thay đổi: nó đếm từ giá cũ lên giá mới, nên khi nhảy từ 2.000.000 lên
+ *     3.000.000 thì chạy qua mọi giá trị ở giữa và tất cả chữ số cùng quay, không chỉ chữ số thay đổi. Lần vẽ
+ *     đầu hiện đúng giá, và người đọc chọn giảm chuyển động thì thấy giá mới ngay.
+ */
+function useCountUp(target: number): number {
+  const reduceMotion = useReducedMotion();
+  const [shown, setShown] = useState(target);
+  const from = useRef(target);
+
+  useEffect(() => {
+    const start = from.current;
+    from.current = target;
+    if (start === target || reduceMotion) return;
+    const controls = animate(start, target, {
+      duration: COUNT_SECONDS,
+      ease: [0.16, 1, 0.3, 1],
+      onUpdate: (value) => setShown(Math.round(value)),
+    });
+    return () => controls.stop();
+  }, [target, reduceMotion]);
+
+  return reduceMotion ? target : shown;
+}
 
 /**
  * A single odometer column. The strip of digits slides so the current one
@@ -54,17 +88,17 @@ function DigitColumn({ digit }: { digit: number }) {
 }
 
 /**
- * The price, rendered as a live figure. Every bid rolls the affected digits
- * upward; nothing else on the line moves.
+ * The price, rendered as a live figure. Every bid counts the figure up to the
+ * new price, rolling the digits as it goes; nothing else on the line moves.
  */
 export function AuctionPriceTicker({
   amount,
   className,
   flashOnChange = true,
 }: AuctionPriceTickerProps) {
-  const formatted = new Intl.NumberFormat(CURRENCY.locale, {
-    maximumFractionDigits: 0,
-  }).format(Math.max(0, Math.round(amount)));
+  const money = useMoney();
+  const price = Math.max(0, Math.round(amount));
+  const formatted = money.amount(useCountUp(price));
 
   /**
    * Each price change bumps a key, which remounts the flash layer and replays
@@ -81,7 +115,7 @@ export function AuctionPriceTicker({
   return (
     <span className={cn("figure relative inline-flex items-start leading-none", className)}>
       {/* The rolling digits are decorative; assistive tech reads this instead. */}
-      <span className="sr-only">{`${CURRENCY.symbol}${formatted}`}</span>
+      <span className="sr-only">{money.currency(price)}</span>
       {flashOnChange && flashKey > 0 ? (
         <span
           key={flashKey}
@@ -95,12 +129,7 @@ export function AuctionPriceTicker({
         className="inline-flex items-start"
         style={{ lineHeight: "1em" }}
       >
-        <span
-          className="mr-[0.06em] inline-block opacity-70"
-          style={{ lineHeight: "1em", verticalAlign: "top" }}
-        >
-          {CURRENCY.symbol}
-        </span>
+        {money.symbolAfter ? null : <CurrencySymbol className="mr-[0.06em]" />}
         {formatted.split("").map((char, index) =>
           /\d/.test(char) ? (
             <DigitColumn key={`${index}-digit`} digit={Number(char)} />
@@ -114,7 +143,17 @@ export function AuctionPriceTicker({
             </span>
           ),
         )}
+        {/* EN: Vietnamese writes the symbol after the figure. / VI: Tiếng Việt viết ký hiệu sau con số. */}
+        {money.symbolAfter ? <CurrencySymbol className="ml-[0.12em]" /> : null}
       </span>
+    </span>
+  );
+}
+
+function CurrencySymbol({ className }: { className: string }) {
+  return (
+    <span className={cn("inline-block opacity-70", className)} style={{ lineHeight: "1em", verticalAlign: "top" }}>
+      {CURRENCY.symbol}
     </span>
   );
 }
@@ -129,6 +168,7 @@ interface PriceDeltaProps {
 
 /** `+ ₫500,000 / +4.17%` — the movement line under a live price. */
 export function PriceDelta({ delta, percent, className }: PriceDeltaProps) {
+  const money = useMoney();
   if (delta <= 0) return null;
 
   return (
@@ -138,14 +178,16 @@ export function PriceDelta({ delta, percent, className }: PriceDeltaProps) {
         className,
       )}
     >
-      <span>
-        +{CURRENCY.symbol}
-        {new Intl.NumberFormat(CURRENCY.locale, {
-          maximumFractionDigits: 0,
-        }).format(delta)}
-      </span>
+      <span>+{money.currency(delta)}</span>
       <span className="text-dim">/</span>
-      <span>+{(percent * 100).toFixed(2)}%</span>
+      <span>
+        +
+        {new Intl.NumberFormat(LOCALE_INTL[money.locale], {
+          style: "percent",
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(percent)}
+      </span>
     </span>
   );
 }

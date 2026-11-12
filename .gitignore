@@ -1,0 +1,7 @@
+# Keys for VNPay, Brevo and the rest live in .env files next to docker-compose.yml; never commit them.
+.env
+.env.*
+!.env.example
+
+# QA notes for other projects kept on this machine only.
+docs/qa/

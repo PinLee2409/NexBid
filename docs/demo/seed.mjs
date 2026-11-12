@@ -19,6 +19,8 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { payThroughVnpay } from "./vnpay.mjs";
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const API = (process.env.NEXBID_API_URL ?? "http://localhost:8080").replace(/\/$/, "");
 const COMPOSE_FILE = process.env.STACK === "docker" ? "docker-compose.yml" : "docker/compose.yaml";
@@ -378,7 +380,7 @@ async function main() {
       if (Date.now() > deadline) throw new Error(`No payment was opened for ${lot.name}`);
       await sleep(1000);
     }
-    await call("POST", `/api/payments/${entry.payment.id}/pay`, { token: tokens.pin, body: { outcome: "SUCCESS" } });
+    await payThroughVnpay(API, call, entry.payment.id, tokens.pin);
     console.log(`  paid     ${lot.name}  (${vnd(entry.payment.amount)})`);
   }
 

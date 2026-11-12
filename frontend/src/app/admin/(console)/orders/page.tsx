@@ -22,10 +22,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage, useEnumLabels } from "@/hooks/use-labels";
-import { formatCurrency } from "@/lib/format";
 import { listOrders, refundOrder } from "@/services/admin-service";
 import type { OrderEntry } from "@/services/order-service";
 import type { OrderStatus } from "@/types";
+import { useMoney } from "@/hooks/use-money";
 
 type OrderTab = "ALL" | OrderStatus;
 
@@ -104,6 +104,7 @@ function RefundDialog({
   onClose: () => void;
   onRefunded: () => void;
 }) {
+  const money = useMoney();
   const t = useTranslations("admin");
   const tc = useTranslations("common");
   const errorMessage = useApiErrorMessage();
@@ -137,7 +138,7 @@ function RefundDialog({
             <span className="text-muted-foreground min-w-0 truncate text-sm">
               {entry.auction?.product.name ?? "—"}
             </span>
-            <span className="figure text-xl">{formatCurrency(entry.order.amount)}</span>
+            <span className="figure text-xl">{money.currency(entry.order.amount)}</span>
           </div>
         ) : null}
 

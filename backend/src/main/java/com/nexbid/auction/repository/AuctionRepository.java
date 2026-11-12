@@ -57,6 +57,12 @@ public interface AuctionRepository
             + "com.nexbid.auction.AuctionStatus.SCHEDULED) AND a.endTime <= :now ORDER BY a.endTime")
     List<Auction> findDueToEnd(@Param("now") Instant now, Pageable pageable);
 
+    /** EN: Lots below their reserve whose seller let the decision window run out, locked. / VI: Các lô dưới giá sàn mà người bán để quá hạn quyết định, có khoá. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM Auction a WHERE a.reserveDecision = com.nexbid.auction.ReserveDecision.PENDING "
+            + "AND a.reserveDecisionUntil <= :now ORDER BY a.reserveDecisionUntil")
+    List<Auction> findReserveDecisionsDue(@Param("now") Instant now, Pageable pageable);
+
     List<Auction> findBySellerIdOrderByCreatedAtDesc(UUID sellerId);
 
     @Query("SELECT a.id FROM Auction a WHERE a.productId = :productId")
