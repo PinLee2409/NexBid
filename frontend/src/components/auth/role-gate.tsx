@@ -9,11 +9,12 @@ import { hasRole, useSession } from "@/services/session-service";
 import type { UserRole } from "@/types";
 
 interface RoleGateProps {
-  role: UserRole;
+  /** EN: Left out, being signed in is enough. / VI: Bỏ trống thì chỉ cần đã đăng nhập. */
+  role?: UserRole;
   /** EN: Where a signed-out reader signs in. / VI: Nơi người chưa đăng nhập đi đăng nhập. */
   signInPage?: "/login" | "/admin/login";
   /** EN: Shown to a signed-in reader without the role. / VI: Hiện cho người đã đăng nhập nhưng không có vai trò. */
-  denied: ReactNode;
+  denied?: ReactNode;
   children: ReactNode;
 }
 
@@ -39,7 +40,7 @@ export function RoleGate({ role, denied, children, signInPage = "/login" }: Role
   }, [signedOut, pathname, router, signInPage]);
 
   if (!hydrated || !user) return <GateSkeleton />;
-  if (!hasRole(user, role)) return denied;
+  if (role && !hasRole(user, role)) return denied ?? null;
   return children;
 }
 

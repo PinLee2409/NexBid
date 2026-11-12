@@ -354,6 +354,7 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | Auth | `POST /api/auth/register`, `POST /api/auth/login` (JWT for 15 minutes + refresh cookie), `POST /api/auth/refresh`, `POST /api/auth/logout` |
 | Catalogue | `GET /api/auctions`, `GET /api/auctions/{id}`, `GET /api/categories`, `GET /api/server-time` — public |
 | Bidding | `POST /api/auctions/{id}/bids`, `GET /api/auctions/{id}/bids`, `/api/auctions/{id}/auto-bid`, `POST /api/auctions/{id}/buy-now` |
+| Account | `GET`/`PUT /api/users/me/address` (delivery address, required before paying), `GET`/`PUT /api/users/me/email-preferences`, `POST /api/email/unsubscribe` (signed link, public) |
 | Payment | `POST /api/payments/{id}/vnpay` (signed VNPay checkout link), `GET /api/payments/vnpay/ipn` and `GET /api/payments/vnpay/return` (VNPay's callbacks, public, checked by signature) |
 | Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders` (`…/{id}/received`), `…/me/watchlist`, `…/me/offers` (`…/{id}/accept`, `…/{id}/decline`), `…/me/orders/{id}/review`, `…/me/seller-application`, `/api/notifications`, `GET /api/sellers/{id}/reviews` (public) |
 | Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions`, `/api/seller/auctions/{id}/second-chance`, `/api/seller/auctions/{id}/reserve-decision`, `/api/seller/second-chances`, `/api/seller/orders` (`…/{id}/ship`) |
@@ -489,6 +490,9 @@ Emails are written to `email_outbox` in the same transaction as their event and 
 retries. Set `NEXBID_BREVO_API_KEY` and a sender address verified in Brevo (`NEXBID_MAIL_SENDER_EMAIL`,
 `NEXBID_MAIL_SENDER_NAME`), plus `NEXBID_SITE_URL` for the links. Without a key nothing is sent: each email is
 logged and kept as `SKIPPED`.
+
+For a public staging server with its own domain and automatic HTTPS (needed for VNPay's IPN and a verified Brevo
+sender), see [`deploy/staging/`](deploy/staging/README.md).
 
 With Docker, put the keys in a `.env` file next to `docker-compose.yml` (it is not committed); the compose file
 passes them through.

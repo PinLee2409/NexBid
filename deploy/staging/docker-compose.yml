@@ -1,0 +1,145 @@
+# EN: NexBid on one server with its own domain and HTTPS, for staging (a place others can reach, where VNPay's IPN and
+#     Brevo can be tried with real keys). Run from the repository root:
+#
+#       cp deploy/staging/.env.example deploy/staging/.env     # then fill it in
+#       docker compose -f deploy/staging/docker-compose.yml --env-file deploy/staging/.env up -d --build
+#
+#     Caddy fetches the certificate itself once DNS for $NEXBID_DOMAIN points at this server and ports 80 and 443 are
+#     open. Nothing else is published: Postgres, Redis, Kafka and the backend are reachable only through Caddy.
+# VI: NexBid trên một server với domain riêng và HTTPS, dùng làm staging (nơi người khác truy cập được, để thử IPN của
+#     VNPay và Brevo với khoá thật). Chạy từ thư mục gốc của repository bằng hai lệnh ở trên.
+#     Caddy tự lấy chứng chỉ khi DNS của $NEXBID_DOMAIN trỏ về server này và cổng 80, 443 đang mở. Không gì khác được
+#     công bố: Postgres, Redis, Kafka và backend chỉ tới được qua Caddy.
+name: nexbid-staging
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nexbid
+      POSTGRES_USER: nexbid
+      POSTGRES_PASSWORD: ${NEXBID_DB_PASSWORD:?Set NEXBID_DB_PASSWORD in deploy/staging/.env}
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexbid -d nexbid"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  kafka:
+    image: apache/kafka-native:4.2.1
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    volumes:
+      - kafka-data:/tmp/kraft-combined-logs
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9092"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build: ../../backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      # EN: The production profile refuses to start on development secrets or VNPay placeholders.
+      # VI: Profile production không chịu khởi động với secret của dev hoặc khoá VNPay giữ chỗ.
+      SPRING_PROFILES_ACTIVE: prod
+      NEXBID_DB_URL: jdbc:postgresql://postgres:5432/nexbid
+      NEXBID_DB_USER: nexbid
+      NEXBID_DB_PASSWORD: ${NEXBID_DB_PASSWORD}
+      NEXBID_REDIS_HOST: redis
+      NEXBID_REDIS_PORT: 6379
+      NEXBID_KAFKA_SERVERS: kafka:9092
+      NEXBID_IMAGES_DIR: /app/var/images
+      NEXBID_ALLOWED_ORIGINS: https://${NEXBID_DOMAIN:?Set NEXBID_DOMAIN in deploy/staging/.env}
+      NEXBID_JWT_SECRET: ${NEXBID_JWT_SECRET:?Set NEXBID_JWT_SECRET in deploy/staging/.env}
+      NEXBID_VNPAY_TMN_CODE: ${NEXBID_VNPAY_TMN_CODE:?Set NEXBID_VNPAY_TMN_CODE in deploy/staging/.env}
+      NEXBID_VNPAY_HASH_SECRET: ${NEXBID_VNPAY_HASH_SECRET:?Set NEXBID_VNPAY_HASH_SECRET in deploy/staging/.env}
+      NEXBID_VNPAY_PAY_URL: ${NEXBID_VNPAY_PAY_URL:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+      NEXBID_VNPAY_RETURN_URL: https://${NEXBID_DOMAIN}/payments/vnpay-return
+      NEXBID_BREVO_API_KEY: ${NEXBID_BREVO_API_KEY:-}
+      NEXBID_MAIL_SENDER_EMAIL: ${NEXBID_MAIL_SENDER_EMAIL:-no-reply@${NEXBID_DOMAIN}}
+      NEXBID_MAIL_SENDER_NAME: ${NEXBID_MAIL_SENDER_NAME:-NexBid}
+      NEXBID_SITE_URL: https://${NEXBID_DOMAIN}
+      NEXBID_ADMIN_EMAILS: ${NEXBID_ADMIN_EMAILS:-}
+      NEXBID_LOG_LEVEL: INFO
+      MANAGEMENT_SERVER_PORT: 8090
+    volumes:
+      - product-images:/app/var/images
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8090/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ../../frontend
+      args:
+        NEXBID_API_URL: http://backend:8080
+        # EN: The browser's socket goes through Caddy, on the same domain. / VI: Socket của trình duyệt đi qua Caddy, cùng domain.
+        NEXT_PUBLIC_WS_URL: wss://${NEXBID_DOMAIN}/ws
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    environment:
+      NEXBID_DOMAIN: ${NEXBID_DOMAIN}
+      ACME_EMAIL: ${NEXBID_ACME_EMAIL:?Set NEXBID_ACME_EMAIL in deploy/staging/.env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  postgres-data:
+  kafka-data:
+  product-images:
+  caddy-data:
+  caddy-config:

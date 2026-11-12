@@ -1,0 +1,26 @@
+# EN: HTTPS for NexBid. Caddy obtains and renews the certificate on its own. The API, product photos and the realtime
+#     socket go straight to the backend — so VNPay's IPN reaches it at https://<domain>/api/payments/vnpay/ipn — and
+#     every page goes to the frontend.
+# VI: HTTPS cho NexBid. Caddy tự lấy và gia hạn chứng chỉ. API, ảnh sản phẩm và socket realtime đi thẳng tới backend —
+#     nên IPN của VNPay tới được https://<domain>/api/payments/vnpay/ipn — còn mọi trang đi tới frontend.
+{
+	email {$ACME_EMAIL}
+}
+
+{$NEXBID_DOMAIN} {
+	encode zstd gzip
+
+	@backend path /api/* /media/* /ws /ws/*
+	handle @backend {
+		reverse_proxy backend:8080
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

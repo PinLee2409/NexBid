@@ -209,3 +209,26 @@ Hiện không còn mục nào đang chờ.
   trong cùng khoá, rồi lô đóng ngay và đi đúng đường thanh toán 48 giờ.
 - **Kiểm chứng:** backend 394 test (độ phủ 95.4% dòng, 81.8% nhánh), frontend 117 unit test, E2E 36/36 trên stack Docker
   riêng.
+
+## Đã làm (12/11/2026) — đợt 13: thanh toán VNPay, email Brevo, giao hàng, trang quản trị
+
+- **Thanh toán VNPay** thay cho công tắc demo. Backend ký link checkout (HMAC-SHA512) và kiểm phản hồi của VNPay ở cả
+  IPN (server tới server) lẫn return URL (trình duyệt người mua). Mỗi lần thử là một dòng `payment_transactions`
+  được khoá khi chốt, nên một khoản chỉ bị trừ một lần dù VNPay gửi lại IPN. Sai chữ ký hoặc sai số tiền thì bị từ
+  chối; profile `prod` không chịu khởi động với khoá giữ chỗ.
+- **Email giao dịch qua Brevo**, song ngữ Việt – Anh trong cùng một thư: chào mừng, thắng phiên, nhắc/biên nhận/hết
+  hạn thanh toán, giao dịch bị huỷ, cơ hội thứ hai, duyệt/từ chối người bán, đã gửi hàng, bị vượt giá. Email được ghi
+  vào `email_outbox` trong cùng transaction với sự kiện, job gửi có thử lại. Email bị vượt giá: tối đa một email mỗi
+  lô mỗi 30 phút, nhưng gửi mọi lần trong 15 phút cuối.
+- **Tắt email bị vượt giá**: công tắc trong hồ sơ, link một chạm có chữ ký trong email, và header `List-Unsubscribe`
+  cho nút huỷ đăng ký của ứng dụng mail (RFC 8058). Email về tiền và hàng không tắt được.
+- **Địa chỉ nhận hàng và mã vận đơn**: mỗi tài khoản một địa chỉ, sửa trong hồ sơ; chưa có địa chỉ thì không checkout
+  được (`ADDRESS_REQUIRED`). Đơn đã trả giữ bản sao địa chỉ lúc thanh toán. Người bán nhập đơn vị vận chuyển và mã vận
+  đơn khi gửi hàng; người mua thấy trong đơn và trong email.
+- **Trang quản trị**: trang đăng nhập riêng `/admin/login` (chỉ tài khoản admin vào được), chặn `/admin` và `/seller`
+  khi chưa đăng nhập hoặc không đủ quyền, trang quản lý danh mục. Các trang tài khoản người mua cũng chuyển người chưa
+  đăng nhập sang trang đăng nhập rồi đưa quay lại.
+- **Giao diện**: định dạng tiền theo ngôn ngữ (`18.500.000 ₫` / `₫18,500,000`), giá đếm dần khi có lượt trả giá mới,
+  sửa menu đổi ngôn ngữ không mở được khi đang cuộn, sửa khung lượt trả giá đè lên khung đặt giá.
+- **Staging**: `deploy/staging/` chạy cả stack sau Caddy với HTTPS tự động trên domain riêng.
+- **Dữ liệu demo**: `docs/demo/enrich.mjs` thêm người bán, người mua và khoảng ba mươi lô ở mọi danh mục.

@@ -62,6 +62,7 @@ export const ERROR_CODES = [
   "PAYMENT_EXPIRED",
   "PAYMENT_ALREADY_PAID",
   "PAYMENT_GATEWAY_INVALID",
+  "ADDRESS_REQUIRED",
   "ORDER_NOT_FOUND",
   "ORDER_STATUS_INVALID",
   "SECOND_CHANCE_UNAVAILABLE",
@@ -519,6 +520,27 @@ export interface Order {
   status: OrderStatus;
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
+  /** EN: Where it goes, copied when the buyer paid. / VI: Nơi giao tới, chép lại lúc người mua thanh toán. */
+  shipping: OrderShipping | null;
+  carrier: string | null;
+  trackingNumber: string | null;
+  shippedAt: IsoDateString | null;
+}
+
+interface OrderShipping {
+  recipient: string;
+  phone: string;
+  address: string;
+}
+
+/** EN: A buyer's delivery address, as edited on the profile. / VI: Địa chỉ nhận hàng của người mua, sửa trong hồ sơ. */
+export interface ShippingAddress {
+  recipient: string;
+  phone: string;
+  line: string;
+  ward: string;
+  district: string;
+  province: string;
 }
 
 /* -------------------------------------------------------------------------- */

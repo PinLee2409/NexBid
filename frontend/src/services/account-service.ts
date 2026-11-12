@@ -1,6 +1,14 @@
 "use client";
 
-import type { AuctionSummary, Order, Payment, SecondChanceOffer, SellerApplication, User } from "@/types";
+import type {
+  AuctionSummary,
+  Order,
+  Payment,
+  SecondChanceOffer,
+  SellerApplication,
+  ShippingAddress,
+  User,
+} from "@/types";
 
 import type {
   ApiAuctionSummary,
@@ -9,6 +17,7 @@ import type {
   ApiOfferDetails,
   ApiOrder,
   ApiPayment,
+  ApiShippingAddress,
   ApiUser,
 } from "./api/dto";
 import { api } from "./api/http";
@@ -145,4 +154,36 @@ export async function acceptOffer(offerId: string): Promise<SecondChanceOffer> {
 
 export async function declineOffer(offerId: string): Promise<SecondChanceOffer> {
   return toOffer(await api<ApiOfferDetails>(`/api/users/me/offers/${offerId}/decline`, { method: "POST" }));
+}
+
+/** `GET /api/users/me/address` — null until the first one is saved. */
+export async function getShippingAddress(): Promise<ShippingAddress | null> {
+  const address = await api<ApiShippingAddress | null>("/api/users/me/address");
+  return address
+    ? { ...address, ward: address.ward ?? "", district: address.district ?? "" }
+    : null;
+}
+
+/** `PUT /api/users/me/address` */
+export async function saveShippingAddress(address: ShippingAddress): Promise<ShippingAddress> {
+  const saved = await api<ApiShippingAddress>("/api/users/me/address", { method: "PUT", body: address });
+  return { ...saved, ward: saved.ward ?? "", district: saved.district ?? "" };
+}
+
+export interface EmailPreferences {
+  /** EN: The only optional email; the rest are about money and goods. / VI: Email duy nhất có thể tắt. */
+  outbid: boolean;
+}
+
+export async function getEmailPreferences(): Promise<EmailPreferences> {
+  return api<EmailPreferences>("/api/users/me/email-preferences");
+}
+
+export async function saveEmailPreferences(preferences: EmailPreferences): Promise<EmailPreferences> {
+  return api<EmailPreferences>("/api/users/me/email-preferences", { method: "PUT", body: preferences });
+}
+
+/** `POST /api/email/unsubscribe` — from the link in an email, no sign-in needed. */
+export async function unsubscribeFromOutbidEmails(token: string): Promise<void> {
+  await api("/api/email/unsubscribe", { method: "POST", body: { token } });
 }

@@ -73,14 +73,21 @@ class MailSender {
     }
 
     private void deliver(MailOutbox.Pending mail) {
-        Map<String, Object> body = Map.of(
+        Map<String, Object> body = new java.util.HashMap<>(Map.of(
                 "sender", Map.of("email", properties.senderEmail(), "name", properties.senderName()),
                 "to", List.of(mail.toName() == null
                         ? Map.of("email", mail.toEmail())
                         : Map.of("email", mail.toEmail(), "name", mail.toName())),
                 "subject", mail.subject(),
                 "htmlContent", mail.html(),
-                "textContent", mail.text());
+                "textContent", mail.text()));
+        if (mail.unsubscribeUrl() != null) {
+            // EN: Mail apps show their own "Unsubscribe" button from these (RFC 2369, RFC 8058).
+            // VI: Ứng dụng mail dựa vào đây để hiện nút "Huỷ đăng ký" của riêng nó (RFC 2369, RFC 8058).
+            body.put("headers", Map.of(
+                    "List-Unsubscribe", "<" + mail.unsubscribeUrl() + ">",
+                    "List-Unsubscribe-Post", "List-Unsubscribe=One-Click"));
+        }
         brevo.post()
                 .header("api-key", properties.brevoApiKey())
                 .contentType(MediaType.APPLICATION_JSON)

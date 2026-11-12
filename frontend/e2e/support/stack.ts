@@ -218,6 +218,8 @@ function vnpaySign(fields: Record<string, string>): string {
  * VI: Trả tiền theo cách VNPay xác nhận: bắt đầu checkout, rồi gửi báo cáo "đã trả" có chữ ký của VNPay tới endpoint IPN.
  */
 async function payThroughVnpay(paymentId: string, token: string): Promise<void> {
+  // EN: Checkout needs a delivery address. / VI: Checkout cần địa chỉ nhận hàng.
+  await call("PUT", "/api/users/me/address", { token, body: { recipient: "Demo Buyer", phone: "0901234567", line: "12 Nguyen Hue", ward: "Ben Nghe", district: "District 1", province: "Ho Chi Minh City" } });
   const { paymentUrl } = await call<{ paymentUrl: string }>("POST", `/api/payments/${paymentId}/vnpay`, {
     token,
     body: { locale: "en" },

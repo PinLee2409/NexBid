@@ -60,6 +60,20 @@ export function OrderRow({ entry, action }: { entry: OrderEntry; action?: ReactN
             date: format.dateTime(new Date(entry.order.createdAt), { dateStyle: "medium" }),
           })}
         </p>
+        {entry.order.shipping ? (
+          <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+            <span className="label-sm text-dim">{t("orderShipTo")}</span>{" "}
+            {entry.order.shipping.recipient} · {entry.order.shipping.phone} · {entry.order.shipping.address}
+          </p>
+        ) : null}
+        {entry.order.carrier || entry.order.trackingNumber ? (
+          <p className="text-muted-foreground mt-1 text-xs">
+            <span className="label-sm text-dim">{t("orderTracking")}</span>{" "}
+            <span className="mono-figure text-foreground">
+              {[entry.order.carrier, entry.order.trackingNumber].filter(Boolean).join(" · ")}
+            </span>
+          </p>
+        ) : null}
       </div>
 
       <div className="shrink-0">

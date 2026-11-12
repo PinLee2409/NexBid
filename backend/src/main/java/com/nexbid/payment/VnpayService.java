@@ -17,7 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.nexbid.payment.entity.Payment;
 import com.nexbid.payment.entity.PaymentTransaction;
+import com.nexbid.common.exception.BusinessException;
+import com.nexbid.common.exception.ErrorCode;
 import com.nexbid.payment.repository.PaymentTransactionRepository;
+import com.nexbid.user.AddressBook;
 
 /**
  * EN: Paying through VNPay. Checkout records an attempt and hands the buyer a signed link to VNPay's page; VNPay then
@@ -43,11 +46,14 @@ public class VnpayService {
     private final PaymentTransactionRepository transactions;
     private final VnpayProperties properties;
     private final VnpaySigner signer;
+    private final AddressBook addresses;
 
-    VnpayService(PaymentService payments, PaymentTransactionRepository transactions, VnpayProperties properties) {
+    VnpayService(PaymentService payments, PaymentTransactionRepository transactions, VnpayProperties properties,
+            AddressBook addresses) {
         this.payments = payments;
         this.transactions = transactions;
         this.properties = properties;
+        this.addresses = addresses;
         this.signer = new VnpaySigner(properties.hashSecret());
     }
 
@@ -65,6 +71,10 @@ public class VnpayService {
     public Checkout startCheckout(UUID userId, UUID paymentId, String clientIp, String locale) {
         Instant now = Instant.now();
         Payment payment = payments.payableBy(userId, paymentId, now);
+        // EN: No money is taken for goods that cannot be delivered. / VI: Không thu tiền cho món hàng chưa biết giao tới đâu.
+        if (addresses.addressOf(userId).isEmpty()) {
+            throw new BusinessException(ErrorCode.ADDRESS_REQUIRED, "Add a delivery address before paying");
+        }
 
         String txnRef = newTxnRef(now);
         transactions.save(new PaymentTransaction(payment.getId(), txnRef, payment.getAmount()));

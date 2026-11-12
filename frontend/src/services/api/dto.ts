@@ -248,6 +248,10 @@ export interface ApiOrder {
     status: OrderStatus;
     createdAt: IsoDateString;
     updatedAt: IsoDateString;
+    shipping?: { recipient: string; phone: string; address: string } | null;
+    carrier?: string | null;
+    trackingNumber?: string | null;
+    shippedAt?: IsoDateString | null;
   };
   payment: ApiPaymentDetails | null;
   auction: ApiAuctionSummary | null;
@@ -301,3 +305,13 @@ export type ApiAuctionMessage =
       serverTime: IsoDateString;
     }
   | { type: "VIEWER_COUNT"; auctionId: string; viewerCount: number };
+
+/** EN: `/api/users/me/address`; empty parts arrive as null. / VI: Các phần trống tới dưới dạng null. */
+export interface ApiShippingAddress {
+  recipient: string;
+  phone: string;
+  line: string;
+  ward: string | null;
+  district: string | null;
+  province: string;
+}

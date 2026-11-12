@@ -36,7 +36,8 @@ class AccountNotices {
     @EventListener
     void onShipped(OrderEvents.Shipped event) {
         mailer.send(event.buyerId(), MailKind.ORDER_SHIPPED,
-                MailFacts.lot(event.auctionId(), auctions.lotTitleOf(event.auctionId()), null));
+                MailFacts.lot(event.auctionId(), auctions.lotTitleOf(event.auctionId()), null)
+                        .withTracking(event.carrier(), event.trackingNumber()));
     }
 
     /** EN: The seller hears each review, with the stars. / VI: Người bán được báo mỗi đánh giá, kèm số sao. */

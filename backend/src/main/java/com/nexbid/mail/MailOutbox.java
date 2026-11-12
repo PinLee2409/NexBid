@@ -17,7 +17,8 @@ import org.springframework.stereotype.Repository;
 class MailOutbox {
 
     /** EN: A row the sender works on. / VI: Một dòng mà job gửi xử lý. */
-    record Pending(UUID id, String toEmail, String toName, String subject, String html, String text, int attempts) {
+    record Pending(UUID id, String toEmail, String toName, String subject, String html, String text, int attempts,
+            String unsubscribeUrl) {
     }
 
     private final JdbcTemplate jdbc;
@@ -28,13 +29,18 @@ class MailOutbox {
 
     void insert(UUID userId, String toEmail, String toName, MailKind kind, UUID auctionId,
             MailTemplates.Rendered mail, String status, Instant now) {
+        insert(userId, toEmail, toName, kind, auctionId, mail, status, now, null);
+    }
+
+    void insert(UUID userId, String toEmail, String toName, MailKind kind, UUID auctionId,
+            MailTemplates.Rendered mail, String status, Instant now, String unsubscribeUrl) {
         jdbc.update("""
                 INSERT INTO email_outbox (id, user_id, to_email, to_name, kind, auction_id, subject, html, text,
-                                          status, attempts, next_attempt_at, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+                                          status, attempts, next_attempt_at, created_at, unsubscribe_url)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
                 """,
                 UUID.randomUUID(), userId, toEmail, toName, kind.name(), auctionId, mail.subject(), mail.html(),
-                mail.text(), status, Timestamp.from(now), Timestamp.from(now));
+                mail.text(), status, Timestamp.from(now), Timestamp.from(now), unsubscribeUrl);
     }
 
     /** EN: Whether this person got this kind of email about this lot since {@code since}. / VI: Người này đã nhận loại email này về lô này kể từ {@code since} chưa. */
@@ -52,7 +58,7 @@ class MailOutbox {
      */
     List<Pending> claimDue(Instant now, int limit) {
         return jdbc.query("""
-                SELECT id, to_email, to_name, subject, html, text, attempts FROM email_outbox
+                SELECT id, to_email, to_name, subject, html, text, attempts, unsubscribe_url FROM email_outbox
                 WHERE status = 'PENDING' AND next_attempt_at <= ?
                 ORDER BY next_attempt_at
                 LIMIT ?
@@ -60,7 +66,7 @@ class MailOutbox {
                 """,
                 (rs, row) -> new Pending(rs.getObject("id", UUID.class), rs.getString("to_email"),
                         rs.getString("to_name"), rs.getString("subject"), rs.getString("html"), rs.getString("text"),
-                        rs.getInt("attempts")),
+                        rs.getInt("attempts"), rs.getString("unsubscribe_url")),
                 Timestamp.from(now), limit);
     }
 

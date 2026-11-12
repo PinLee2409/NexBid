@@ -1,5 +1,6 @@
 package com.nexbid.order;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -97,13 +98,15 @@ public class OrderService {
      * VI: Người bán đánh dấu một đơn đã trả là đã gửi hàng. Đơn của người bán khác trả 404.
      */
     @Transactional
-    public OrderView ship(UUID sellerId, UUID orderId) {
+    public OrderView ship(UUID sellerId, UUID orderId, String carrier, String trackingNumber) {
         Order order = orders.findLockedById(orderId)
                 .filter(found -> found.getSellerId().equals(sellerId))
                 .orElseThrow(() -> notFound(orderId));
 
         move(order, OrderStatus.PAID, OrderStatus.PROCESSING, "Only a paid order can be shipped");
-        events.publishEvent(new OrderEvents.Shipped(order.getId(), sellerId, order.getBuyerId(), order.getAuctionId()));
+        order.recordShipment(blankToNull(carrier), blankToNull(trackingNumber), Instant.now());
+        events.publishEvent(new OrderEvents.Shipped(order.getId(), sellerId, order.getBuyerId(), order.getAuctionId(),
+                order.getCarrier(), order.getTrackingNumber()));
         return views(List.of(order), payments.detailsOf(List.of(order.getPaymentId()))).getFirst();
     }
 
@@ -166,11 +169,20 @@ public class OrderService {
                                 order.getAmount(),
                                 order.getStatus(),
                                 order.getCreatedAt(),
-                                order.getUpdatedAt()),
+                                order.getUpdatedAt(),
+                                order.getShipAddress() == null ? null : new OrderView.Shipping(
+                                        order.getShipRecipient(), order.getShipPhone(), order.getShipAddress()),
+                                order.getCarrier(),
+                                order.getTrackingNumber(),
+                                order.getShippedAt()),
                         paid.get(order.getPaymentId()),
                         lots.get(order.getAuctionId()),
                         reviewed.get(order.getId())))
                 .toList();
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private static List<UUID> paymentIdsOf(List<Order> list) {

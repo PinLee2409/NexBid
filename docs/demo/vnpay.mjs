@@ -30,6 +30,9 @@ function sign(fields) {
  * @param {(method: string, route: string, options?: object) => Promise<any>} call  the script's API helper
  */
 export async function payThroughVnpay(api, call, paymentId, token) {
+  // EN: Checkout needs a delivery address; demo buyers keep theirs if they already have one. / VI: Checkout cần địa chỉ nhận hàng.
+  const current = await call("GET", "/api/users/me/address", { token });
+  if (!current) await call("PUT", "/api/users/me/address", { token, body: { recipient: "Demo Buyer", phone: "0901234567", line: "12 Nguyen Hue", ward: "Ben Nghe", district: "District 1", province: "Ho Chi Minh City" } });
   const { paymentUrl } = await call("POST", `/api/payments/${paymentId}/vnpay`, { token, body: { locale: "vi" } });
   const sent = Object.fromEntries(new URL(paymentUrl).searchParams);
   const reply = {

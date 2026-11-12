@@ -216,7 +216,14 @@ export function toPayment(payment: ApiPaymentDetails): Payment {
 }
 
 export function toOrder(order: ApiOrder["order"]): Order {
-  return { ...order, amount: Number(order.amount) };
+  return {
+    ...order,
+    amount: Number(order.amount),
+    shipping: order.shipping ?? null,
+    carrier: order.carrier ?? null,
+    trackingNumber: order.trackingNumber ?? null,
+    shippedAt: order.shippedAt ?? null,
+  };
 }
 
 export function toProduct(product: ApiProduct, images: ProductImage[] = []): Product {

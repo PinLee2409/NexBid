@@ -22,6 +22,14 @@ public record OrderView(Details order, PaymentView.Details payment, AuctionSumma
             BigDecimal amount,
             OrderStatus status,
             Instant createdAt,
-            Instant updatedAt) {
+            Instant updatedAt,
+            Shipping shipping,
+            String carrier,
+            String trackingNumber,
+            Instant shippedAt) {
+    }
+
+    /** EN: Where it goes, as it was when the buyer paid. / VI: Nơi giao tới, theo lúc người mua thanh toán. */
+    public record Shipping(String recipient, String phone, String address) {
     }
 }

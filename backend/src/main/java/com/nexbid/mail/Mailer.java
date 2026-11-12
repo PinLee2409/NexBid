@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.HtmlUtils;
 
+import com.nexbid.user.AddressBook;
 import com.nexbid.user.UserAccount;
 import com.nexbid.user.UserService;
 
@@ -30,12 +31,17 @@ public class Mailer {
     private final UserService users;
     private final MailProperties properties;
     private final MailTemplates templates;
+    private final AddressBook preferences;
+    private final UnsubscribeTokens tokens;
 
-    Mailer(MailOutbox outbox, UserService users, MailProperties properties) {
+    Mailer(MailOutbox outbox, UserService users, MailProperties properties, AddressBook preferences,
+            UnsubscribeTokens tokens) {
         this.outbox = outbox;
         this.users = users;
         this.properties = properties;
         this.templates = new MailTemplates(properties.siteUrl());
+        this.preferences = preferences;
+        this.tokens = tokens;
     }
 
     /** EN: Queues one email to one account. / VI: Xếp hàng một email cho một tài khoản. */
@@ -57,6 +63,9 @@ public class Mailer {
      */
     @Transactional
     public void sendOutbid(UUID userId, MailFacts facts, Instant lotEndsAt, Instant now) {
+        if (!preferences.wantsOutbidEmails(userId)) {
+            return;
+        }
         boolean finalMinutes = !Duration.between(now, lotEndsAt).minus(properties.outbidFinalWindow()).isPositive();
         if (!finalMinutes
                 && outbox.sentRecently(userId, facts.auctionId(), MailKind.OUTBID, now.minus(properties.outbidThrottle()))) {
@@ -67,11 +76,22 @@ public class Mailer {
 
     private void queue(UserAccount account, MailKind kind, MailFacts facts, Instant now) {
         String name = HtmlUtils.htmlEscape(account.fullName());
-        MailTemplates.Rendered mail = templates.render(kind, name, MailTemplates.escaped(facts));
+        // EN: Only optional emails carry a way out; the others are about the person's own money or goods.
+        // VI: Chỉ email có thể tắt mới kèm cách tắt; các email khác là về tiền hoặc hàng của chính người đó.
+        String token = kind == MailKind.OUTBID ? tokens.tokenFor(account.id()) : null;
+        String pageLink = token == null ? null : siteUrl() + "/unsubscribe?token=" + token;
+        String oneClick = token == null ? null : siteUrl() + UnsubscribeController.PATH + "?token=" + token;
+        MailTemplates.Rendered mail = templates.render(kind, name, MailTemplates.escaped(facts), pageLink);
         String status = properties.sending() ? "PENDING" : "SKIPPED";
-        outbox.insert(account.id(), account.email(), account.fullName(), kind, facts.auctionId(), mail, status, now);
+        outbox.insert(account.id(), account.email(), account.fullName(), kind, facts.auctionId(), mail, status, now,
+                oneClick);
         if (!properties.sending()) {
             log.info("Email not sent (no NEXBID_BREVO_API_KEY): {} to {} — {}", kind, account.email(), mail.subject());
         }
+    }
+
+    private String siteUrl() {
+        String url = properties.siteUrl();
+        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 }

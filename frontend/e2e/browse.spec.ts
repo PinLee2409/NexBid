@@ -12,5 +12,6 @@ test("a visitor finds a live lot and is asked to sign in to bid", async ({ page 
   await expect(panel).toContainText(grouped(1_000_000));
 
   await panel.getByRole("link", { name: "Sign in to bid" }).click();
-  await expect(page).toHaveURL(/\/login$/);
+  // EN: Signing in brings the visitor back to this lot. / VI: Đăng nhập xong sẽ đưa người xem quay lại lô này.
+  await expect(page).toHaveURL(new RegExp(`/login\\?redirect=%2Fauctions%2F${lot.id}$`));
 });

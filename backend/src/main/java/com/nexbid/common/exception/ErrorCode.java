@@ -86,6 +86,8 @@ public enum ErrorCode {
     PAYMENT_ALREADY_PAID(HttpStatus.CONFLICT),
     // EN: A VNPay callback whose signature or amount does not check out. / VI: Lời gọi lại từ VNPay có chữ ký hoặc số tiền không khớp.
     PAYMENT_GATEWAY_INVALID(HttpStatus.BAD_REQUEST),
+    // EN: Checkout needs somewhere to deliver to. / VI: Checkout cần có nơi giao hàng.
+    ADDRESS_REQUIRED(HttpStatus.CONFLICT),
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND),
     // EN: A step out of order, e.g. confirming receipt of an order never shipped. / VI: Sai thứ tự bước, ví dụ xác nhận đã nhận một đơn chưa gửi.
     ORDER_STATUS_INVALID(HttpStatus.CONFLICT),

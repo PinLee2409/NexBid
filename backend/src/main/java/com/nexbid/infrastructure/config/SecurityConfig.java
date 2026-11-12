@@ -93,6 +93,9 @@ public class SecurityConfig {
                         // VI: Server của VNPay và người mua quay về từ VNPay không mang token; chữ ký mới là thứ được kiểm.
                         .requestMatchers(HttpMethod.GET, "/api/payments/vnpay/ipn", "/api/payments/vnpay/return")
                         .permitAll()
+                        // EN: An email's unsubscribe link works without signing in; its token is signed.
+                        // VI: Link huỷ đăng ký trong email dùng được không cần đăng nhập; token của nó có chữ ký.
+                        .requestMatchers(HttpMethod.POST, "/api/email/unsubscribe").permitAll()
                         .requestMatchers(PUBLIC_PATHS).permitAll()
                         // EN: The frontend also hides these menus, but that is decoration —
                         //     this is the line that actually stops someone typing the URL.

@@ -137,7 +137,7 @@ class MailerIntegrationTest {
                     .render(MailKind.WELCOME, "Brevo Person", MailFacts.none());
             Instant now = Instant.now();
             tx.executeWithoutResult(status -> outbox.insert(person, "brevo@nexbid.com", "Brevo Person", MailKind.WELCOME,
-                    null, mail, "PENDING", now));
+                    null, mail, "PENDING", now, "http://localhost:3000/api/email/unsubscribe?token=abc"));
 
             // EN: Brevo is down: the row waits a minute and counts the attempt. / VI: Brevo sập: dòng chờ một phút và đếm lần thử.
             answer.set(503);
@@ -154,7 +154,9 @@ class MailerIntegrationTest {
             assertThat(keys).containsOnly("test-key");
             assertThat(received.getLast()).contains("\"email\":\"brevo@nexbid.com\"")
                     .contains("Chào mừng bạn đến với NexBid · Welcome to NexBid")
-                    .contains("\"htmlContent\"").contains("\"textContent\"");
+                    .contains("\"htmlContent\"").contains("\"textContent\"")
+                    .contains("\"List-Unsubscribe\":\"<http://localhost:3000/api/email/unsubscribe?token=abc>\"")
+                    .contains("List-Unsubscribe=One-Click");
         } finally {
             brevo.stop(0);
         }

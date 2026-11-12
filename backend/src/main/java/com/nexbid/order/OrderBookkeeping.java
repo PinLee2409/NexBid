@@ -7,6 +7,7 @@ import com.nexbid.auction.AuctionService;
 import com.nexbid.order.entity.Order;
 import com.nexbid.order.repository.OrderRepository;
 import com.nexbid.payment.PaymentEvents;
+import com.nexbid.user.AddressBook;
 
 /**
  * EN: Keeps each order in step with its payment (guide §33, spec §17). Plain listeners on purpose: they run
@@ -19,10 +20,12 @@ class OrderBookkeeping {
 
     private final OrderRepository orders;
     private final AuctionService auctions;
+    private final AddressBook addresses;
 
-    OrderBookkeeping(OrderRepository orders, AuctionService auctions) {
+    OrderBookkeeping(OrderRepository orders, AuctionService auctions, AddressBook addresses) {
         this.orders = orders;
         this.auctions = auctions;
+        this.addresses = addresses;
     }
 
     /** EN: The win opens the order, waiting on payment. / VI: Chiến thắng mở đơn hàng, chờ thanh toán. */
@@ -41,6 +44,10 @@ class OrderBookkeeping {
     void onSucceeded(PaymentEvents.Succeeded event) {
         orders.findByPaymentId(event.paymentId()).ifPresent(order -> {
             order.moveTo(OrderStatus.PAID);
+            // EN: A copy, so editing the profile later never redirects a paid parcel.
+            // VI: Một bản sao, để sửa hồ sơ sau này không bao giờ đổi hướng kiện hàng đã trả tiền.
+            addresses.addressOf(order.getBuyerId()).ifPresent(address ->
+                    order.deliverTo(address.recipient(), address.phone(), address.oneLine()));
             orders.save(order);
         });
         auctions.completeSale(event.auctionId());

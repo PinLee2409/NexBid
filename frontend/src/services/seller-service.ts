@@ -244,9 +244,17 @@ export async function listSoldOrders(): Promise<OrderEntry[]> {
   return (await api<ApiOrder[]>("/api/seller/orders")).map(toEntry);
 }
 
-/** `POST /api/seller/orders/{id}/ship` — PAID → PROCESSING. */
-export async function shipOrder(orderId: string): Promise<OrderEntry> {
-  return toEntry(await api<ApiOrder>(`/api/seller/orders/${orderId}/ship`, { method: "POST" }));
+/** `POST /api/seller/orders/{id}/ship` — PAID → PROCESSING, with the carrier and tracking number if there are any. */
+export async function shipOrder(
+  orderId: string,
+  parcel: { carrier: string; trackingNumber: string } = { carrier: "", trackingNumber: "" },
+): Promise<OrderEntry> {
+  return toEntry(
+    await api<ApiOrder>(`/api/seller/orders/${orderId}/ship`, {
+      method: "POST",
+      body: { carrier: parcel.carrier.trim() || null, trackingNumber: parcel.trackingNumber.trim() || null },
+    }),
+  );
 }
 
 /**

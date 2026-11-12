@@ -2,6 +2,7 @@ package com.nexbid.support;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 import java.net.URI;
 import java.net.URLDecoder;
@@ -46,7 +47,19 @@ public final class VnpayTestSupport {
     private VnpayTestSupport() {
     }
 
+    /** EN: Checkout needs a delivery address; tests that are not about it get a standard one. / VI: Checkout cần địa chỉ; test không liên quan thì dùng địa chỉ chuẩn. */
+    public static void saveAddress(MockMvc mockMvc, String token) throws Exception {
+        mockMvc.perform(put("/api/users/me/address")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"recipient":"Test Buyer","phone":"0901234567","line":"12 Nguyen Hue",
+                         "ward":"Ben Nghe","district":"District 1","province":"Ho Chi Minh City"}
+                        """));
+    }
+
     public static ResultActions checkout(MockMvc mockMvc, String token, String paymentId) throws Exception {
+        saveAddress(mockMvc, token);
         return mockMvc.perform(post("/api/payments/" + paymentId + "/vnpay")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"locale\":\"en\"}"));

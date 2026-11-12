@@ -47,6 +47,24 @@ public class Order {
     @Column(nullable = false, length = 20)
     private OrderStatus status = OrderStatus.PENDING_PAYMENT;
 
+    @Column(name = "ship_recipient", length = 120)
+    private String shipRecipient;
+
+    @Column(name = "ship_phone", length = 20)
+    private String shipPhone;
+
+    @Column(name = "ship_address", length = 640)
+    private String shipAddress;
+
+    @Column(length = 60)
+    private String carrier;
+
+    @Column(name = "tracking_number", length = 60)
+    private String trackingNumber;
+
+    @Column(name = "shipped_at")
+    private Instant shippedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -114,5 +132,42 @@ public class Order {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    /** EN: The buyer's address as it was when they paid. / VI: Địa chỉ người mua tại thời điểm thanh toán. */
+    public void deliverTo(String recipient, String phone, String address) {
+        this.shipRecipient = recipient;
+        this.shipPhone = phone;
+        this.shipAddress = address;
+    }
+
+    public void recordShipment(String carrier, String trackingNumber, Instant at) {
+        this.carrier = carrier;
+        this.trackingNumber = trackingNumber;
+        this.shippedAt = at;
+    }
+
+    public String getShipRecipient() {
+        return shipRecipient;
+    }
+
+    public String getShipPhone() {
+        return shipPhone;
+    }
+
+    public String getShipAddress() {
+        return shipAddress;
+    }
+
+    public String getCarrier() {
+        return carrier;
+    }
+
+    public String getTrackingNumber() {
+        return trackingNumber;
+    }
+
+    public Instant getShippedAt() {
+        return shippedAt;
     }
 }

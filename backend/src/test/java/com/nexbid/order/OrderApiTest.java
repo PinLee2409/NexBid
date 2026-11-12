@@ -3,6 +3,7 @@ package com.nexbid.order;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -291,6 +292,42 @@ class OrderApiTest {
 
         assertThat(statusIn("orders", order)).isEqualTo("COMPLETED");
         assertThat(auditOf(order)).containsExactly("ORDER_SHIPPED", "ORDER_COMPLETED");
+    }
+
+    @Test
+    void theSellerSeesWhereToSendItAndTheBuyerSeesTheTrackingNumber() throws Exception {
+        Won won = wonLot("tracked");
+        pay(won, "SUCCESS").andExpect(status().isOk());
+        String order = orderIdOf(won);
+
+        // EN: The seller reads the address the buyer had when paying. / VI: Người bán đọc địa chỉ của người mua lúc thanh toán.
+        mockMvc.perform(get("/api/seller/orders").header("Authorization", "Bearer " + won.seller()))
+                .andExpect(jsonPath("$.data[0].order.shipping.recipient").value("Test Buyer"))
+                .andExpect(jsonPath("$.data[0].order.shipping.phone").value("0901234567"))
+                .andExpect(jsonPath("$.data[0].order.shipping.address")
+                        .value("12 Nguyen Hue, Ben Nghe, District 1, Ho Chi Minh City"));
+
+        // EN: Editing the profile afterwards does not move the parcel. / VI: Sửa hồ sơ sau đó không đổi hướng kiện hàng.
+        mockMvc.perform(put("/api/users/me/address").header("Authorization", "Bearer " + won.winner())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"recipient\":\"Someone Else\",\"phone\":\"0911111111\",\"line\":\"1 Le Loi\","
+                                + "\"province\":\"Da Nang\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/seller/orders/" + order + "/ship").header("Authorization", "Bearer " + won.seller())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"carrier\":\"GHN\",\"trackingNumber\":\" GHN123456 \"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.order.carrier").value("GHN"))
+                .andExpect(jsonPath("$.data.order.trackingNumber").value("GHN123456"))
+                .andExpect(jsonPath("$.data.order.shippedAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/users/me/orders/" + order).header("Authorization", "Bearer " + won.winner()))
+                .andExpect(jsonPath("$.data.order.shipping.recipient").value("Test Buyer"))
+                .andExpect(jsonPath("$.data.order.trackingNumber").value("GHN123456"));
+        // EN: The shipped email names the carrier and the number. / VI: Email đã gửi hàng ghi đơn vị vận chuyển và mã vận đơn.
+        assertThat(jdbc.queryForObject("SELECT text FROM email_outbox WHERE kind = 'ORDER_SHIPPED' AND auction_id = ?::uuid",
+                String.class, won.auctionId())).contains("GHN · GHN123456");
     }
 
     @Test

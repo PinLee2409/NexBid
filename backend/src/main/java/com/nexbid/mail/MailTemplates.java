@@ -37,11 +37,34 @@ final class MailTemplates {
     }
 
     Rendered render(MailKind kind, String name, MailFacts facts) {
+        return render(kind, name, facts, null);
+    }
+
+    /**
+     * EN: {@code unsubscribeUrl} is set only for optional emails; it adds a one-click link to turn them off.
+     * VI: {@code unsubscribeUrl} chỉ có ở email có thể tắt; nó thêm link một chạm để tắt chúng.
+     */
+    Rendered render(MailKind kind, String name, MailFacts facts, String unsubscribeUrl) {
+        Rendered body = body(kind, name, facts);
+        String settings = siteUrl + "/profile#email";
+        String footer = "<a href=\"" + HtmlUtils.htmlEscape(settings) + "\" style=\"color:#777\">Cài đặt email · Email settings</a>"
+                + (unsubscribeUrl == null ? "" : " &nbsp;|&nbsp; <a href=\"" + HtmlUtils.htmlEscape(unsubscribeUrl)
+                        + "\" style=\"color:#777\">Tắt email bị vượt giá · Turn off outbid emails</a>");
+        String text = body.text() + "\nCài đặt email · Email settings: " + settings + "\n"
+                + (unsubscribeUrl == null ? "" : "Tắt email bị vượt giá · Turn off outbid emails: " + unsubscribeUrl + "\n");
+        return new Rendered(body.subject(), body.html().replace(FOOTER_SLOT, footer), text);
+    }
+
+    private static final String FOOTER_SLOT = "<!--footer-links-->";
+
+    private Rendered body(MailKind kind, String name, MailFacts facts) {
         String lot = facts.lotTitle() == null ? "" : facts.lotTitle();
         String vnd = facts.amount() == null ? "" : money(facts.amount(), Locale.forLanguageTag("vi-VN"));
         String vndEn = facts.amount() == null ? "" : money(facts.amount(), Locale.US);
         String until = facts.until() == null ? "" : WHEN.format(facts.until()) + " (GMT+7)";
         String reason = facts.reason() == null ? "" : facts.reason();
+        String trackingVi = facts.tracking() == null ? "" : "<br>Vận chuyển: <b>" + facts.tracking() + "</b>";
+        String trackingEn = facts.tracking() == null ? "" : "<br>Shipping: <b>" + facts.tracking() + "</b>";
         String lotLink = facts.auctionId() == null ? siteUrl : siteUrl + "/auctions/" + facts.auctionId();
 
         return switch (kind) {
@@ -128,10 +151,10 @@ final class MailTemplates {
             case ORDER_SHIPPED -> build("Đơn hàng đã được gửi: " + lot, "Your order has shipped: " + lot,
                     siteUrl + "/orders",
                     new Half("Hàng đang trên đường tới",
-                            "Người bán đã gửi <b>" + lot + "</b>. Khi nhận được hàng, hãy xác nhận và đánh giá người bán.",
+                            "Người bán đã gửi <b>" + lot + "</b>. Khi nhận được hàng, hãy xác nhận và đánh giá người bán." + trackingVi,
                             "Xem đơn hàng"),
                     new Half("It's on its way",
-                            "The seller has shipped <b>" + lot + "</b>. Once it arrives, confirm receipt and rate the seller.",
+                            "The seller has shipped <b>" + lot + "</b>. Once it arrives, confirm receipt and rate the seller." + trackingEn,
                             "View order"));
         };
     }
@@ -155,9 +178,10 @@ final class MailTemplates {
                    padding:12px 22px;font-weight:bold">%s · %s</a></td></tr>
                 <tr><td style="padding:16px 28px;font-size:12px;color:#777;border-top:1px solid #e2e2de">
                 Email tự động từ NexBid, vui lòng không trả lời. · An automatic email from NexBid; please do not reply.
+                <br>%s
                 </td></tr>
                 </table></td></tr></table></body></html>
-                """.formatted(section(vi), section(en), HtmlUtils.htmlEscape(link), vi.button(), en.button());
+                """.formatted(section(vi), section(en), HtmlUtils.htmlEscape(link), vi.button(), en.button(), FOOTER_SLOT);
         String text = strip(vi.heading()) + "\n\n" + strip(vi.body()) + "\n\n"
                 + "----\n\n"
                 + strip(en.heading()) + "\n\n" + strip(en.body()) + "\n\n"
@@ -189,7 +213,8 @@ final class MailTemplates {
         return new MailFacts(facts.auctionId(),
                 facts.lotTitle() == null ? null : HtmlUtils.htmlEscape(facts.lotTitle()),
                 facts.amount(), facts.until(),
-                facts.reason() == null ? null : HtmlUtils.htmlEscape(facts.reason()));
+                facts.reason() == null ? null : HtmlUtils.htmlEscape(facts.reason()),
+                facts.tracking() == null ? null : HtmlUtils.htmlEscape(facts.tracking()));
     }
 
 }

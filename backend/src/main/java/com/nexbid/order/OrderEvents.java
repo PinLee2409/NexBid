@@ -13,7 +13,7 @@ public final class OrderEvents {
     }
 
     /** EN: The seller shipped it: PAID → PROCESSING. / VI: Người bán đã gửi hàng: PAID → PROCESSING. */
-    public record Shipped(UUID orderId, UUID actorId, UUID buyerId, UUID auctionId) {
+    public record Shipped(UUID orderId, UUID actorId, UUID buyerId, UUID auctionId, String carrier, String trackingNumber) {
     }
 
     /** EN: The buyer received it: PROCESSING → COMPLETED. / VI: Người mua đã nhận hàng: PROCESSING → COMPLETED. */

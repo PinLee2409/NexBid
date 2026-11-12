@@ -32,8 +32,20 @@ public class SellerOrderController {
         return ApiResponse.of(orders.listForSeller(me.id()));
     }
 
+    /** EN: Both optional; a parcel handed over in person has neither. / VI: Cả hai đều tuỳ chọn; giao tận tay thì không có. */
+    public record ShipRequest(
+            @jakarta.validation.constraints.Size(max = 60, message = "Carrier must be at most 60 characters") String carrier,
+            @jakarta.validation.constraints.Size(max = 60, message = "Tracking number must be at most 60 characters")
+            String trackingNumber) {
+    }
+
     @PostMapping("/{id}/ship")
-    public ApiResponse<OrderView> ship(@AuthenticationPrincipal CurrentUser me, @PathVariable UUID id) {
-        return ApiResponse.of(orders.ship(me.id(), id), "Order marked as shipped");
+    public ApiResponse<OrderView> ship(
+            @AuthenticationPrincipal CurrentUser me,
+            @PathVariable UUID id,
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody(required = false) ShipRequest request) {
+        return ApiResponse.of(orders.ship(me.id(), id,
+                request == null ? null : request.carrier(),
+                request == null ? null : request.trackingNumber()), "Order marked as shipped");
     }
 }
