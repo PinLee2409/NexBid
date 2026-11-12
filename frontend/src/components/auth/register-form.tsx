@@ -11,6 +11,7 @@ import { FormField } from "@/components/common/form-field";
 import { useAuthErrorMessage } from "@/hooks/use-labels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { landingFor, useReturnPath, withReturnPath } from "@/components/auth/use-return-path";
 import { signUp } from "@/services/session-service";
 
 interface FieldErrors {
@@ -28,6 +29,7 @@ export function RegisterForm() {
   const authErrorMessage = useAuthErrorMessage();
   const tc = useTranslations("common");
   const router = useRouter();
+  const returnPath = useReturnPath();
 
   const [values, setValues] = useState({
     fullName: "",
@@ -88,7 +90,7 @@ export function RegisterForm() {
       toast.success(t("accountCreated"), {
         description: t("accountCreatedBody", { name: result.user.fullName }),
       });
-      router.push("/");
+      router.replace(landingFor(result.user, returnPath));
     });
   }
 
@@ -182,7 +184,7 @@ export function RegisterForm() {
       <p className="text-muted-foreground mt-6 text-center text-sm">
         {t("haveAccount")}{" "}
         <Link
-          href="/login"
+          href={withReturnPath("/login", returnPath)}
           className="text-foreground font-medium underline underline-offset-4"
         >
           {tc("signIn")}

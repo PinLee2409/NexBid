@@ -1,9 +1,10 @@
 "use client";
 
 import { AnimatePresence, m } from "framer-motion";
-import { Check, Eye, Gavel, Loader2 } from "lucide-react";
+import { Check, Eye, Gavel, Loader2, ShoppingBag } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -11,25 +12,32 @@ import { AutoBidDialog } from "@/components/auction/auto-bid-dialog";
 import { AuctionClock } from "@/components/nexbid/auction-clock";
 import { BidConfirmLayer } from "@/components/nexbid/bid-confirm-layer";
 import { LiveTag } from "@/components/nexbid/live-pulse";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { formatLot } from "@/components/nexbid/lot-number";
 import { AuctionPriceTicker, PriceDelta } from "@/components/nexbid/price-ticker";
 import type { AuctionRoom } from "@/hooks/use-auction-room";
-import { useBidRejectionMessage } from "@/hooks/use-labels";
+import { useApiErrorMessage, useBidRejectionMessage } from "@/hooks/use-labels";
 import {
   getMinimumNextBid,
+  isBelowReserve,
   validateBid,
   type BidRejection,
 } from "@/lib/auction-rules";
-import {
-  CURRENCY,
-  formatCompactNumber,
-  formatCurrency,
-  parseCurrencyInput,
-} from "@/lib/format";
+import { CURRENCY, parseCurrencyInput } from "@/lib/format";
+import { loginHref } from "@/lib/redirect";
 import { cn } from "@/lib/utils";
-import { placeBid } from "@/services/bid-service";
+import { buyNow, placeBid } from "@/services/bid-service";
 import { toggleWatch, useIsWatched } from "@/services/watchlist-service";
 import type { AuctionDetail, User } from "@/types";
+import { useMoney } from "@/hooks/use-money";
 
 interface BidTerminalProps {
   auction: AuctionDetail;
@@ -54,8 +62,10 @@ export function BidTerminal({
   serverTime,
   className,
 }: BidTerminalProps) {
+  const money = useMoney();
   const t = useTranslations("terminal");
   const ts = useTranslations("stage");
+  const pathname = usePathname();
   const rejectionMessage = useBidRejectionMessage();
 
   const liveAuction = {
@@ -133,7 +143,7 @@ export function BidTerminal({
       room.dismissOutbid();
       room.refreshViewer();
       toast.success(t("bidAccepted"), {
-        description: formatCurrency(amount),
+        description: money.currency(amount),
       });
     });
   }
@@ -147,6 +157,9 @@ export function BidTerminal({
 
   const canBid = validation.ok && !room.ended;
   const isOpen = room.status === "ACTIVE" && !room.ended;
+  const belowReserve = isBelowReserve(room);
+  // EN: Offered until the first bid, to anyone signed in but the seller. / VI: Có tới lượt trả giá đầu tiên, cho mọi người đã đăng nhập trừ người bán.
+  const buyNowOpen = isOpen && room.bidCount === 0 && auction.buyNowPrice !== null && user !== null && !isSeller;
 
   return (
     <section
@@ -170,7 +183,7 @@ export function BidTerminal({
           />
         ) : (
           <span className="label-sm text-dim">
-            {room.ended ? t("soldFor") : "—"}
+            {room.ended ? (belowReserve ? t("reserveNotMet") : t("soldFor")) : "—"}
           </span>
         )}
       </div>
@@ -188,7 +201,7 @@ export function BidTerminal({
           <StateBand key="accepted" tone="accent">
             <p className="label">{t("bidAccepted")}</p>
             <p className="display mt-2 text-3xl">
-              {formatCurrency(room.currentPrice)}
+              {money.currency(room.currentPrice)}
             </p>
             <p className="label mt-2 opacity-80">{t("youreLeading")}</p>
           </StateBand>
@@ -201,13 +214,13 @@ export function BidTerminal({
                   {t("outbidCurrent")}
                 </span>
                 <span className="figure text-lg">
-                  {formatCurrency(room.currentPrice)}
+                  {money.currency(room.currentPrice)}
                 </span>
               </span>
               <span>
                 <span className="label-sm block opacity-70">{t("outbidNext")}</span>
                 <span className="figure text-lg">
-                  {formatCurrency(minimumNextBid)}
+                  {money.currency(minimumNextBid)}
                 </span>
               </span>
             </div>
@@ -222,7 +235,7 @@ export function BidTerminal({
       {/* Price */}
       <div className="border-line border-b py-6">
         <p className="text-muted-foreground text-sm">
-          {room.ended && room.bidCount > 0 ? t("soldFor") : t("currentBid")}
+          {room.ended && room.bidCount > 0 ? (belowReserve ? t("highestBid") : t("soldFor")) : t("currentBid")}
         </p>
         <AuctionPriceTicker
           amount={room.currentPrice}
@@ -238,6 +251,19 @@ export function BidTerminal({
         <p className="text-muted-foreground mt-3 text-sm">
           {t("bids", { count: room.bidCount })}
         </p>
+        {auction.hasReserve && !room.ended ? (
+          // EN: The amount stays hidden; only whether it is met is shown. / VI: Con số vẫn giấu; chỉ hiện đã đạt hay chưa.
+          <p className={cn("label-sm mt-2", room.reserveMet ? "text-success" : "text-warning")}>
+            {room.reserveMet ? t("reserveMet") : t("reserveNotMet")}
+          </p>
+        ) : null}
+        {belowReserve ? (
+          <p className="text-muted-foreground mt-3 text-sm">
+            {room.reserveDecision === "DECLINED" || room.reserveDecision === "LAPSED"
+              ? t("notSold")
+              : t("belowReserveNotice")}
+          </p>
+        ) : null}
       </div>
 
       {/* Clock */}
@@ -269,7 +295,7 @@ export function BidTerminal({
               <span className="text-dim text-xs">
                 {t("minimum")}{" "}
                 <span className="text-foreground figure font-medium">
-                  {formatCurrency(minimumNextBid)}
+                  {money.currency(minimumNextBid)}
                 </span>
               </span>
             </div>
@@ -328,7 +354,7 @@ export function BidTerminal({
 
           {contextBlock?.code === "NOT_AUTHENTICATED" ? (
             <Link
-              href="/login"
+              href={loginHref(pathname)}
               className="label bg-signal text-signal-ink hover:bg-foreground block w-full py-6 text-center transition-colors"
             >
               {t("signInToBid")}
@@ -365,6 +391,15 @@ export function BidTerminal({
               )}
             </button>
           )}
+
+          {buyNowOpen ? (
+            <BuyNowAction
+              auctionId={auction.id}
+              name={auction.product.name}
+              price={auction.buyNowPrice!}
+              onBought={room.refreshViewer}
+            />
+          ) : null}
 
           <p className="text-dim border-line border-b py-4 text-center text-xs">
             {t("binding")}
@@ -408,7 +443,7 @@ export function BidTerminal({
             <span className="label-sm text-dim mb-1.5 block">{t("activity")}</span>
             <span className="mono-figure inline-flex items-center gap-1.5 text-lg">
               <Eye className="size-3.5" aria-hidden="true" />
-              {formatCompactNumber(room.viewerCount)}
+              {money.compactNumber(room.viewerCount)}
             </span>
           </span>
         ) : null}
@@ -432,6 +467,77 @@ export function BidTerminal({
         onCancel={() => setConfirmOpen(false)}
       />
     </section>
+  );
+}
+
+/**
+ * EN: Buy-now: a confirmed purchase at the fixed price. The socket then closes the lot for everyone on the page.
+ * VI: Mua ngay: một lần mua đã xác nhận ở giá cố định. Sau đó socket đóng lô cho mọi người đang xem trang.
+ */
+function BuyNowAction({
+  auctionId,
+  name,
+  price,
+  onBought,
+}: {
+  auctionId: string;
+  name: string;
+  price: number;
+  onBought: () => void;
+}) {
+  const money = useMoney();
+  const t = useTranslations("terminal");
+  const tc = useTranslations("common");
+  const errorMessage = useApiErrorMessage();
+  const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const amount = money.currency(price);
+
+  function confirm() {
+    startTransition(async () => {
+      try {
+        await buyNow(auctionId);
+      } catch (error) {
+        setOpen(false);
+        toast.error(errorMessage(error));
+        return;
+      }
+      setOpen(false);
+      onBought();
+      toast.success(t("bought"), { description: t("boughtBody") });
+    });
+  }
+
+  return (
+    <div className="border-line border-b py-4">
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="label border-foreground hover:bg-foreground hover:text-background inline-flex w-full items-center justify-center gap-2 border py-4 transition-colors"
+      >
+        <ShoppingBag className="size-4" />
+        {t("buyNow", { price: amount })}
+      </button>
+      <p className="text-dim mt-2 text-center text-xs">{t("buyNowHint")}</p>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("buyNowTitle", { name })}</DialogTitle>
+            <DialogDescription>{t("buyNowBody", { price: amount })}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
+              {tc("cancel")}
+            </Button>
+            <Button onClick={confirm} disabled={isPending}>
+              {isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+              {t("buyNowConfirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 

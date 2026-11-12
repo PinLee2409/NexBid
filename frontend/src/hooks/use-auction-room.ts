@@ -4,7 +4,7 @@ import { useCallback, useEffect, useReducer, useRef } from "react";
 
 import { getAutoBid, listBids } from "@/services/bid-service";
 import { subscribeToAuction } from "@/services/realtime-service";
-import type { AuctionDetail, AuctionEvent, AuctionStatus, AutoBid, Bid } from "@/types";
+import type { AuctionDetail, AuctionEvent, AuctionStatus, AutoBid, Bid, ReserveDecision } from "@/types";
 
 /**
  * Live state for one auction.
@@ -34,6 +34,9 @@ interface AuctionRoomState {
   /** Bid ids that arrived after mount, so only those animate in. */
   freshBidIds: string[];
   ended: boolean;
+  /** EN: Null without a reserve; follows every bid. / VI: Null nếu không có giá sàn; cập nhật theo từng lượt trả giá. */
+  reserveMet: boolean | null;
+  reserveDecision: ReserveDecision | null;
 }
 
 type RoomAction =
@@ -56,6 +59,7 @@ function reducer(state: AuctionRoomState, action: RoomAction): AuctionRoomState 
             bidCount: event.totalBids,
             bids: [event.bid, ...state.bids],
             freshBidIds: [event.bid.id, ...state.freshBidIds].slice(0, 6),
+            reserveMet: event.reserveMet ?? state.reserveMet,
           };
 
         case "AUCTION_EXTENDED": {
@@ -72,7 +76,14 @@ function reducer(state: AuctionRoomState, action: RoomAction): AuctionRoomState 
           return { ...state, viewerCount: event.viewerCount };
 
         case "AUCTION_ENDED":
-          return { ...state, ended: true, status: "ENDED" };
+          // EN: A buy-now close moves the end time to the moment of purchase. / VI: Mua ngay dời giờ đóng về đúng lúc mua.
+          return {
+            ...state,
+            ended: true,
+            status: "ENDED",
+            endTime: event.endTime,
+            reserveDecision: !event.sold && state.bidCount > 0 ? "PENDING" : state.reserveDecision,
+          };
 
         default:
           return state;
@@ -124,6 +135,8 @@ function initialState(auction: AuctionDetail): AuctionRoomState {
     autoBid: null,
     lastExtensionSeconds: null,
     freshBidIds: [],
+    reserveMet: auction.reserveMet,
+    reserveDecision: auction.reserveDecision,
     ended:
       auction.status === "ENDED" ||
       auction.status === "COMPLETED" ||

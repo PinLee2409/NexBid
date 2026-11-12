@@ -11,9 +11,9 @@ import { formatLot } from "@/components/nexbid/lot-number";
 import { SectionHead } from "@/components/nexbid/section-head";
 import { AUCTION_CONFIG } from "@/constants/auction";
 import { getMsRemaining } from "@/lib/auction-rules";
-import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { AuctionSummary } from "@/types";
+import { useMoney } from "@/hooks/use-money";
 
 interface ClosingSectionProps {
   auctions: AuctionSummary[];
@@ -75,6 +75,7 @@ function ClosingRow({
   now: number;
   prominent: boolean;
 }) {
+  const money = useMoney();
   const t = useTranslations("closing");
   const ts = useTranslations("stage");
 
@@ -124,7 +125,7 @@ function ClosingRow({
           </span>
           <span className="mt-2 flex items-center gap-3">
             <span className="figure text-muted-foreground text-sm">
-              {formatCurrency(auction.currentPrice)}
+              {money.currency(auction.currentPrice)}
             </span>
             <span className="text-dim text-xs">·</span>
             <span className="mono-figure text-dim inline-flex items-center gap-1.5 text-xs">

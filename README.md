@@ -104,6 +104,7 @@ erDiagram
     auctions ||--o{ payments : "paid by"
     auctions ||--o| second_chance_offers : "offered again"
     payments ||--|| orders : settles
+    orders ||--o| seller_reviews : "rated in"
 
     users {
         uuid id PK "email, full_name, status"
@@ -112,7 +113,7 @@ erDiagram
         uuid id PK "seller_id, category_id, status"
     }
     auctions {
-        uuid id PK "status, current_price, start/end, winner_id, version"
+        uuid id PK "status, current_price, start/end, winner_id, reserve_price, buy_now_price, version"
     }
     bids {
         uuid id PK "auction_id, bidder_id, amount — unique per lot"
@@ -132,12 +133,15 @@ erDiagram
     second_chance_offers {
         uuid id PK "buyer_id, amount, status, expires_at — one per lot"
     }
+    seller_reviews {
+        uuid id PK "seller_id, rating 1-5, comment — one per order"
+    }
 ```
 
 Supporting tables without foreign keys on purpose: `audit_logs` (history must outlive the account),
 `outbox_events` and `consumed_events` (Kafka delivery). A lot has at most one payment and one order alive at a
 time; a second-chance sale adds another once the first has lapsed. The schema is in Flyway migrations
-[`V1`–`V21`](backend/src/main/resources/db/migration).
+[`V1`–`V23`](backend/src/main/resources/db/migration).
 
 ---
 
@@ -153,6 +157,8 @@ stateDiagram-v2
     SCHEDULED --> ACTIVE: scheduler, at start time
     ACTIVE --> ACTIVE: anti-sniping on — a late bid pushes the close back
     ACTIVE --> ENDED: scheduler, at end time — top bidder wins
+    ACTIVE --> ENDED: buy-now, before the first bid
+    ACTIVE --> ENDED: below the reserve — the seller has 24 h to sell anyway
     ENDED --> COMPLETED: winner pays within 48 h
     ENDED --> CANCELLED: payment window runs out
     CANCELLED --> ENDED: runner-up accepts a second-chance offer
@@ -160,8 +166,8 @@ stateDiagram-v2
 
 A scheduler opens and closes lots every few seconds, in batches, under the same row lock that bids take,
 so a bid in flight at the closing second either lands before the close or is refused — never after. The
-close opens a 48-hour payment for the winner (mock: `SUCCESS` or `FAILED`) together with a pending order,
-and paying completes the sale. A seller can turn on anti-sniping per lot: a bid in the final seconds pushes
+close opens a 48-hour payment for the winner together with a pending order, and paying through VNPay
+completes the sale. A seller can turn on anti-sniping per lot: a bid in the final seconds pushes
 the close back. A lot with no bids ends with no winner and its product is free to be auctioned again.
 
 **Second chance** (spec §17). When a winner lets the payment lapse, the seller may offer the lot once to the
@@ -170,10 +176,22 @@ runner-up has 24 hours: accepting closes the lot again in their name and opens t
 order; declining, or not answering, gives the product back to the seller. Bidders stay anonymous to the
 seller throughout.
 
+**Reserve and buy-now** (beyond the spec). A seller may set a hidden reserve and a buy-now price. Bidders see
+only whether the reserve has been met — live, with every bid — never the amount. A lot that closes below it has no
+winner yet: the seller has 24 hours to sell to the highest bidder at their bid anyway, and after a refusal or
+silence the product is theirs to list again. An auto bid whose ceiling covers the reserve lifts itself to it, so a
+bidder willing to pay the reserve never loses the lot at the starting price. Buy-now ends the lot at once at the
+fixed price, until the first bid; the purchase is recorded as a bid, under the same lock, so the closing bell and
+a buyer can never both win.
+
 **Becoming a seller** (spec §7.1). Every account starts as a buyer. A buyer asks to sell with a short note on
 what they will list; an admin approves or rejects it with a reason, and a rejected buyer may ask again. The
 role travels inside the access token, so the approval notice makes the open page renew its token at once —
 the seller tools work without signing in again.
+
+**Reviews** (beyond the spec). Once the buyer confirms the goods arrived, they rate the seller once: 1 to 5 stars
+and an optional short comment. Every lot of that seller shows the average, the number of reviews and sales, and
+the latest three, under the buyers' public handles.
 
 ---
 
@@ -335,9 +353,10 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | --- | --- |
 | Auth | `POST /api/auth/register`, `POST /api/auth/login` (JWT for 15 minutes + refresh cookie), `POST /api/auth/refresh`, `POST /api/auth/logout` |
 | Catalogue | `GET /api/auctions`, `GET /api/auctions/{id}`, `GET /api/categories`, `GET /api/server-time` — public |
-| Bidding | `POST /api/auctions/{id}/bids`, `GET /api/auctions/{id}/bids`, `/api/auctions/{id}/auto-bid` |
-| Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders` (`…/{id}/received`), `…/me/watchlist`, `…/me/offers` (`…/{id}/accept`, `…/{id}/decline`), `…/me/seller-application`, `/api/notifications` |
-| Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions`, `/api/seller/auctions/{id}/second-chance`, `/api/seller/second-chances`, `/api/seller/orders` (`…/{id}/ship`) |
+| Bidding | `POST /api/auctions/{id}/bids`, `GET /api/auctions/{id}/bids`, `/api/auctions/{id}/auto-bid`, `POST /api/auctions/{id}/buy-now` |
+| Payment | `POST /api/payments/{id}/vnpay` (signed VNPay checkout link), `GET /api/payments/vnpay/ipn` and `GET /api/payments/vnpay/return` (VNPay's callbacks, public, checked by signature) |
+| Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders` (`…/{id}/received`), `…/me/watchlist`, `…/me/offers` (`…/{id}/accept`, `…/{id}/decline`), `…/me/orders/{id}/review`, `…/me/seller-application`, `/api/notifications`, `GET /api/sellers/{id}/reviews` (public) |
+| Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions`, `/api/seller/auctions/{id}/second-chance`, `/api/seller/auctions/{id}/reserve-decision`, `/api/seller/second-chances`, `/api/seller/orders` (`…/{id}/ship`) |
 | Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users`, `/api/admin/users/{id}/block`, `/api/admin/seller-applications` (`…/{id}/approve`, `…/{id}/reject`), `/api/admin/orders` (`…/{id}/refund`), `/api/admin/analytics`, `/api/admin/audit-logs` |
 | Realtime | STOMP at `/ws`: `/topic/auctions/{id}` for everyone, `/user/queue/notifications` for the signed-in user |
 
@@ -421,6 +440,11 @@ watchlist and own listings) or **admin@nexbid.test** (approvals, users, audit lo
 `atelier@`, `vault@` and `lumen@nexbid.test`; `alex@`, `john@`, `mika@`, `sara@` and `dmitri@` bid
 against you.
 
+For a fuller catalogue, run [`docs/demo/enrich.mjs`](docs/demo/enrich.mjs) afterwards (same `STACK=docker`
+switch). It adds four sellers, six bidders and about thirty more lots in every category. Most stay live for days;
+a few close, get paid, ship and are reviewed, so seller pages show ratings. It also creates the admin account
+**admin@gmail.com** / `admin123`. It can be run again: existing accounts and lots are left alone.
+
 To start over, stop the backend, wipe the dev services and uploaded photos, start the backend again (Flyway
 recreates the schema), then seed:
 
@@ -431,6 +455,46 @@ docker compose -f docker/compose.yaml down -v && docker compose -f docker/compos
 ```bash
 rm -f backend/var/images/*
 ```
+
+### Payments and email
+
+**VNPay.** The winner pays on VNPay's page. The backend signs the checkout link and verifies VNPay's reply, which arrives
+twice: server to server on `/api/payments/vnpay/ipn`, and through the buyer's browser on `/payments/vnpay-return`.
+Either one settles the payment, exactly once, because the attempt row is locked and confirming is idempotent. Register
+a sandbox merchant at [sandbox.vnpayment.vn](https://sandbox.vnpayment.vn/devreg/), then set:
+
+| Variable | Value |
+| --- | --- |
+| `NEXBID_VNPAY_TMN_CODE` | the merchant's terminal code |
+| `NEXBID_VNPAY_HASH_SECRET` | the merchant's hash secret |
+| `NEXBID_VNPAY_RETURN_URL` | `http://localhost:3000/payments/vnpay-return` (default) |
+| `NEXBID_VNPAY_PAY_URL` | the sandbox URL (default); the production URL when going live |
+
+VNPay's servers cannot reach localhost, so locally only the browser return confirms the payment. To receive the IPN,
+expose the backend with a tunnel (for example `ngrok http 8080`) and set the IPN URL in the VNPay merchant portal
+to `https://<tunnel>/api/payments/vnpay/ipn`. The `prod` profile refuses to start with the placeholder keys.
+
+**Brevo.** Important events are emailed through Brevo's transactional API, in Vietnamese and English in one message:
+
+- welcome
+- lot won (with a link to pay)
+- payment reminder, receipt and expiry
+- sale cancelled (to the seller)
+- second-chance offer
+- seller request approved or rejected
+- order shipped
+- outbid: at most one email per person per lot every 30 minutes, but every time in a lot's final 15 minutes
+
+Emails are written to `email_outbox` in the same transaction as their event and sent by a background job with
+retries. Set `NEXBID_BREVO_API_KEY` and a sender address verified in Brevo (`NEXBID_MAIL_SENDER_EMAIL`,
+`NEXBID_MAIL_SENDER_NAME`), plus `NEXBID_SITE_URL` for the links. Without a key nothing is sent: each email is
+logged and kept as `SKIPPED`.
+
+With Docker, put the keys in a `.env` file next to `docker-compose.yml` (it is not committed); the compose file
+passes them through.
+
+The demo scripts pay by sending a signed IPN themselves, so they need the backend's hash secret: they read
+`NEXBID_VNPAY_HASH_SECRET` and fall back to the local placeholder.
 
 ### Monitoring
 
@@ -515,8 +579,8 @@ on unused files, exports and dependencies.
 
 | | Lines | Branches | Measured on |
 | --- | --- | --- | --- |
-| Backend (JaCoCo) | 95.1% | 80.7% | everything, across 241 classes |
-| Frontend unit (Vitest) | 97.2% | 88.1% | the logic layer: `src/lib`, `src/services/api` |
+| Backend (JaCoCo) | 95.4% | 81.8% | everything, across 255 classes |
+| Frontend unit (Vitest) | 97.3% | 89.3% | the logic layer: `src/lib`, `src/services/api` |
 
 Frontend components and the thin service wrappers around `fetch` are covered by the end-to-end suite rather
 than unit tests. Each figure has a floor a little below it (backend 90% / 75%, frontend 90% / 80%), so a real
@@ -533,6 +597,8 @@ drop fails CI; every run also posts its figures on the run's page and keeps the 
 - an admin approving a lot;
 - a buyer asking to sell, an admin approving it, and the seller tools opening without signing in again;
 - a winner who never pays, and the runner-up buying the lot through a second-chance offer;
+- buying a lot outright, and a lot ending below its reserve that the seller sells anyway;
+- a buyer rating the seller, and the review appearing on the seller's other lots;
 - times shown in the reader's own time zone;
 - every page, for every role, checked with [axe](https://github.com/dequelabs/axe-core) against WCAG 2.1 AA in
   both themes;

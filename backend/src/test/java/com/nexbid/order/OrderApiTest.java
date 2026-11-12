@@ -24,6 +24,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import com.nexbid.auction.AuctionService;
 import com.nexbid.payment.PaymentService;
 import com.nexbid.support.TestInfrastructure;
+import com.nexbid.support.VnpayTestSupport;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserService;
 
@@ -126,9 +127,7 @@ class OrderApiTest {
     }
 
     private ResultActions pay(Won won, String outcome) throws Exception {
-        return mockMvc.perform(post("/api/payments/" + won.paymentId() + "/pay")
-                .header("Authorization", "Bearer " + won.winner())
-                .contentType(MediaType.APPLICATION_JSON).content("{\"outcome\":\"" + outcome + "\"}"));
+        return VnpayTestSupport.pay(mockMvc, won.winner(), String.valueOf(won.paymentId()), outcome);
     }
 
     private String statusIn(String table, String id) {

@@ -1,14 +1,16 @@
 "use client";
 
-import { CreditCard, Loader2, PackageCheck, Receipt } from "lucide-react";
+import { Loader2, PackageCheck, Receipt, Star } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { ApiErrorState } from "@/components/common/api-error-state";
 import { EmptyState } from "@/components/common/empty-state";
+import { FormField } from "@/components/common/form-field";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { OrderRow } from "@/components/common/order-row";
+import { StarInput, StarRating } from "@/components/common/star-rating";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,18 +21,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage } from "@/hooks/use-labels";
-import { formatCurrency } from "@/lib/format";
-import { confirmReceipt, listOrders, type OrderEntry } from "@/services/order-service";
-import { payPayment } from "@/services/payment-service";
+import { confirmReceipt, listOrders, reviewOrder, type OrderEntry } from "@/services/order-service";
+import { PayWithVnpay } from "@/components/payment/pay-with-vnpay";
 
 export default function OrdersPage() {
   const t = useTranslations("account");
   const tc = useTranslations("common");
 
   const { state, refresh } = useAsyncData("orders", listOrders);
-  const [payingFor, setPayingFor] = useState<OrderEntry | null>(null);
+  // EN: Kept after closing, so the dialog keeps its words while it fades. / VI: Giữ sau khi đóng, để hộp thoại giữ chữ khi mờ dần.
+  const [reviewing, setReviewing] = useState<OrderEntry | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   return (
     <>
@@ -61,8 +65,11 @@ export default function OrdersPage() {
                 action={
                   <OrderActions
                     entry={entry}
-                    onPay={() => setPayingFor(entry)}
                     onReceived={refresh}
+                    onReview={() => {
+                      setReviewing(entry);
+                      setReviewOpen(true);
+                    }}
                   />
                 }
               />
@@ -71,10 +78,12 @@ export default function OrdersPage() {
         )}
       </div>
 
-      <PaymentDialog
-        entry={payingFor}
-        onClose={() => setPayingFor(null)}
-        onSettled={refresh}
+      <ReviewDialog
+        key={reviewing?.order.id}
+        entry={reviewing}
+        open={reviewOpen}
+        onClose={() => setReviewOpen(false)}
+        onPosted={refresh}
       />
     </>
   );
@@ -82,12 +91,12 @@ export default function OrdersPage() {
 
 function OrderActions({
   entry,
-  onPay,
   onReceived,
+  onReview,
 }: {
   entry: OrderEntry;
-  onPay: () => void;
   onReceived: () => void;
+  onReview: () => void;
 }) {
   const t = useTranslations("account");
   const errorMessage = useApiErrorMessage();
@@ -97,13 +106,24 @@ function OrderActions({
 
   if (needsPayment) {
     return (
-      <Button size="sm" onClick={onPay}>
-        <CreditCard className="size-4" />
-        {t("payNow")}
-      </Button>
+      <PayWithVnpay paymentId={entry.payment!.id} className="h-9 px-4" />
     );
   }
 
+  if (entry.order.status === "COMPLETED") {
+    // EN: The sale is over; what is left is the buyer's verdict. / VI: Giao dịch đã xong; còn lại là nhận định của người mua.
+    return entry.review ? (
+      <div className="shrink-0">
+        <p className="label-sm text-dim mb-1">{t("yourReview")}</p>
+        <StarRating rating={entry.review.rating} />
+      </div>
+    ) : (
+      <Button size="sm" variant="outline" onClick={onReview}>
+        <Star className="size-4" />
+        {t("rateSeller")}
+      </Button>
+    );
+  }
   if (entry.order.status !== "PROCESSING") return null;
 
   // EN: The seller has shipped; only the buyer can say it arrived. / VI: Người bán đã gửi; chỉ người mua mới xác nhận được là đã nhận.
@@ -128,83 +148,94 @@ function OrderActions({
   );
 }
 
-function PaymentDialog({
+/**
+ * EN: One to five stars and an optional comment, posted once.
+ * VI: Một tới năm sao và một nhận xét tuỳ chọn, gửi một lần.
+ */
+function ReviewDialog({
   entry,
+  open,
   onClose,
-  onSettled,
+  onPosted,
 }: {
   entry: OrderEntry | null;
+  open: boolean;
   onClose: () => void;
-  onSettled: () => void;
+  onPosted: () => void;
 }) {
   const t = useTranslations("account");
   const tc = useTranslations("common");
+  const errorMessage = useApiErrorMessage();
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  function settle(outcome: "SUCCESS" | "FAILED") {
-    if (!entry?.payment) return;
-
+  function post() {
+    if (!entry) return;
+    if (rating === 0) {
+      setError(t("reviewStarsRequired"));
+      return;
+    }
     startTransition(async () => {
-      const result = await payPayment(entry.payment!.id, outcome);
-      onClose();
-      onSettled();
-
-      if (result.ok) {
-        toast.success(t("paymentSucceeded"), {
-          description: t("paymentSucceededBody"),
-        });
-      } else {
-        toast.error(t("paymentFailed"), { description: t("paymentFailedBody") });
+      try {
+        await reviewOrder(entry.order.id, rating, comment);
+      } catch (failure) {
+        setError(errorMessage(failure));
+        return;
       }
+      onClose();
+      onPosted();
+      toast.success(t("reviewPosted"), { description: t("reviewPostedBody") });
     });
   }
 
   return (
-    <Dialog open={entry !== null} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t("payTitle")}</DialogTitle>
-          <DialogDescription>{t("payBody")}</DialogDescription>
+          <DialogTitle>{t("reviewTitle")}</DialogTitle>
+          <DialogDescription>{t("reviewBody", { name: entry?.auction?.product.name ?? "" })}</DialogDescription>
         </DialogHeader>
 
-        {entry ? (
-          <div className="border-line flex items-center justify-between border-y px-4 py-4">
-            <span className="text-muted-foreground text-sm">
-              {t("orderTotal")}
-            </span>
-            <span className="figure text-2xl">
-              {formatCurrency(entry.order.amount)}
-            </span>
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <p id="review-stars-label" className="label-sm text-dim">
+              {t("reviewStars")}
+            </p>
+            <StarInput
+              name="review-stars"
+              value={rating}
+              labelledBy="review-stars-label"
+              onChange={(value) => {
+                setRating(value);
+                setError(null);
+              }}
+            />
           </div>
-        ) : null}
+          <FormField label={t("reviewComment")} hint={t("reviewCommentHint")}>
+            {(field) => (
+              <Textarea {...field} rows={3} maxLength={500} value={comment} onChange={(event) => setComment(event.target.value)} />
+            )}
+          </FormField>
+          {error ? (
+            <p role="alert" className="label-sm text-danger-text">
+              {error}
+            </p>
+          ) : null}
+        </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-col">
-          <Button
-            className="w-full"
-            disabled={isPending}
-            onClick={() => settle("SUCCESS")}
-          >
-            {isPending ? <Loader2 className="size-4 animate-spin" /> : null}
-            {t("paySuccess")}
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full"
-            disabled={isPending}
-            onClick={() => settle("FAILED")}
-          >
-            {t("payFailed")}
-          </Button>
-          <Button
-            variant="ghost"
-            className="w-full"
-            disabled={isPending}
-            onClick={onClose}
-          >
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isPending}>
             {tc("cancel")}
+          </Button>
+          <Button onClick={post} disabled={isPending}>
+            {isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+            {t("reviewSubmit")}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+

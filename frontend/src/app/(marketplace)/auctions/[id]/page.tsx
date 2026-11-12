@@ -1,17 +1,19 @@
 import { BadgeCheck, ChevronLeft, Star } from "lucide-react";
 import type { Metadata } from "next";
-import { getFormatter, getTranslations } from "next-intl/server";
+import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { CategoryName } from "@/components/common/category-name";
+import { StarRating } from "@/components/common/star-rating";
 import { AuctionRoomView } from "@/components/nexbid/auction-room";
 import { AuctionCatalogueItem } from "@/components/nexbid/catalogue-item";
 import { ProductStage } from "@/components/nexbid/product-stage";
 import { SectionHead } from "@/components/nexbid/section-head";
+import type { Locale } from "@/i18n/config";
 import { formatCurrency } from "@/lib/format";
-import { getAuction, listAuctions } from "@/services/auction-service";
+import { getAuction, getSellerReputation, listAuctions } from "@/services/auction-service";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +42,8 @@ export default async function AuctionDetailPage(
 
   if (!auction) notFound();
 
-  const [t, tf, format, related] = await Promise.all([
+  const [locale, t, tf, format, related, reputation] = await Promise.all([
+    getLocale() as Promise<Locale>,
     getTranslations("auction"),
     getTranslations("focus"),
     getFormatter(),
@@ -49,6 +52,7 @@ export default async function AuctionDetailPage(
       statuses: ["ACTIVE"],
       pageSize: 5,
     }),
+    getSellerReputation(auction.seller.id),
   ]);
 
   const serverTime = new Date().toISOString();
@@ -96,7 +100,7 @@ export default async function AuctionDetailPage(
                 />
                 <SpecRow
                   label={t("bidPanelTitle")}
-                  value={formatCurrency(auction.startingPrice)}
+                  value={formatCurrency(auction.startingPrice, locale)}
                 />
                 <SpecRow
                   label={tf("provenance")}
@@ -129,23 +133,51 @@ export default async function AuctionDetailPage(
                       />
                     ) : null}
                   </p>
-                  {auction.seller.rating !== undefined || auction.seller.totalSales !== undefined ? (
+                  {reputation ? (
                     <p className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-3 text-xs">
-                      {auction.seller.rating !== undefined ? (
+                      {reputation.average !== null ? (
                         <span className="inline-flex items-center gap-1">
                           <Star className="size-3 fill-current" aria-hidden="true" />
-                          {t("sellerRating", { rating: auction.seller.rating })}
+                          {t("sellerRating", { rating: format.number(reputation.average, { minimumFractionDigits: 1 }) })}
+                          {" · "}
+                          {t("sellerReviews", { count: reputation.reviewCount })}
                         </span>
-                      ) : null}
-                      {auction.seller.totalSales !== undefined ? (
-                        <span>
-                          {t("sellerSales", { count: auction.seller.totalSales })}
-                        </span>
-                      ) : null}
+                      ) : (
+                        <span>{t("sellerNoReviews")}</span>
+                      )}
+                      <span>{t("sellerSales", { count: reputation.sales })}</span>
                     </p>
                   ) : null}
                 </div>
               </div>
+
+              {reputation && reputation.reviews.length > 0 ? (
+                <section className="mt-6" aria-labelledby="reviews-heading">
+                  <h2 id="reviews-heading" className="label-sm text-dim">
+                    {t("recentReviews")}
+                  </h2>
+                  <ul className="mt-3 space-y-4">
+                    {reputation.reviews.map((review) => (
+                      <li key={review.id} className="border-line border-l-2 pl-4">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <StarRating rating={review.rating} />
+                          <span className="mono-figure text-dim text-[11px]">
+                            {review.reviewer}
+                            {" · "}
+                            {format.dateTime(new Date(review.createdAt), { dateStyle: "medium" })}
+                          </span>
+                        </div>
+                        {review.comment ? (
+                          <p className="mt-1.5 text-sm leading-relaxed">{review.comment}</p>
+                        ) : null}
+                        {review.lotName ? (
+                          <p className="text-muted-foreground mt-1 text-xs">{t("reviewOn", { lot: review.lotName })}</p>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
             </div>
           </div>
 

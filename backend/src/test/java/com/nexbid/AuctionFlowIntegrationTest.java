@@ -39,6 +39,7 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import com.nexbid.auction.ViewerCountMessage;
 import com.nexbid.support.TestInfrastructure;
+import com.nexbid.support.VnpayTestSupport;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserService;
 
@@ -353,11 +354,22 @@ class AuctionFlowIntegrationTest {
         assertThat(Instant.parse(payment.get("expiredAt").asString())).isAfter(end.plus(Duration.ofHours(47)));
 
         assertThat(get("/api/users/me/payments", ben).data().size()).isZero();
-        Reply stolen = post("/api/payments/" + paymentId + "/pay", ben, Map.of("outcome", "SUCCESS"));
+        Reply stolen = post("/api/payments/" + paymentId + "/vnpay", ben, Map.of("locale", "en"));
         assertThat(stolen.status()).isEqualTo(404);
         assertThat(stolen.code()).isEqualTo("PAYMENT_NOT_FOUND");
 
-        Reply paid = post("/api/payments/" + paymentId + "/pay", anna, Map.of("outcome", "SUCCESS"));
+        // EN: Anna goes to VNPay; VNPay's server reports back (IPN). / VI: Anna sang VNPay; server VNPay báo lại (IPN).
+        Reply checkout = post("/api/payments/" + paymentId + "/vnpay", anna, Map.of("locale", "en"));
+        assertThat(checkout.status()).isEqualTo(200);
+        Map<String, String> reply = VnpayTestSupport.reply(
+                checkout.data().get("paymentUrl").asString(), VnpayTestSupport.PAID);
+        String query = reply.entrySet().stream()
+                .map(field -> field.getKey() + "=" + java.net.URLEncoder.encode(field.getValue(), java.nio.charset.StandardCharsets.UTF_8))
+                .collect(java.util.stream.Collectors.joining("&"));
+        Reply ipn = get("/api/payments/vnpay/ipn?" + query, null);
+        assertThat(ipn.body().get("RspCode").asString()).isEqualTo("00");
+
+        Reply paid = get("/api/payments/" + paymentId, anna);
         assertThat(paid.status()).isEqualTo(200);
         assertThat(paid.data().get("payment").get("status").asString()).isEqualTo("SUCCESS");
 

@@ -18,7 +18,8 @@ public record BidPlacedMessage(
         int bidCount,
         BigDecimal minimumNextBid,
         String bidder,
-        Instant createdAt) {
+        Instant createdAt,
+        Boolean reserveMet) {
 
     public static final String TYPE = "BID_PLACED";
 
@@ -30,6 +31,7 @@ public record BidPlacedMessage(
                 placed.bidCount(),
                 placed.minimumNextBid(),
                 placed.bid().bidderMask(),
-                placed.bid().createdAt());
+                placed.bid().createdAt(),
+                placed.reserveMet());
     }
 }

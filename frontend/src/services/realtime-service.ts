@@ -68,6 +68,7 @@ function toEvent(message: ApiAuctionMessage): AuctionEvent | null {
           automatic: false,
           createdAt: message.createdAt,
         },
+        reserveMet: message.reserveMet ?? null,
         serverTime: message.createdAt,
       };
     case "AUCTION_EXTENDED":
@@ -78,7 +79,15 @@ function toEvent(message: ApiAuctionMessage): AuctionEvent | null {
     case "AUCTION_ENDED":
       // EN: The winner is never broadcast; the price is whatever the page last saw.
       // VI: Người thắng không bao giờ được phát công khai; giá là mức trang thấy gần nhất.
-      return { type: "AUCTION_ENDED", auctionId: message.auctionId, winnerId: null, finalPrice: 0, serverTime: message.serverTime };
+      return {
+        type: "AUCTION_ENDED",
+        auctionId: message.auctionId,
+        winnerId: null,
+        finalPrice: 0,
+        sold: message.sold ?? true,
+        endTime: message.endTime,
+        serverTime: message.serverTime,
+      };
     case "VIEWER_COUNT":
       return { type: "VIEWERS_CHANGED", auctionId: message.auctionId, viewerCount: message.viewerCount, serverTime: new Date().toISOString() };
     default:

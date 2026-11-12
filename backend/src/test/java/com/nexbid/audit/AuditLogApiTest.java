@@ -27,6 +27,7 @@ import com.nexbid.auction.AuctionAuditEvent;
 import com.nexbid.auction.AuctionService;
 import com.nexbid.auction.AuctionStatus;
 import com.nexbid.support.TestInfrastructure;
+import com.nexbid.support.VnpayTestSupport;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserService;
 
@@ -124,9 +125,7 @@ class AuditLogApiTest {
         jdbc.update("UPDATE auctions SET end_time = now() - interval '1 second' WHERE id = ?", live);
         assertThat(auctions.endDueAuctions(Instant.now(), 200)).isGreaterThanOrEqualTo(1);
         UUID payment = jdbc.queryForObject("SELECT id FROM payments WHERE auction_id = ?", UUID.class, live);
-        mockMvc.perform(post("/api/payments/" + payment + "/pay")
-                        .header("Authorization", "Bearer " + buyer.token())
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"outcome\":\"SUCCESS\"}"))
+        VnpayTestSupport.pay(mockMvc, buyer.token(), String.valueOf(payment), "SUCCESS")
                 .andExpect(status().isOk());
 
         UUID rejected = auction(seller, "rejected");

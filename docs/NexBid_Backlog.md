@@ -195,3 +195,17 @@ Hiện không còn mục nào đang chờ.
   Dòng log luôn mang trace id.
 - **Kiểm chứng:** backend 384 test (độ phủ 95.1% dòng, 80.7% nhánh), frontend 110 unit test, E2E 33/33 trên stack
   Docker riêng có Tempo. Trace thật từ stack: 0 trace rác trong 3272 trace của một lần chạy E2E.
+
+## Đã làm (28/09/2026) — đợt 12: đánh giá người bán, giá sàn ẩn, mua ngay (ngoài đặc tả, theo lựa chọn của chủ dự án)
+
+- **Đánh giá người bán:** người mua chấm 1–5 sao kèm nhận xét ngắn tuỳ chọn, mỗi đơn một lần, chỉ sau khi đã xác
+  nhận nhận hàng, không sửa được. Trang lô hiện điểm trung bình, số đánh giá, số lượt bán và ba đánh giá mới nhất
+  (tên người viết được che như trong lịch sử trả giá). Người bán được báo mỗi đánh giá mới.
+- **Giá sàn ẩn:** người trả giá chỉ thấy "chưa đạt / đã đạt giá sàn", cập nhật trực tiếp theo từng lượt; con số chỉ
+  người bán và admin thấy. Đóng dưới giá sàn thì chưa có người thắng: người bán có 24 giờ để vẫn bán cho người trả
+  cao nhất với giá của họ; từ chối hoặc im lặng thì sản phẩm trở về người bán. Auto bid có trần đủ giá sàn tự nâng
+  lên giá sàn, để người sẵn lòng trả giá sàn không mất lô ở giá khởi điểm.
+- **Mua ngay:** mua đứt lô ở giá cố định, chỉ tới lượt trả giá đầu tiên. Lượt mua được ghi như một lượt trả giá
+  trong cùng khoá, rồi lô đóng ngay và đi đúng đường thanh toán 48 giờ.
+- **Kiểm chứng:** backend 394 test (độ phủ 95.4% dòng, 81.8% nhánh), frontend 117 unit test, E2E 36/36 trên stack Docker
+  riêng.

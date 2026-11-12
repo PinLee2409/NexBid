@@ -17,8 +17,8 @@ import {
 import { AUCTION_SORT_OPTIONS } from "@/constants/auction";
 import { useCategoryLabels, useEnumLabels } from "@/hooks/use-labels";
 import { buildAuctionHref, countActiveFilters } from "@/lib/auction-query";
-import { formatCurrency } from "@/lib/format";
 import type { AuctionQuery, AuctionSort, Category } from "@/types";
+import { useMoney } from "@/hooks/use-money";
 
 interface AuctionToolbarProps {
   query: AuctionQuery;
@@ -35,6 +35,7 @@ export function AuctionToolbar({
   categories,
   totalItems,
 }: AuctionToolbarProps) {
+  const money = useMoney();
   const t = useTranslations("auctions");
   const tc = useTranslations("common");
   const labels = useEnumLabels();
@@ -101,8 +102,8 @@ export function AuctionToolbar({
     chips.push({
       key: "price",
       label: to
-        ? `${formatCurrency(from)} – ${formatCurrency(to)}`
-        : `${formatCurrency(from)}+`,
+        ? `${money.currency(from)} – ${money.currency(to)}`
+        : `${money.currency(from)}+`,
       onRemove: () =>
         navigate({ ...query, minPrice: undefined, maxPrice: undefined }),
     });

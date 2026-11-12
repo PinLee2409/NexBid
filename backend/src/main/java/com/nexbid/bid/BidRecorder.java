@@ -52,6 +52,14 @@ class BidRecorder {
         return save(auctions.acceptBid(auctionId, bidderId, amount, at), bidderId, amount, leads);
     }
 
+    /**
+     * EN: Records a buy-now bid the auction module has already accepted.
+     * VI: Ghi một lượt mua ngay mà module auction đã chấp nhận.
+     */
+    PlacedBidView recordAccepted(AuctionService.AcceptedBid accepted, UUID buyerId) {
+        return save(accepted, buyerId, accepted.currentPrice(), new LeadTracker());
+    }
+
     private PlacedBidView save(
             AuctionService.AcceptedBid accepted, UUID bidderId, BigDecimal amount, LeadTracker leads) {
 
@@ -79,7 +87,8 @@ class BidRecorder {
                 accepted.minimumNextBid(),
                 accepted.endTime(),
                 Instant.now(),
-                true);
+                true,
+                accepted.reserveMet());
 
         // EN: Raised here, delivered after commit (guide §23). If the socket is down the bid still stands.
         // VI: Phát ra ở đây, giao đi sau commit (guide §23). Socket có hỏng thì lượt trả giá vẫn có hiệu lực.

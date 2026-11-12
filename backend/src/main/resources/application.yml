@@ -221,6 +221,11 @@ nexbid:
     interval: ${NEXBID_SCHEDULER_INTERVAL_MS:5000}
     batch-size: 200
 
+  auction:
+    # EN: How long a seller has to accept the highest bid when a lot closes below its reserve.
+    # VI: Người bán có bao lâu để nhận giá cao nhất khi lô đóng dưới giá sàn.
+    reserve-decision-window: ${NEXBID_RESERVE_DECISION_WINDOW:24h}
+
   notification:
     # EN: How far ahead watchers hear "opens soon" / "closes soon" — the catalogue's own "ending soon".
     # VI: Người theo dõi được báo "sắp mở" / "sắp đóng" trước bao lâu — đúng như "sắp đóng" của danh mục.
@@ -238,6 +243,43 @@ nexbid:
     # EN: How long the runner-up has to take a second-chance offer; the expiry job above closes it too.
     # VI: Người trả giá cao thứ hai có bao lâu để nhận đề nghị cơ hội thứ hai; job hết hạn ở trên cũng đóng nó.
     offer-window: ${NEXBID_OFFER_WINDOW:24h}
+    # EN: VNPay (https://sandbox.vnpayment.vn/apis/). The defaults are placeholders: checkout builds a signed URL with
+    #     them, but VNPay will refuse it until NEXBID_VNPAY_TMN_CODE and NEXBID_VNPAY_HASH_SECRET are real. The prod
+    #     profile refuses to start with the placeholders.
+    # VI: VNPay (https://sandbox.vnpayment.vn/apis/). Giá trị mặc định chỉ là chỗ giữ: checkout vẫn tạo được URL có chữ
+    #     ký, nhưng VNPay sẽ từ chối cho tới khi NEXBID_VNPAY_TMN_CODE và NEXBID_VNPAY_HASH_SECRET là thật. Profile prod
+    #     không chịu khởi động với giá trị giữ chỗ.
+    vnpay:
+      tmn-code: ${NEXBID_VNPAY_TMN_CODE:change-me}
+      hash-secret: ${NEXBID_VNPAY_HASH_SECRET:change-me-local-vnpay-secret}
+      pay-url: ${NEXBID_VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+      # EN: Where VNPay sends the buyer back. The IPN URL is configured in the VNPay merchant portal and points at
+      #     <backend>/api/payments/vnpay/ipn. / VI: Nơi VNPay đưa người mua quay lại. URL IPN cấu hình trong trang
+      #     merchant của VNPay, trỏ tới <backend>/api/payments/vnpay/ipn.
+      return-url: ${NEXBID_VNPAY_RETURN_URL:http://localhost:3000/payments/vnpay-return}
+      # EN: How long a checkout link stays valid; never past the payment's own deadline.
+      # VI: Link thanh toán còn hiệu lực bao lâu; không bao giờ quá hạn chót của chính khoản thanh toán.
+      timeout: ${NEXBID_VNPAY_TIMEOUT:15m}
+
+  mail:
+    # EN: Transactional email through Brevo (https://developers.brevo.com/). Without an API key nothing is sent: each
+    #     email is written to the log and kept in email_outbox as SKIPPED.
+    # VI: Email giao dịch qua Brevo (https://developers.brevo.com/). Không có API key thì không gửi gì: mỗi email được
+    #     ghi ra log và giữ trong email_outbox với trạng thái SKIPPED.
+    brevo-api-key: ${NEXBID_BREVO_API_KEY:}
+    brevo-url: ${NEXBID_BREVO_URL:https://api.brevo.com/v3/smtp/email}
+    sender-email: ${NEXBID_MAIL_SENDER_EMAIL:no-reply@nexbid.test}
+    sender-name: ${NEXBID_MAIL_SENDER_NAME:NexBid}
+    # EN: Links in emails point here. / VI: Link trong email trỏ về đây.
+    site-url: ${NEXBID_SITE_URL:http://localhost:3000}
+    send-interval: ${NEXBID_MAIL_SEND_INTERVAL_MS:5000}
+    batch-size: 50
+    max-attempts: 6
+    # EN: Outbid emails: at most one per person per lot in this window, except in the lot's final minutes, when every
+    #     outbid is emailed. / VI: Email bị vượt giá: tối đa một email mỗi người mỗi lô trong khoảng này, trừ những phút
+    #     cuối của lô, khi mọi lần bị vượt giá đều được gửi email.
+    outbid-throttle: ${NEXBID_MAIL_OUTBID_THROTTLE:30m}
+    outbid-final-window: ${NEXBID_MAIL_OUTBID_FINAL_WINDOW:15m}
 
   storage:
     # EN: Outside the source tree — uploads are data, not code, and must never reach a commit.

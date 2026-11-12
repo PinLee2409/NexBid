@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/dialog";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage, useEnumLabels } from "@/hooks/use-labels";
-import { formatCurrency } from "@/lib/format";
 
 import { cn } from "@/lib/utils";
 import {
@@ -33,6 +32,7 @@ import {
   type MyWinEntry,
   type OfferEntry,
 } from "@/services/account-service";
+import { useMoney } from "@/hooks/use-money";
 
 export default function MyWinsPage() {
   const t = useTranslations("account");
@@ -123,6 +123,7 @@ function Offers({ onAccepted }: { onAccepted: () => void }) {
 }
 
 function OfferRow({ entry, onAnswer }: { entry: OfferEntry; onAnswer: (accept: boolean) => void }) {
+  const money = useMoney();
   const t = useTranslations("account");
   const format = useFormatter();
 
@@ -133,7 +134,7 @@ function OfferRow({ entry, onAnswer }: { entry: OfferEntry; onAnswer: (accept: b
         label: t("offerYourBid"),
         value: (
           <span className="flex flex-col">
-            <span>{formatCurrency(entry.offer.amount)}</span>
+            <span>{money.currency(entry.offer.amount)}</span>
             <span className="text-muted-foreground text-[11px] font-normal">
               {t("offerAnswerBy", {
                 date: format.dateTime(new Date(entry.offer.expiresAt), { dateStyle: "medium", timeStyle: "short" }),
@@ -168,6 +169,7 @@ function AnswerDialog({
   onClose: () => void;
   onAnswered: (accepted: boolean) => void;
 }) {
+  const money = useMoney();
   const t = useTranslations("account");
   const tc = useTranslations("common");
   const errorMessage = useApiErrorMessage();
@@ -175,7 +177,7 @@ function AnswerDialog({
 
   const accept = answering?.accept ?? false;
   const name = answering?.entry.auction?.product.name ?? "";
-  const amount = formatCurrency(answering?.entry.offer.amount ?? 0);
+  const amount = money.currency(answering?.entry.offer.amount ?? 0);
 
   function answer() {
     if (!answering) return;
@@ -217,6 +219,7 @@ function AnswerDialog({
 }
 
 function WinRow({ entry }: { entry: MyWinEntry }) {
+  const money = useMoney();
   const t = useTranslations("account");
   const tc = useTranslations("common");
   const labels = useEnumLabels();
@@ -246,7 +249,7 @@ function WinRow({ entry }: { entry: MyWinEntry }) {
             </span>
             {ownPrice ? (
               <span className="text-[11px] font-normal">
-                {t("secondChancePrice", { amount: formatCurrency(entry.winningBid) })}
+                {t("secondChancePrice", { amount: money.currency(entry.winningBid) })}
               </span>
             ) : null}
             {entry.payment ? (

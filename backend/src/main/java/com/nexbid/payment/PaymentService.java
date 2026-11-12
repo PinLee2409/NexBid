@@ -131,18 +131,15 @@ public class PaymentService {
     }
 
     /**
-     * EN: The demo switch (spec §17). Only the winner can pay; anyone else hears "not found", as for an id
-     *     that does not exist. A failed attempt may be retried until the deadline.
-     * VI: Công tắc demo (spec §17). Chỉ người thắng được trả; ai khác nhận "không tìm thấy", như với id không
-     *     tồn tại. Lần thử hỏng được thử lại tới hạn chót.
+     * EN: The payment a checkout may start for. Only the winner can pay; anyone else hears "not found", as for an
+     *     id that does not exist. A failed attempt may be retried until the deadline.
+     * VI: Khoản thanh toán được phép bắt đầu checkout. Chỉ người thắng được trả; ai khác nhận "không tìm thấy", như
+     *     với id không tồn tại. Lần thử hỏng được thử lại tới hạn chót.
      */
-    @Transactional
-    public PaymentView pay(UUID userId, UUID paymentId, PaymentOutcome outcome) {
-        Payment payment = payments.findByIdForUpdate(paymentId)
+    Payment payableBy(UUID userId, UUID paymentId, Instant now) {
+        Payment payment = payments.findById(paymentId)
                 .filter(found -> found.getUserId().equals(userId))
                 .orElseThrow(() -> notFound(paymentId));
-
-        Instant now = Instant.now();
 
         if (payment.getStatus() == PaymentStatus.SUCCESS) {
             throw new BusinessException(ErrorCode.PAYMENT_ALREADY_PAID, "This payment has already been made");
@@ -151,16 +148,54 @@ public class PaymentService {
         if (payment.getStatus() == PaymentStatus.EXPIRED || payment.isOverdue(now)) {
             throw new BusinessException(ErrorCode.PAYMENT_EXPIRED, "The payment window for this lot has closed");
         }
+        return payment;
+    }
 
-        payment.settle(outcome == PaymentOutcome.SUCCESS ? PaymentStatus.SUCCESS : PaymentStatus.FAILED);
-        payments.saveAndFlush(payment);
+    /** EN: What became of a reported attempt. / VI: Kết cục của một lần thử đã được báo về. */
+    enum Settled {
+        /** EN: Paid now. / VI: Vừa trả xong. */
+        PAID,
+        /** EN: The attempt failed; the payment stays open until its deadline. / VI: Lần thử hỏng; khoản vẫn mở tới hạn chót. */
+        FAILED,
+        /** EN: Already paid by an earlier attempt; nothing changed. / VI: Đã được trả bởi lần thử trước; không đổi gì. */
+        ALREADY_PAID,
+        /** EN: The window had closed; nothing changed. / VI: Đã hết hạn; không đổi gì. */
+        TOO_LATE
+    }
 
-        if (outcome == PaymentOutcome.SUCCESS) {
-            events.publishEvent(new PaymentEvents.Succeeded(
-                    payment.getId(), payment.getAuctionId(), userId, payment.getAmount(), now));
+    /**
+     * EN: Applies what the provider reported for one attempt, inside the caller's transaction and under the
+     *     payment's lock — so a payment is charged once however many reports arrive, and the expiry job cannot
+     *     race it. A success publishes PaymentEvents.Succeeded, which completes the order, the lot and the notices.
+     * VI: Áp kết quả mà cổng thanh toán báo cho một lần thử, trong transaction của bên gọi và dưới khoá của khoản
+     *     thanh toán — nên một khoản chỉ bị trừ tiền một lần dù có bao nhiêu lần báo, và job hết hạn không chạy đua
+     *     được. Thành công thì phát PaymentEvents.Succeeded, thứ hoàn tất đơn hàng, lô và các thông báo.
+     */
+    @Transactional
+    Settled settleAttempt(UUID paymentId, boolean success, Instant now) {
+        Payment payment = payments.findByIdForUpdate(paymentId).orElseThrow(() -> notFound(paymentId));
+
+        if (payment.getStatus() == PaymentStatus.SUCCESS) {
+            return Settled.ALREADY_PAID;
+        }
+        if (payment.getStatus() == PaymentStatus.EXPIRED || payment.isOverdue(now)) {
+            return Settled.TOO_LATE;
         }
 
-        return view(payment, now);
+        payment.settle(success ? PaymentStatus.SUCCESS : PaymentStatus.FAILED);
+        payments.saveAndFlush(payment);
+
+        if (!success) {
+            return Settled.FAILED;
+        }
+        events.publishEvent(new PaymentEvents.Succeeded(
+                payment.getId(), payment.getAuctionId(), payment.getUserId(), payment.getAmount(), now));
+        return Settled.PAID;
+    }
+
+    /** EN: The payment as its owner sees it, for a caller that already knows who that is. / VI: Khoản thanh toán như chủ nó thấy. */
+    PaymentView viewOf(UUID paymentId) {
+        return view(payments.findById(paymentId).orElseThrow(() -> notFound(paymentId)), Instant.now());
     }
 
     /**

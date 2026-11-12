@@ -6,10 +6,10 @@ import type { ReactNode } from "react";
 
 import { ProductPhoto } from "@/components/common/product-photo";
 import { useEnumLabels } from "@/hooks/use-labels";
-import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { OrderEntry } from "@/services/order-service";
 import type { OrderStatus } from "@/types";
+import { useMoney } from "@/hooks/use-money";
 
 // EN: Red while money is owed, amber while goods are on the way, green once settled. / VI: Đỏ khi còn nợ tiền, vàng khi hàng đang đi, xanh khi đã xong.
 const STATUS_TONE: Record<OrderStatus, string | undefined> = {
@@ -27,6 +27,7 @@ const STATUS_TONE: Record<OrderStatus, string | undefined> = {
  *     đang xem có thể làm tiếp. Dùng chung cho danh sách của người mua, người bán và admin.
  */
 export function OrderRow({ entry, action }: { entry: OrderEntry; action?: ReactNode }) {
+  const money = useMoney();
   const t = useTranslations("account");
   const tc = useTranslations("common");
   const labels = useEnumLabels();
@@ -63,7 +64,7 @@ export function OrderRow({ entry, action }: { entry: OrderEntry; action?: ReactN
 
       <div className="shrink-0">
         <p className="label-sm text-dim mb-1">{t("orderTotal")}</p>
-        <p className="figure text-lg">{formatCurrency(entry.order.amount)}</p>
+        <p className="figure text-lg">{money.currency(entry.order.amount)}</p>
       </div>
 
       <div className="shrink-0">

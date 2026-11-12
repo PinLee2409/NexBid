@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
+  currencySymbolAfter,
+  formatAmount,
   formatCompactCurrency,
   formatCompactNumber,
   formatCurrency,
@@ -12,14 +14,25 @@ import {
 } from "./format";
 
 describe("prices", () => {
-  it("print in VND the same way in every locale", () => {
-    expect(formatCurrency(18_500_000)).toBe("₫18,500,000");
-    expect(formatCompactCurrency(18_500_000)).toBe("₫18.5M");
+  // EN: Intl puts a no-break space between figure and symbol in Vietnamese. / VI: Intl đặt khoảng trắng không ngắt giữa số và ký hiệu trong tiếng Việt.
+  const plain = (text: string) => text.replace(/ | /g, " ");
+
+  it("are always VND, written the English way in English", () => {
+    expect(formatCurrency(18_500_000, "en")).toBe("₫18,500,000");
+    expect(formatCompactCurrency(18_500_000, "en")).toBe("₫18.5M");
+    expect(formatAmount(18_500_000, "en")).toBe("18,500,000");
+    expect(currencySymbolAfter("en")).toBe(false);
+  });
+
+  it("and the Vietnamese way in Vietnamese: dots between thousands, symbol after", () => {
+    expect(plain(formatCurrency(18_500_000, "vi"))).toBe("18.500.000 ₫");
+    expect(formatAmount(18_500_000, "vi")).toBe("18.500.000");
+    expect(currencySymbolAfter("vi")).toBe(true);
   });
 
   it("keep live counters short", () => {
-    expect(formatCompactNumber(999)).toBe("999");
-    expect(formatCompactNumber(1_284)).toBe("1.3K");
+    expect(formatCompactNumber(999, "en")).toBe("999");
+    expect(formatCompactNumber(1_284, "en")).toBe("1.3K");
   });
 
   it.each([

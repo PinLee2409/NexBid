@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage } from "@/hooks/use-labels";
+import { loginHref } from "@/lib/redirect";
 import { applyToSell, getSellerApplication } from "@/services/account-service";
 import { hasRole, reloadAccount, useSession } from "@/services/session-service";
 import type { SellerApplication } from "@/types";
@@ -39,7 +40,7 @@ export default function BecomeSellerPage() {
           icon={LogIn}
           title={t("signInTitle")}
           description={t("signInBody")}
-          action={{ label: t("signInTitle"), href: "/login" }}
+          action={{ label: t("signInTitle"), href: loginHref("/become-seller") }}
           className="mt-10"
         />
       ) : isSeller ? (

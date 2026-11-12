@@ -84,8 +84,15 @@ public class SecurityConfig {
                         // VI: Khoét ra trước luật công khai bên dưới: xem một lô thì ai cũng được, còn bỏ
                         //     tiền ra mua, theo dõi hay đặt auto bid thì không.
                         .requestMatchers(HttpMethod.POST, "/api/auctions/*/bids").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/auctions/*/buy-now").authenticated()
                         .requestMatchers("/api/auctions/*/watch").authenticated()
                         .requestMatchers("/api/auctions/*/auto-bid").authenticated()
+                        // EN: A seller's reviews are shown on public lot pages. / VI: Đánh giá người bán hiện trên trang lô công khai.
+                        .requestMatchers(HttpMethod.GET, "/api/sellers/*/reviews").permitAll()
+                        // EN: VNPay's server and the buyer returning from VNPay carry no token; the signature is the check.
+                        // VI: Server của VNPay và người mua quay về từ VNPay không mang token; chữ ký mới là thứ được kiểm.
+                        .requestMatchers(HttpMethod.GET, "/api/payments/vnpay/ipn", "/api/payments/vnpay/return")
+                        .permitAll()
                         .requestMatchers(PUBLIC_PATHS).permitAll()
                         // EN: The frontend also hides these menus, but that is decoration —
                         //     this is the line that actually stops someone typing the URL.

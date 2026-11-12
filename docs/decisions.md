@@ -195,3 +195,31 @@ demo, not heavy traffic (`NEXBID_TRACING_SAMPLING`).
 **Proof.** `BidTraceTest` (one bid: the request, its SQL, the relay, the Kafka send, the consumer and the notice it
 writes, all under the trace id the caller sent; checked by breaking the relay's link), and that the relay's polling
 leaves no spans.
+
+## 15. The reserve stays secret, and buy-now is a bid
+
+**Problem.** A reserve protects the seller from selling too cheaply, but a reserve nobody knows about surprises
+bidders at the close; buy-now must never race the closing bell or a bid in flight.
+
+**Decision.** Bidders learn whether the reserve is met, live with every bid, never the amount (only the seller and
+admins see it). Closing below it leaves the lot without a winner for 24 hours while the seller decides; the product
+stays held, and a refusal or silence frees it. An auto bid whose ceiling covers the reserve lifts itself to it.
+Buy-now is recorded as a bid at the fixed price under the bidding lock and closes the lot in the same transaction,
+so it follows the ordinary payment path, and it is only offered until the first bid.
+
+**Cost.** A lot sold below the reserve is counted as unsold at its close and as sold when the seller accepts, so
+an hour's totals can show a sale without the close that caused it.
+
+**Proof.** `ReserveAndBuyNowApiTest` (price rules, the hidden amount, sell-anyway, refused and lapsed decisions,
+the auto bid reaching the reserve, buy-now until the first bid), `reserve-and-buy-now.spec.ts`.
+
+## 16. Reviews only for sales that finished
+
+**Problem.** A rating should describe a sale, not a hope: before the goods arrive there is nothing to rate.
+
+**Decision.** One review per order, once the buyer has confirmed receipt, never edited; the order row lock makes a
+double submit leave one. The seller's score is computed from the rows, not stored, and sales count every paid
+order that was not refunded. Reviewers appear under their public handle, like bidders.
+
+**Proof.** `ReviewApiTest`, `reviews.spec.ts`.
+

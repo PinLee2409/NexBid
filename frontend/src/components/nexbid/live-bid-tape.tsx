@@ -3,9 +3,9 @@
 import { AnimatePresence, m } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
 
-import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Bid } from "@/types";
+import { useMoney } from "@/hooks/use-money";
 
 interface LiveBidTapeProps {
   bids: Bid[];
@@ -33,6 +33,7 @@ export function LiveBidTape({
   limit = 14,
   className,
 }: LiveBidTapeProps) {
+  const money = useMoney();
   const t = useTranslations("terminal");
   const format = useFormatter();
   const visible = bids.slice(0, limit);
@@ -87,7 +88,7 @@ export function LiveBidTape({
                   isTop ? "text-foreground" : "text-muted-foreground",
                 )}
               >
-                {formatCurrency(bid.amount)}
+                {money.currency(bid.amount)}
               </span>
 
               <span

@@ -1,22 +1,24 @@
 "use client";
 
-import type { AuctionSummary, Order, Payment } from "@/types";
+import type { AuctionSummary, Order, Payment, SellerReview } from "@/types";
 
-import type { ApiOrder } from "./api/dto";
+import type { ApiOrder, ApiReview } from "./api/dto";
 import { api } from "./api/http";
-import { toOrder, toPayment, toSummary } from "./api/mappers";
+import { toOrder, toPayment, toReview, toSummary } from "./api/mappers";
 
 /**
  * Orders (spec §16).
  *
  * Settlement itself lives in `payment-service`, because the spec puts it on
- * `/api/payments/{id}/pay` — the order is the record, the payment is the act.
+ * `/api/payments/{id}/vnpay` — the order is the record, the payment is the act.
  */
 
 export interface OrderEntry {
   order: Order;
   payment: Payment | null;
   auction: AuctionSummary | null;
+  /** EN: The buyer's review of this sale, once written. / VI: Đánh giá của người mua cho giao dịch này, khi đã viết. */
+  review: SellerReview | null;
 }
 
 export function toEntry(view: ApiOrder): OrderEntry {
@@ -24,6 +26,7 @@ export function toEntry(view: ApiOrder): OrderEntry {
     order: toOrder(view.order),
     payment: view.payment ? toPayment(view.payment) : null,
     auction: view.auction ? toSummary(view.auction) : null,
+    review: view.review ? toReview(view.review) : null,
   };
 }
 
@@ -36,4 +39,17 @@ export async function listOrders(): Promise<OrderEntry[]> {
 /** `POST /api/users/me/orders/{id}/received` — the buyer confirms the goods arrived. */
 export async function confirmReceipt(orderId: string): Promise<OrderEntry> {
   return toEntry(await api<ApiOrder>(`/api/users/me/orders/${orderId}/received`, { method: "POST" }));
+}
+
+/**
+ * EN: `POST /api/users/me/orders/{id}/review` — once the goods arrived, once per order.
+ * VI: `POST /api/users/me/orders/{id}/review` — khi đã nhận hàng, mỗi đơn một lần.
+ */
+export async function reviewOrder(orderId: string, rating: number, comment: string): Promise<SellerReview> {
+  return toReview(
+    await api<ApiReview>(`/api/users/me/orders/${orderId}/review`, {
+      method: "POST",
+      body: { rating, comment: comment.trim() || undefined },
+    }),
+  );
 }

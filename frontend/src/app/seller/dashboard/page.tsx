@@ -14,10 +14,11 @@ import { StatTile } from "@/components/common/stat-tile";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { useAsyncData } from "@/hooks/use-async-data";
-import { formatCompactCurrency } from "@/lib/format";
 import { listMyAuctions, getSellerStats } from "@/services/seller-service";
+import { useMoney } from "@/hooks/use-money";
 
 export default function SellerDashboardPage() {
+  const money = useMoney();
   const t = useTranslations("seller");
   const tc = useTranslations("common");
 
@@ -45,7 +46,7 @@ export default function SellerDashboardPage() {
           {
             icon: TrendingUp,
             label: t("statSales"),
-            value: `${stats.state.data.completedSales} · ${formatCompactCurrency(stats.state.data.grossSales)}`,
+            value: `${stats.state.data.completedSales} · ${money.compactCurrency(stats.state.data.grossSales)}`,
           },
         ]
       : null;

@@ -1,48 +1,63 @@
+import { LOCALE_INTL, type Locale } from "@/i18n/config";
+
 /**
- * Display currency for the storefront: VND, the single currency the spec
- * prices in (§3.2 leaves multi-currency out).
- *
- * Prices are rendered the same way in every locale — an auction has one price,
- * and a bidder comparing lots should not see the number reshaped by their UI
- * language. Dates and relative times *do* follow the locale; those go through
- * next-intl's `useFormatter()` rather than this module.
+ * EN: Display currency for the storefront: VND, the single currency the spec prices in (§3.2 leaves
+ *     multi-currency out). The amount never changes with the reader's language, but how it is written does:
+ *     `₫18,500,000` in English, `18.500.000 ₫` in Vietnamese. The locale is always passed in — client
+ *     components get it from `useMoney()`, server components from `getLocale()` — because a module-level
+ *     "current locale" would be shared between requests on the server.
+ * VI: Tiền tệ hiển thị: VND, đơn vị duy nhất mà spec dùng (§3.2 không làm đa tiền tệ). Số tiền không đổi
+ *     theo ngôn ngữ người đọc, nhưng cách viết thì có: `₫18,500,000` khi tiếng Anh, `18.500.000 ₫` khi tiếng
+ *     Việt. Locale luôn được truyền vào — component client lấy từ `useMoney()`, component server lấy từ
+ *     `getLocale()` — vì một "locale hiện tại" cấp module sẽ bị dùng chung giữa các request trên server.
  */
 export const CURRENCY = {
   code: "VND",
-  locale: "en-US",
   symbol: "₫",
 } as const;
 
-const currencyFormatter = new Intl.NumberFormat(CURRENCY.locale, {
-  style: "currency",
-  currency: CURRENCY.code,
-  maximumFractionDigits: 0,
-});
+const cache = new Map<string, Intl.NumberFormat>();
 
-const compactCurrencyFormatter = new Intl.NumberFormat(CURRENCY.locale, {
-  style: "currency",
-  currency: CURRENCY.code,
-  notation: "compact",
-  maximumFractionDigits: 1,
-});
-
-/** `₫18,500,000` — the canonical price rendering across the product. */
-export function formatCurrency(amount: number): string {
-  return currencyFormatter.format(amount);
+function formatter(locale: Locale, options: Intl.NumberFormatOptions): Intl.NumberFormat {
+  const key = `${locale}:${JSON.stringify(options)}`;
+  let found = cache.get(key);
+  if (!found) {
+    found = new Intl.NumberFormat(LOCALE_INTL[locale], options);
+    cache.set(key, found);
+  }
+  return found;
 }
 
-/** `₫18.5M` — for dense surfaces such as dashboard stat tiles. */
-export function formatCompactCurrency(amount: number): string {
-  return compactCurrencyFormatter.format(amount);
+/** `₫18,500,000` (en) · `18.500.000 ₫` (vi) — the canonical price rendering across the product. */
+export function formatCurrency(amount: number, locale: Locale): string {
+  return formatter(locale, { style: "currency", currency: CURRENCY.code, maximumFractionDigits: 0 }).format(amount);
 }
 
-/** `1,284` viewers → `1.3K`. Keeps live counters from wrapping. */
-export function formatCompactNumber(value: number): string {
-  if (value < 1000) return String(value);
-  return new Intl.NumberFormat(CURRENCY.locale, {
+/** `₫18.5M` (en) · `18,5 Tr ₫` (vi) — for dense surfaces such as dashboard stat tiles. */
+export function formatCompactCurrency(amount: number, locale: Locale): string {
+  return formatter(locale, {
+    style: "currency",
+    currency: CURRENCY.code,
     notation: "compact",
     maximumFractionDigits: 1,
-  }).format(value);
+  }).format(amount);
+}
+
+/** `18,500,000` (en) · `18.500.000` (vi) — the figure alone, for layouts that place the symbol themselves. */
+export function formatAmount(amount: number, locale: Locale): string {
+  return formatter(locale, { maximumFractionDigits: 0 }).format(amount);
+}
+
+/** EN: Whether the locale writes the symbol after the figure (`18.500.000 ₫`). / VI: Locale có viết ký hiệu sau con số không. */
+export function currencySymbolAfter(locale: Locale): boolean {
+  const parts = formatter(locale, { style: "currency", currency: CURRENCY.code, maximumFractionDigits: 0 }).formatToParts(1);
+  return parts.findIndex((part) => part.type === "currency") > parts.findIndex((part) => part.type === "integer");
+}
+
+/** `1,284` viewers → `1.3K` (en) · `1,3 N` (vi). Keeps live counters from wrapping. */
+export function formatCompactNumber(value: number, locale: Locale): string {
+  if (value < 1000) return String(value);
+  return formatter(locale, { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
 /**

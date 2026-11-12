@@ -1,7 +1,7 @@
 "use client";
 
 import { Gavel, Plus, Send } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useTransition } from "react";
 import { toast } from "sonner";
@@ -16,10 +16,12 @@ import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage } from "@/hooks/use-labels";
 import { isAuctionEditable } from "@/lib/auction-rules";
 import {
+  decideReserve,
   listMyAuctions,
   submitAuctionForApproval,
 } from "@/services/seller-service";
 import type { AuctionSummary } from "@/types";
+import { useMoney } from "@/hooks/use-money";
 
 export default function SellerAuctionsPage() {
   const t = useTranslations("seller");
@@ -121,6 +123,12 @@ function SellerAuctionRow({
         }
       />
 
+      {auction.reserveDecision === "PENDING" ? (
+        <ReserveDecisionRow auction={auction} onDecided={onChanged} />
+      ) : auction.reserveDecision === "DECLINED" || auction.reserveDecision === "LAPSED" ? (
+        <li className="text-muted-foreground px-4 pb-3 text-sm">{t("reserveNotSold")}</li>
+      ) : null}
+
       {auction.status === "REJECTED" && auction.rejectionReason ? (
         <li className="bg-danger-dim text-danger-text px-4 py-3 text-sm">
           <span className="label-sm">{t("rejectionReason")}:</span>{" "}
@@ -128,5 +136,57 @@ function SellerAuctionRow({
         </li>
       ) : null}
     </>
+  );
+}
+
+/**
+ * EN: A lot that closed below the reserve waits for the seller: sell at the highest bid, or keep it.
+ * VI: Lô đóng dưới giá sàn chờ người bán: bán với giá cao nhất, hoặc giữ lại.
+ */
+function ReserveDecisionRow({ auction, onDecided }: { auction: AuctionSummary; onDecided: () => void }) {
+  const money = useMoney();
+  const t = useTranslations("seller");
+  const format = useFormatter();
+  const errorMessage = useApiErrorMessage();
+  const [isPending, startTransition] = useTransition();
+  const bid = money.currency(auction.currentPrice);
+
+  function decide(accept: boolean) {
+    startTransition(async () => {
+      try {
+        await decideReserve(auction.id, accept);
+      } catch (error) {
+        toast.error(errorMessage(error));
+        return;
+      }
+      onDecided();
+      if (accept) toast.success(t("reserveAccepted"), { description: t("reserveAcceptedBody") });
+      else toast.success(t("reserveRefused"), { description: t("reserveRefusedBody") });
+    });
+  }
+
+  return (
+    <li className="border-warning bg-surface mb-2 flex flex-wrap items-center justify-between gap-4 border-l-2 px-4 py-4">
+      <div className="min-w-[14rem] flex-1">
+        <p className="label">{t("reserveDecisionTitle")}</p>
+        <p className="mt-1 text-sm">
+          {t("reserveDecisionBody", {
+            bid,
+            reserve: money.currency(auction.reservePrice ?? 0),
+            date: auction.reserveDecisionUntil
+              ? format.dateTime(new Date(auction.reserveDecisionUntil), { dateStyle: "medium", timeStyle: "short" })
+              : "",
+          })}
+        </p>
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <Button size="sm" variant="outline" onClick={() => decide(false)} disabled={isPending}>
+          {t("keepLot")}
+        </Button>
+        <Button size="sm" onClick={() => decide(true)} disabled={isPending}>
+          {t("sellAnyway", { bid })}
+        </Button>
+      </div>
+    </li>
   );
 }

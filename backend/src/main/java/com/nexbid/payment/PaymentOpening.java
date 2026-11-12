@@ -4,6 +4,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import com.nexbid.auction.AuctionLifecycleEvent;
+import com.nexbid.auction.ReserveEvents;
 
 /**
  * EN: Opens a payment the moment a lot closes with a winner (spec §12: set winner → ENDED → create
@@ -27,5 +28,14 @@ class PaymentOpening {
         if (AuctionLifecycleEvent.ENDED.equals(event.type()) && event.winnerId() != null) {
             payments.openFor(event.auctionId(), event.winnerId(), event.currentPrice(), event.endTime());
         }
+    }
+
+    /**
+     * EN: The seller took a bid below the reserve: the buyer pays like any winner, the window counting from now.
+     * VI: Người bán nhận một giá dưới giá sàn: người mua trả như mọi người thắng, hạn tính từ lúc này.
+     */
+    @EventListener
+    void onReserveAccepted(ReserveEvents.Accepted event) {
+        payments.openFor(event.auctionId(), event.buyerId(), event.price(), event.at());
     }
 }

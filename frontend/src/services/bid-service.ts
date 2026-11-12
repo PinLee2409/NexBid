@@ -137,3 +137,13 @@ export async function removeAutoBid(auctionId: string): Promise<void> {
     if (!(error instanceof ApiError && error.status === 404)) throw error;
   }
 }
+
+/**
+ * EN: `POST /api/auctions/{id}/buy-now` — ends the lot at its buy-now price, until the first bid. A refusal is thrown
+ *     as an ApiError, whose code the page translates.
+ * VI: `POST /api/auctions/{id}/buy-now` — kết thúc lô ở giá mua ngay, cho tới lượt trả giá đầu tiên. Lời từ chối được
+ *     ném ra dưới dạng ApiError, trang tự dịch mã lỗi.
+ */
+export async function buyNow(auctionId: string): Promise<void> {
+  await api<ApiPlacedBid>(`/api/auctions/${auctionId}/buy-now`, { method: "POST" });
+}

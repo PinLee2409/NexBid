@@ -37,13 +37,19 @@ public class OrderService {
     private final OrderRepository orders;
     private final PaymentService payments;
     private final AuctionService auctions;
+    private final ReviewService reviews;
     private final ApplicationEventPublisher events;
 
     public OrderService(
-            OrderRepository orders, PaymentService payments, AuctionService auctions, ApplicationEventPublisher events) {
+            OrderRepository orders,
+            PaymentService payments,
+            AuctionService auctions,
+            ReviewService reviews,
+            ApplicationEventPublisher events) {
         this.orders = orders;
         this.payments = payments;
         this.auctions = auctions;
+        this.reviews = reviews;
         this.events = events;
     }
 
@@ -97,7 +103,7 @@ public class OrderService {
                 .orElseThrow(() -> notFound(orderId));
 
         move(order, OrderStatus.PAID, OrderStatus.PROCESSING, "Only a paid order can be shipped");
-        events.publishEvent(new OrderEvents.Shipped(order.getId(), sellerId));
+        events.publishEvent(new OrderEvents.Shipped(order.getId(), sellerId, order.getBuyerId(), order.getAuctionId()));
         return views(List.of(order), payments.detailsOf(List.of(order.getPaymentId()))).getFirst();
     }
 
@@ -147,6 +153,7 @@ public class OrderService {
     private List<OrderView> views(List<Order> list, Map<UUID, PaymentView.Details> paid) {
         Map<UUID, AuctionSummaryView> lots = auctions.participantSummariesOf(
                 list.stream().map(Order::getAuctionId).toList());
+        Map<UUID, ReviewView> reviewed = reviews.forOrders(list.stream().map(Order::getId).toList());
 
         return list.stream()
                 .map(order -> new OrderView(
@@ -161,7 +168,8 @@ public class OrderService {
                                 order.getCreatedAt(),
                                 order.getUpdatedAt()),
                         paid.get(order.getPaymentId()),
-                        lots.get(order.getAuctionId())))
+                        lots.get(order.getAuctionId()),
+                        reviewed.get(order.getId())))
                 .toList();
     }
 

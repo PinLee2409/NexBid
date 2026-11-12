@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   CreditCard,
   RotateCcw,
+  Star,
   Store,
   Timer,
   Trophy,
@@ -41,6 +42,8 @@ const ICONS: Record<NotificationType, LucideIcon> = {
   SECOND_CHANCE_OFFER: RotateCcw,
   SECOND_CHANCE_ACCEPTED: CheckCircle2,
   SECOND_CHANCE_DECLINED: XCircle,
+  NEW_REVIEW: Star,
+  RESERVE_NOT_MET: AlertTriangle,
 };
 
 /** Tone carries meaning: red only for things that cost the reader something. */
@@ -60,6 +63,8 @@ const TONES: Record<NotificationType, string> = {
   SECOND_CHANCE_OFFER: "text-signal-text",
   SECOND_CHANCE_ACCEPTED: "text-success",
   SECOND_CHANCE_DECLINED: "text-dim",
+  NEW_REVIEW: "text-signal-text",
+  RESERVE_NOT_MET: "text-warning",
 };
 
 /**

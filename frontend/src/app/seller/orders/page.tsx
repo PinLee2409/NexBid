@@ -9,6 +9,7 @@ import { ApiErrorState } from "@/components/common/api-error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { OrderRow } from "@/components/common/order-row";
+import { StarRating } from "@/components/common/star-rating";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +22,6 @@ import {
 } from "@/components/ui/dialog";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage } from "@/hooks/use-labels";
-import { formatCurrency } from "@/lib/format";
 import type { OrderEntry } from "@/services/order-service";
 import {
   listSecondChances,
@@ -31,6 +31,7 @@ import {
   type SecondChance,
 } from "@/services/seller-service";
 import type { SecondChanceOffer } from "@/types";
+import { useMoney } from "@/hooks/use-money";
 
 async function loadSales() {
   const [orders, chances] = await Promise.all([listSoldOrders(), listSecondChances()]);
@@ -111,6 +112,8 @@ function SalesList({
                 <ShipButton entry={entry} onShipped={onChanged} />
               ) : chance ? (
                 <SecondChanceAction entry={entry} chance={chance} onOffered={onChanged} />
+              ) : entry.review ? (
+                <BuyerReview rating={entry.review.rating} comment={entry.review.comment} />
               ) : null
             }
           />
@@ -146,9 +149,10 @@ function SecondChanceAction({
 }
 
 function OfferOutcome({ offer }: { offer: SecondChanceOffer }) {
+  const money = useMoney();
   const t = useTranslations("seller");
   const format = useFormatter();
-  const amount = formatCurrency(offer.amount);
+  const amount = money.currency(offer.amount);
 
   return (
     <div className="shrink-0 text-sm">
@@ -173,12 +177,13 @@ function OfferOutcome({ offer }: { offer: SecondChanceOffer }) {
 }
 
 function OfferButton({ name, chance, onOffered }: { name: string; chance: SecondChance; onOffered: () => void }) {
+  const money = useMoney();
   const t = useTranslations("seller");
   const tc = useTranslations("common");
   const errorMessage = useApiErrorMessage();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const amount = formatCurrency(chance.runnerUpBid ?? 0);
+  const amount = money.currency(chance.runnerUpBid ?? 0);
 
   function send() {
     startTransition(async () => {
@@ -219,6 +224,17 @@ function OfferButton({ name, chance, onOffered }: { name: string; chance: Second
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function BuyerReview({ rating, comment }: { rating: number; comment: string | null }) {
+  const t = useTranslations("seller");
+  return (
+    <div className="max-w-[16rem] shrink-0">
+      <p className="label-sm text-dim mb-1">{t("buyerReview")}</p>
+      <StarRating rating={rating} />
+      {comment ? <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">{comment}</p> : null}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createHmac } from "node:crypto";
 import path from "node:path";
 
 /**
@@ -16,6 +17,9 @@ export const PASSWORD = "e2e-password";
 
 /** EN: Where the web app keeps the signed-in session. / VI: Nơi web app giữ phiên đăng nhập. */
 export const TOKEN_STORAGE_KEY = "nexbid.token";
+
+/** EN: The stack's VNPay hash secret — docker-compose.yml's local placeholder unless overridden. / VI: Hash secret VNPay của stack. */
+const VNPAY_HASH_SECRET = process.env.E2E_VNPAY_HASH_SECRET ?? "change-me-local-vnpay-secret";
 
 export interface Session {
   token: string;
@@ -118,11 +122,18 @@ export function lapsePayment(auctionId: string): number {
  * VI: Một lô không ảnh. `open` duyệt nó với giờ mở đã qua, nên lô mở ngay (spec §7.5); nếu không, lô nằm
  *     trong hàng chờ duyệt.
  */
+/** EN: Optional prices a lot can carry. / VI: Các mức giá tuỳ chọn một lô có thể có. */
+export interface LotPrices {
+  reservePrice?: number;
+  buyNowPrice?: number;
+}
+
 export async function createLot(
   seller: Session,
   admin: Session,
   name: string,
   open: boolean,
+  prices: LotPrices = {},
 ): Promise<{ id: string; startTime: string }> {
   const categories = await call<Array<{ id: string }>>("GET", "/api/categories");
   const product = await call<{ id: string }>("POST", "/api/seller/products", {
@@ -145,6 +156,7 @@ export async function createLot(
       minimumIncrement: 100_000,
       startTime,
       endTime: new Date(Date.now() + 48 * 60 * minute).toISOString(),
+      ...prices,
     },
   });
   await call("POST", `/api/seller/auctions/${auction.id}/submit`, { token: seller.token });
@@ -160,4 +172,72 @@ export async function placeBid(auctionId: string, bidder: Session): Promise<Plac
     body: { amount: detail.minimumNextBid },
   });
   return placed.bid;
+}
+
+/** EN: Buys a lot outright, as the button would. / VI: Mua đứt một lô, như nút bấm sẽ làm. */
+export async function buyOutright(auctionId: string, buyer: Session): Promise<void> {
+  await call("POST", `/api/auctions/${auctionId}/buy-now`, { token: buyer.token });
+}
+
+/**
+ * EN: Takes a won lot through the whole sale: the buyer pays, the seller ships, the buyer confirms receipt.
+ * VI: Đưa một lô đã thắng qua trọn giao dịch: người mua trả tiền, người bán gửi hàng, người mua xác nhận đã nhận.
+ */
+export async function completeSale(auctionId: string, buyer: Session, seller: Session): Promise<void> {
+  const payments = await call<Array<{ payment: { id: string; auctionId: string } }>>("GET", "/api/users/me/payments", {
+    token: buyer.token,
+  });
+  const payment = payments.find((entry) => entry.payment.auctionId === auctionId)!.payment;
+  await payThroughVnpay(payment.id, buyer.token);
+  const orders = await call<Array<{ order: { id: string; auctionId: string } }>>("GET", "/api/seller/orders", {
+    token: seller.token,
+  });
+  const order = orders.find((entry) => entry.order.auctionId === auctionId)!.order;
+  await call("POST", `/api/seller/orders/${order.id}/ship`, { token: seller.token });
+  await call("POST", `/api/users/me/orders/${order.id}/received`, { token: buyer.token });
+}
+
+/** EN: Java's URLEncoder, which VNPay's signature is defined over: spaces as "+", and !'()~ escaped. / VI: Giống URLEncoder của Java. */
+function javaEncode(value: string): string {
+  return encodeURIComponent(value)
+    .replace(/%20/g, "+")
+    .replace(/[!'()~]/g, (char) => "%" + char.charCodeAt(0).toString(16).toUpperCase());
+}
+
+function vnpaySign(fields: Record<string, string>): string {
+  const data = Object.keys(fields)
+    .filter((key) => key !== "vnp_SecureHash" && key !== "vnp_SecureHashType" && fields[key] !== "")
+    .sort()
+    .map((key) => `${javaEncode(key)}=${javaEncode(fields[key])}`)
+    .join("&");
+  return createHmac("sha512", VNPAY_HASH_SECRET).update(data, "utf8").digest("hex");
+}
+
+/**
+ * EN: Pays the way VNPay would confirm it: start a checkout, then send VNPay's signed "paid" report to the IPN endpoint.
+ * VI: Trả tiền theo cách VNPay xác nhận: bắt đầu checkout, rồi gửi báo cáo "đã trả" có chữ ký của VNPay tới endpoint IPN.
+ */
+async function payThroughVnpay(paymentId: string, token: string): Promise<void> {
+  const { paymentUrl } = await call<{ paymentUrl: string }>("POST", `/api/payments/${paymentId}/vnpay`, {
+    token,
+    body: { locale: "en" },
+  });
+  const sent = Object.fromEntries(new URL(paymentUrl).searchParams);
+  const reply: Record<string, string> = {
+    vnp_TmnCode: sent.vnp_TmnCode,
+    vnp_Amount: sent.vnp_Amount,
+    vnp_TxnRef: sent.vnp_TxnRef,
+    vnp_OrderInfo: sent.vnp_OrderInfo,
+    vnp_BankCode: "NCB",
+    vnp_PayDate: sent.vnp_CreateDate,
+    vnp_ResponseCode: "00",
+    vnp_TransactionStatus: "00",
+    vnp_TransactionNo: String(Date.now()),
+  };
+  reply.vnp_SecureHash = vnpaySign(reply);
+  const response = await fetch(`${API_URL}/api/payments/vnpay/ipn?${new URLSearchParams(reply)}`);
+  const answer = (await response.json()) as { RspCode: string };
+  if (answer.RspCode !== "00") {
+    throw new Error(`VNPay IPN for payment ${paymentId} answered ${JSON.stringify(answer)}`);
+  }
 }

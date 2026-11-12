@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type FormEvent } from "react";
+import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { FormField } from "@/components/common/form-field";
@@ -12,8 +12,9 @@ import { useAuthErrorMessage } from "@/hooks/use-labels";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { landingFor, useReturnPath, withReturnPath } from "@/components/auth/use-return-path";
 import { Label } from "@/components/ui/label";
-import { signIn } from "@/services/session-service";
+import { hasRole, signIn, signOut, useSession } from "@/services/session-service";
 
 interface FieldErrors {
   email?: string;
@@ -22,11 +23,30 @@ interface FieldErrors {
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function LoginForm() {
+interface LoginFormProps {
+  /**
+   * EN: `admin` is the console's own door: only admin accounts get through, it lands on the console,
+   *     and there is no sign-up link.
+   * VI: `admin` là cửa riêng của trang quản trị: chỉ tài khoản admin được vào, vào xong là tới trang
+   *     quản trị, và không có link đăng ký.
+   */
+  audience?: "marketplace" | "admin";
+}
+
+export function LoginForm({ audience = "marketplace" }: LoginFormProps) {
   const t = useTranslations("auth");
   const authErrorMessage = useAuthErrorMessage();
   const tc = useTranslations("common");
   const router = useRouter();
+  const returnPath = useReturnPath();
+  const forAdmin = audience === "admin";
+  const { user } = useSession();
+
+  // EN: An admin already signed in has nothing to do here. / VI: Admin đã đăng nhập thì không cần ở đây.
+  const alreadyAdmin = forAdmin && hasRole(user, "ADMIN");
+  useEffect(() => {
+    if (alreadyAdmin) router.replace(returnPath ?? "/admin");
+  }, [alreadyAdmin, returnPath, router]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -64,18 +84,27 @@ export function LoginForm() {
         return;
       }
 
+      if (forAdmin && !hasRole(result.user, "ADMIN")) {
+        // EN: The account is fine, just not for this door: leave no session behind. / VI: Tài khoản không sai, chỉ là không dành cho cửa này: không để lại phiên nào.
+        await signOut();
+        setFormError(t("adminOnly"));
+        return;
+      }
+
       toast.success(t("signedIn"), {
         description: t("welcomeBack", { name: result.user.fullName }),
       });
-      router.push("/");
+      router.replace(forAdmin ? (returnPath ?? "/admin") : landingFor(result.user, returnPath));
     });
   }
 
   return (
     <div>
-      <h1 className="display text-[clamp(2rem,5vw,3.5rem)]">{t("loginTitle")}</h1>
+      <h1 className="display text-[clamp(2rem,5vw,3.5rem)]">
+        {forAdmin ? t("adminLoginTitle") : t("loginTitle")}
+      </h1>
       <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-        {t("loginSubtitle")}
+        {forAdmin ? t("adminLoginSubtitle") : t("loginSubtitle")}
       </p>
 
       <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-4">
@@ -150,18 +179,26 @@ export function LoginForm() {
 
       <p className="border-line text-dim mt-8 border-t pt-4 text-xs leading-relaxed">
         <span className="label-sm text-foreground">{t("demoTitle")}</span>{" "}
-        {t("demoBody", { email: "pin@nexbid.test", password: "nexbid-demo" })}
+        {t("demoBody", { email: forAdmin ? "admin@nexbid.test" : "pin@nexbid.test", password: "nexbid-demo" })}
       </p>
 
-      <p className="text-muted-foreground mt-6 text-center text-sm">
-        {t("noAccount")}{" "}
-        <Link
-          href="/register"
-          className="text-foreground font-medium underline underline-offset-4"
-        >
-          {tc("signUp")}
-        </Link>
-      </p>
+      {forAdmin ? (
+        <p className="text-muted-foreground mt-6 text-center text-sm">
+          <Link href="/" className="text-foreground font-medium underline underline-offset-4">
+            {t("backToMarketplace")}
+          </Link>
+        </p>
+      ) : (
+        <p className="text-muted-foreground mt-6 text-center text-sm">
+          {t("noAccount")}{" "}
+          <Link
+            href={withReturnPath("/register", returnPath)}
+            className="text-foreground font-medium underline underline-offset-4"
+          >
+            {tc("signUp")}
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

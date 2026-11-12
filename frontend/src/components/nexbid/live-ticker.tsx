@@ -3,9 +3,9 @@
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 
-import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { AuctionSummary } from "@/types";
+import { useMoney } from "@/hooks/use-money";
 
 interface NexBidLiveTickerProps {
   auctions: AuctionSummary[];
@@ -20,6 +20,7 @@ interface NexBidLiveTickerProps {
  * line can actually be clicked.
  */
 export function NexBidLiveTicker({ auctions, className }: NexBidLiveTickerProps) {
+  const money = useMoney();
   const t = useTranslations("ticker");
 
   if (auctions.length === 0) return null;
@@ -57,7 +58,7 @@ export function NexBidLiveTicker({ auctions, className }: NexBidLiveTickerProps)
                   {auction.product.name}
                 </span>
                 <span className="mono-figure text-foreground text-xs">
-                  {formatCurrency(auction.currentPrice)}
+                  {money.currency(auction.currentPrice)}
                 </span>
                 <span className="text-signal-text text-[10px] leading-none">▲</span>
               </Link>

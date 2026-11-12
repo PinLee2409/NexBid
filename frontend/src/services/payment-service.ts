@@ -9,9 +9,10 @@ import { toOrder, toPayment, toSummary } from "./api/mappers";
 /**
  * Settlement (spec §16, §17).
  *
- * Payment is deliberately a demo switch: the winner picks success or failure,
- * so the whole post-auction flow can be reviewed without a payment provider.
- * The server owns the deadline: an elapsed window comes back EXPIRED.
+ * Payment goes through VNPay: the server signs a checkout link, the buyer pays
+ * on VNPay's page, and VNPay reports back to the server (IPN) and through the
+ * buyer's browser on /payments/vnpay-return. The server owns the deadline: an
+ * elapsed window comes back EXPIRED.
  */
 
 export interface PaymentEntry {
@@ -39,22 +40,23 @@ export async function listPayments(): Promise<PaymentEntry[]> {
 }
 
 /**
- * `POST /api/payments/{id}/pay`
- *
- * On success the server moves the order to PAID and the auction to COMPLETED
- * (spec §17). A window that has run out is refused, whichever outcome is asked.
+ * `POST /api/payments/{id}/vnpay` — the signed link to VNPay's payment page, in
+ * the reader's language. The caller sends the browser there.
  */
-export async function payPayment(
-  paymentId: string,
-  outcome: "SUCCESS" | "FAILED",
-): Promise<{ ok: boolean }> {
-  try {
-    const result = await api<ApiPayment>(`/api/payments/${paymentId}/pay`, {
-      method: "POST",
-      body: { outcome },
-    });
-    return { ok: result.payment.status === "SUCCESS" };
-  } catch {
-    return { ok: false };
-  }
+export async function startVnpayCheckout(paymentId: string, locale: string): Promise<string> {
+  const { paymentUrl } = await api<{ paymentUrl: string }>(`/api/payments/${paymentId}/vnpay`, {
+    method: "POST",
+    body: { locale },
+  });
+  return paymentUrl;
+}
+
+/**
+ * `GET /api/payments/vnpay/return` — hands VNPay's signed reply, exactly as it
+ * arrived in the address bar, to the server, which checks it and settles the
+ * attempt (idempotently, so the IPN may already have done so).
+ */
+export async function confirmVnpayReturn(query: string): Promise<Payment> {
+  const view = await api<ApiPayment>(`/api/payments/vnpay/return?${query.replace(/^\?/, "")}`);
+  return toPayment(view.payment);
 }

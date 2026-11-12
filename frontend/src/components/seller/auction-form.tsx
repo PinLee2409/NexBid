@@ -19,11 +19,12 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { AUCTION_CONFIG } from "@/constants/auction";
-import { CURRENCY, formatCurrency, fromDateAndTimeParts } from "@/lib/format";
+import { CURRENCY, fromDateAndTimeParts } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useApiErrorMessage } from "@/hooks/use-labels";
 import { createAuction } from "@/services/seller-service";
 import type { ProductWithMeta } from "@/services/seller-service";
+import { useMoney } from "@/hooks/use-money";
 
 interface AuctionFormProps {
   products: ProductWithMeta[];
@@ -35,6 +36,8 @@ interface FieldErrors {
   productId?: string;
   startingPrice?: string;
   minimumIncrement?: string;
+  reservePrice?: string;
+  buyNowPrice?: string;
   start?: string;
   end?: string;
 }
@@ -62,6 +65,7 @@ function defaultSchedule() {
 }
 
 export function AuctionForm({ products, initialProductId }: AuctionFormProps) {
+  const money = useMoney();
   const t = useTranslations("seller");
   const tc = useTranslations("common");
   const format = useFormatter();
@@ -72,6 +76,8 @@ export function AuctionForm({ products, initialProductId }: AuctionFormProps) {
   const [productId, setProductId] = useState(initialProductId ?? "");
   const [startingPrice, setStartingPrice] = useState("1000000");
   const [minimumIncrement, setMinimumIncrement] = useState("100000");
+  const [reservePrice, setReservePrice] = useState("");
+  const [buyNowPrice, setBuyNowPrice] = useState("");
   const [startDate, setStartDate] = useState(schedule.startDate);
   const [startTime, setStartTime] = useState(schedule.startTime);
   const [endDate, setEndDate] = useState(schedule.endDate);
@@ -104,6 +110,12 @@ export function AuctionForm({ products, initialProductId }: AuctionFormProps) {
     if (!(Number(minimumIncrement) > 0))
       next.minimumIncrement = t("errors.incrementPositive");
 
+    // EN: The same rules the server applies. / VI: Đúng các luật server áp dụng.
+    const start = Number(startingPrice);
+    if (reservePrice && Number(reservePrice) < start) next.reservePrice = t("errors.reserveBelowStart");
+    if (buyNowPrice && (Number(buyNowPrice) <= start || (reservePrice !== "" && Number(buyNowPrice) < Number(reservePrice))))
+      next.buyNowPrice = t("errors.buyNowTooLow");
+
     if (!startIso) next.start = t("errors.startRequired");
     if (!endIso) next.end = t("errors.endRequired");
 
@@ -130,6 +142,8 @@ export function AuctionForm({ products, initialProductId }: AuctionFormProps) {
             antiSnipingEnabled: antiSniping,
             antiSnipingWindowSeconds: Number(snipeWindow),
             extensionSeconds: Number(extension),
+            reservePrice: reservePrice ? Number(reservePrice) : undefined,
+            buyNowPrice: buyNowPrice ? Number(buyNowPrice) : undefined,
           },
           submitForApproval,
         );
@@ -249,6 +263,32 @@ export function AuctionForm({ products, initialProductId }: AuctionFormProps) {
                   onValueChange={(value) => {
                     setMinimumIncrement(value);
                     setErrors((c) => ({ ...c, minimumIncrement: undefined }));
+                  }}
+                />
+              )}
+            </FormField>
+
+            <FormField label={t("reservePriceLabel")} hint={t("reservePriceHint")} error={errors.reservePrice}>
+              {(field) => (
+                <MoneyInput
+                  {...field}
+                  value={reservePrice}
+                  onValueChange={(value) => {
+                    setReservePrice(value);
+                    setErrors((c) => ({ ...c, reservePrice: undefined, buyNowPrice: undefined }));
+                  }}
+                />
+              )}
+            </FormField>
+
+            <FormField label={t("buyNowLabel")} hint={t("buyNowHint")} error={errors.buyNowPrice}>
+              {(field) => (
+                <MoneyInput
+                  {...field}
+                  value={buyNowPrice}
+                  onValueChange={(value) => {
+                    setBuyNowPrice(value);
+                    setErrors((c) => ({ ...c, buyNowPrice: undefined }));
                   }}
                 />
               )}
@@ -387,11 +427,19 @@ export function AuctionForm({ products, initialProductId }: AuctionFormProps) {
               <SummaryRow label={tc("product")} value={selectedProduct.product.name} />
               <SummaryRow
                 label={t("startingPriceLabel")}
-                value={formatCurrency(Number(startingPrice) || 0)}
+                value={money.currency(Number(startingPrice) || 0)}
               />
               <SummaryRow
                 label={t("incrementLabel")}
-                value={formatCurrency(Number(minimumIncrement) || 0)}
+                value={money.currency(Number(minimumIncrement) || 0)}
+              />
+              <SummaryRow
+                label={t("summaryReserve")}
+                value={reservePrice ? money.currency(Number(reservePrice)) : t("summaryNone")}
+              />
+              <SummaryRow
+                label={t("summaryBuyNow")}
+                value={buyNowPrice ? money.currency(Number(buyNowPrice)) : t("summaryNone")}
               />
               {startIso ? (
                 <SummaryRow

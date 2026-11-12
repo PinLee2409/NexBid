@@ -27,6 +27,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     Optional<Order> findByPaymentId(UUID paymentId);
 
+    long countBySellerIdAndStatusIn(UUID sellerId, Collection<OrderStatus> statuses);
+
     /**
      * EN: Locked, so a seller shipping and an admin refunding the same order cannot both win.
      * VI: Khoá lại, để người bán gửi hàng và admin hoàn tiền cùng một đơn không thể cùng thành công.

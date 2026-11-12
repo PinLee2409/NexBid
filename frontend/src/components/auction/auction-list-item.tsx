@@ -9,9 +9,9 @@ import { AuctionStatusBadge } from "@/components/auction/auction-status-badge";
 import { CategoryName } from "@/components/common/category-name";
 import { AuctionClock } from "@/components/nexbid/auction-clock";
 import { formatLot } from "@/components/nexbid/lot-number";
-import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { AuctionSummary } from "@/types";
+import { useMoney } from "@/hooks/use-money";
 
 interface AuctionListItemProps {
   auction: AuctionSummary;
@@ -35,6 +35,7 @@ export function AuctionListItem({
   actions,
   className,
 }: AuctionListItemProps) {
+  const money = useMoney();
   const tc = useTranslations("common");
   const ts = useTranslations("stage");
   const cover = auction.product.images[0];
@@ -95,7 +96,7 @@ export function AuctionListItem({
               : tc("currentBid")}
         </span>
         <span className="figure block text-lg">
-          {formatCurrency(
+          {money.currency(
             isUpcoming ? auction.startingPrice : auction.currentPrice,
           )}
         </span>

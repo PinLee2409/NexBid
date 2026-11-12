@@ -24,6 +24,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import com.nexbid.auction.AuctionService;
 import com.nexbid.support.TestInfrastructure;
+import com.nexbid.support.VnpayTestSupport;
 import com.nexbid.user.RoleName;
 import com.nexbid.user.UserService;
 
@@ -228,8 +229,7 @@ class SecondChanceApiTest {
         mockMvc.perform(get("/api/users/me/wins").header("Authorization", "Bearer " + lot.runnerUp()))
                 .andExpect(jsonPath("$.data[0].auction.id").value(lot.auctionId()));
 
-        mockMvc.perform(post("/api/payments/" + paymentId + "/pay").header("Authorization", "Bearer " + lot.runnerUp())
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"outcome\":\"SUCCESS\"}"))
+        VnpayTestSupport.pay(mockMvc, lot.runnerUp(), String.valueOf(paymentId), "SUCCESS")
                 .andExpect(status().isOk());
         assertThat(column("auctions", "status", lot.auctionId())).isEqualTo("COMPLETED");
         assertThat(column("products", "status", lot.productId())).isEqualTo("SOLD");

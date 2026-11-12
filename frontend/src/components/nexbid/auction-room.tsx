@@ -17,9 +17,10 @@ import {
   type PreviewState,
 } from "@/components/nexbid/state-preview";
 import { useAuctionRoom, type AuctionRoom } from "@/hooks/use-auction-room";
-import { formatCurrency } from "@/lib/format";
+import { isBelowReserve } from "@/lib/auction-rules";
 import { useSession } from "@/services/session-service";
 import type { AuctionDetail } from "@/types";
+import { useMoney } from "@/hooks/use-money";
 
 interface AuctionRoomViewProps {
   auction: AuctionDetail;
@@ -32,6 +33,7 @@ interface AuctionRoomViewProps {
  * rail can force any auction state so each one can be reviewed on demand.
  */
 export function AuctionRoomView({ auction, serverTime }: AuctionRoomViewProps) {
+  const money = useMoney();
   const t = useTranslations("terminal");
   const tc = useTranslations("common");
   const { user } = useSession();
@@ -97,8 +99,9 @@ export function AuctionRoomView({ auction, serverTime }: AuctionRoomViewProps) {
   }
 
   const winnerBid = room.bids[0];
+  const belowReserve = preview === "normal" && isBelowReserve(room);
   const viewerWon =
-    preview === "won" || (room.ended && winnerBid?.bidderId === user?.id);
+    preview === "won" || (room.ended && !belowReserve && winnerBid?.bidderId === user?.id);
   const winnerName =
     preview === "won"
       ? (user?.displayName ?? t("you"))
@@ -106,13 +109,9 @@ export function AuctionRoomView({ auction, serverTime }: AuctionRoomViewProps) {
 
   return (
     <>
-      <BidTerminal
-        auction={auction}
-        room={room}
-        user={user}
-        serverTime={serverTime}
-        className="lg:sticky lg:top-24"
-      />
+      {/* EN: Not sticky: it is taller than most screens, and the bid tape below would slide up over it.
+          VI: Không dùng sticky: khối này cao hơn hầu hết màn hình, và dải lượt trả giá bên dưới sẽ trượt đè lên nó. */}
+      <BidTerminal auction={auction} room={room} user={user} serverTime={serverTime} />
 
       <section className="mt-10" aria-labelledby="tape-heading">
         <div className="border-line bg-surface border p-5 sm:p-6">
@@ -141,7 +140,7 @@ export function AuctionRoomView({ auction, serverTime }: AuctionRoomViewProps) {
             <div className="min-w-0 flex-1">
               <p className="text-muted-foreground text-[11px]">{t("currentBid")}</p>
               <p className="figure truncate text-lg leading-tight">
-                {formatCurrency(room.currentPrice)}
+                {money.currency(room.currentPrice)}
               </p>
             </div>
 
@@ -191,6 +190,7 @@ export function AuctionRoomView({ auction, serverTime }: AuctionRoomViewProps) {
         finalPrice={room.currentPrice}
         winnerName={winnerName}
         viewerWon={viewerWon}
+        belowReserve={belowReserve}
         onClose={() => {
           setResultOpen(false);
           // Leaving the result also leaves the forced state.

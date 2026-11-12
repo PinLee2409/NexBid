@@ -13,8 +13,8 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAsyncData } from "@/hooks/use-async-data";
-import { formatCurrency } from "@/lib/format";
 import { listMyBids, type BidStanding, type MyBidEntry } from "@/services/account-service";
+import { useMoney } from "@/hooks/use-money";
 
 type BidTab = "ACTIVE" | "WINNING" | "OUTBID" | "ENDED";
 
@@ -34,7 +34,7 @@ function matchesTab(standing: BidStanding, tab: BidTab): boolean {
     case "OUTBID":
       return standing === "OUTBID";
     case "ENDED":
-      return standing === "WON" || standing === "LOST";
+      return standing === "WON" || standing === "LOST" || standing === "AWAITING_SELLER";
   }
 }
 
@@ -96,6 +96,7 @@ export default function MyBidsPage() {
 }
 
 function BidRow({ entry }: { entry: MyBidEntry }) {
+  const money = useMoney();
   const t = useTranslations("account");
   const tc = useTranslations("common");
 
@@ -104,6 +105,7 @@ function BidRow({ entry }: { entry: MyBidEntry }) {
     OUTBID: t("statusOutbid"),
     WON: t("statusWon"),
     LOST: t("statusLost"),
+    AWAITING_SELLER: t("statusAwaitingSeller"),
   };
 
   const tone =
@@ -120,7 +122,7 @@ function BidRow({ entry }: { entry: MyBidEntry }) {
         label: t("yourLatestBid"),
         value: (
           <span className="flex flex-col">
-            {formatCurrency(entry.yourBid)}
+            {money.currency(entry.yourBid)}
             <span className="text-[11px] font-medium">
               {STANDING_LABEL[entry.standing]}
             </span>

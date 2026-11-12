@@ -11,10 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useEnumLabels } from "@/hooks/use-labels";
-import { formatCompactCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { getActivity, getAdminStats, listAuditLogs } from "@/services/admin-service";
 import type { ApiAnalyticsHour } from "@/services/api/dto";
+import { useMoney } from "@/hooks/use-money";
 
 export default function AdminOverviewPage() {
   const t = useTranslations("admin");
@@ -132,6 +132,7 @@ export default function AdminOverviewPage() {
  * legend is needed; each hour shows its exact count on hover.
  */
 function ActivitySection() {
+  const money = useMoney();
   const t = useTranslations("admin");
   const format = useFormatter();
   const activity = useAsyncData("admin-activity", () => getActivity(24));
@@ -162,7 +163,7 @@ function ActivitySection() {
                     ? "—"
                     : format.number(activity.state.data.totals.sellThrough, { style: "percent" }),
               },
-              { label: t("activityRevenue"), value: formatCompactCurrency(activity.state.data.totals.revenue) },
+              { label: t("activityRevenue"), value: money.compactCurrency(activity.state.data.totals.revenue) },
             ].map((figure) => (
               <div key={figure.label}>
                 <dt className="label-sm text-dim">{figure.label}</dt>
