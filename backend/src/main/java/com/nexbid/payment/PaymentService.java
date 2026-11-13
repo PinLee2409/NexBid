@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import com.nexbid.common.exception.ErrorCode;
 import com.nexbid.common.exception.ResourceNotFoundException;
 import com.nexbid.payment.entity.Payment;
 import com.nexbid.payment.repository.PaymentRepository;
+import com.nexbid.user.BankAccount;
 
 /**
  * EN: The winner's payment (guide §32, spec §17): created at the close, paid by the winner alone, and
@@ -35,17 +37,20 @@ public class PaymentService {
     private final AuctionService auctions;
     private final ApplicationEventPublisher events;
     private final Duration window;
+    private final JdbcTemplate jdbc;
 
     PaymentService(
             PaymentRepository payments,
             AuctionService auctions,
             ApplicationEventPublisher events,
-            @Value("${nexbid.payment.window}") Duration window) {
+            @Value("${nexbid.payment.window}") Duration window,
+            JdbcTemplate jdbc) {
 
         this.payments = payments;
         this.auctions = auctions;
         this.events = events;
         this.window = window;
+        this.jdbc = jdbc;
     }
 
     /**
@@ -103,23 +108,33 @@ public class PaymentService {
     }
 
     /**
-     * EN: Gives a completed payment back. Called by the order module, which has already checked the order
-     *     may be refunded; only a paid payment can be.
-     * VI: Hoàn lại một khoản đã trả. Do module order gọi, sau khi đã kiểm tra đơn được phép hoàn; chỉ khoản đã
-     *     trả mới hoàn được.
+     * EN: Records a refund an admin has already made: a bank transfer of the whole amount to the buyer's account, traced
+     *     by the bank's reference. The account is copied, so a later change of account does not rewrite history.
+     *     Called by the order module, which has already checked the order may be refunded; only a paid payment can be.
+     * VI: Ghi nhận một lần hoàn tiền admin đã làm: chuyển khoản toàn bộ số tiền vào tài khoản của người mua, tra lại được
+     *     bằng mã giao dịch ngân hàng. Tài khoản được sao chép, để người mua đổi tài khoản sau này không sửa lịch sử.
+     *     Do module order gọi, sau khi đã kiểm tra đơn được phép hoàn; chỉ khoản đã trả mới hoàn được.
      */
     @Transactional
-    public void refund(UUID paymentId, UUID actorId) {
+    public void refund(UUID paymentId, UUID actorId, String reference, BankAccount account) {
         Payment payment = payments.findByIdForUpdate(paymentId).orElseThrow(() -> notFound(paymentId));
         if (payment.getStatus() != PaymentStatus.SUCCESS) {
             throw new IllegalStateException("Only a paid payment can be refunded, not " + payment.getStatus());
         }
 
+        jdbc.update("""
+                INSERT INTO payment_refunds (id, payment_id, amount, reference, bank_name, account_number,
+                                             account_holder, created_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, UUID.randomUUID(), paymentId, payment.getAmount(), reference, account.bankName(),
+                account.accountNumber(), account.accountHolder(), actorId,
+                java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC));
+
         payment.settle(PaymentStatus.REFUNDED);
         payments.saveAndFlush(payment);
         events.publishEvent(new PaymentEvents.Refunded(
-                payment.getId(), payment.getAuctionId(), payment.getUserId(), payment.getAmount(), actorId,
-                Instant.now()));
+                payment.getId(), payment.getAuctionId(), payment.getUserId(), payment.getAmount(), reference,
+                account.masked(), actorId, Instant.now()));
     }
 
     public PaymentView get(UUID userId, UUID paymentId) {

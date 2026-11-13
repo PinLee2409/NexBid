@@ -28,10 +28,13 @@ const geistMono = Geist_Mono({
   preload: false,
 });
 
-/** Editorial display face — condensed, heavy, set in caps. */
+/**
+ * Editorial display face — condensed, heavy, set in caps. The Vietnamese subset too: without it, letters
+ * such as Ọ, Ự or Ở fall back to another face in the middle of a heading.
+ */
 const anton = Anton({
   variable: "--font-anton",
-  subsets: ["latin"],
+  subsets: ["latin", "vietnamese"],
   weight: "400",
   display: "swap",
 });

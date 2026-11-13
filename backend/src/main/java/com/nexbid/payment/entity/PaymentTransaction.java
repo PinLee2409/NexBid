@@ -109,4 +109,14 @@ public class PaymentTransaction {
     public String getResponseCode() {
         return responseCode;
     }
+
+    /** EN: VNPay's own number for the charge, needed to refund it. / VI: Mã của VNPay cho lần trừ tiền, cần để hoàn tiền. */
+    public String getTransactionNo() {
+        return transactionNo;
+    }
+
+    /** EN: When the checkout link was made: VNPay's vnp_CreateDate. / VI: Lúc tạo link thanh toán: vnp_CreateDate của VNPay. */
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
 }

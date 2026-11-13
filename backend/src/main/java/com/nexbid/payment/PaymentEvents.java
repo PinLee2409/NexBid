@@ -36,9 +36,10 @@ public final class PaymentEvents {
     }
 
     /**
-     * EN: An admin gave a payment back. Kept inside the server: the audit log is its only listener.
-     * VI: Admin đã hoàn lại một khoản thanh toán. Chỉ dùng trong server: audit log là listener duy nhất.
+     * EN: An admin transferred a payment back to the buyer. {@code account} is masked ("VCB ••••1234").
+     * VI: Admin đã chuyển trả một khoản thanh toán cho người mua. {@code account} đã che bớt ("VCB ••••1234").
      */
-    public record Refunded(UUID paymentId, UUID auctionId, UUID userId, BigDecimal amount, UUID actorId, Instant at) {
+    public record Refunded(UUID paymentId, UUID auctionId, UUID userId, BigDecimal amount, String reference,
+            String account, UUID actorId, Instant at) {
     }
 }

@@ -263,7 +263,15 @@ class OrderApiTest {
     }
 
     private ResultActions refund(String token, String orderId) throws Exception {
-        return mockMvc.perform(post("/api/admin/orders/" + orderId + "/refund").header("Authorization", "Bearer " + token));
+        return mockMvc.perform(post("/api/admin/orders/" + orderId + "/refund").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"reference\":\" FT2611140001 \"}"));
+    }
+
+    private void saveBankAccount(String token) throws Exception {
+        mockMvc.perform(put("/api/users/me/bank-account").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"bankName\":\"Techcombank\",\"accountNumber\":\"1903 5555 1234\",\"accountHolder\":\"Test Buyer\"}"))
+                .andExpect(status().isOk());
     }
 
     private List<String> auditOf(String entityId) {
@@ -366,11 +374,34 @@ class OrderApiTest {
         ship(won.seller(), order).andExpect(status().isOk());
 
         refund(won.seller(), order).andExpect(status().isForbidden());
+        // EN: Nowhere to send the money yet: nothing changes. / VI: Chưa biết chuyển tiền về đâu: không có gì thay đổi.
+        mockMvc.perform(get("/api/admin/orders/" + order + "/refund-account").header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data").doesNotExist());
+        refund(admin, order)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("REFUND_ACCOUNT_REQUIRED"));
+        assertThat(statusIn("orders", order)).isEqualTo("PROCESSING");
+        mockMvc.perform(post("/api/admin/orders/" + order + "/refund").header("Authorization", "Bearer " + admin)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"reference\":\" \"}")).andExpect(status().isBadRequest());
+
+        saveBankAccount(won.winner());
+        mockMvc.perform(get("/api/admin/orders/" + order + "/refund-account").header("Authorization", "Bearer " + admin))
+                .andExpect(jsonPath("$.data.accountNumber").value("190355551234"))
+                .andExpect(jsonPath("$.data.accountHolder").value("TEST BUYER"));
+        mockMvc.perform(get("/api/admin/orders/" + order + "/refund-account").header("Authorization", "Bearer " + won.seller()))
+                .andExpect(status().isForbidden());
         refund(admin, order)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.order.status").value("CANCELLED"))
                 .andExpect(jsonPath("$.data.payment.status").value("REFUNDED"));
 
+        // EN: The transfer is kept with a copy of the account it went to. / VI: Lần chuyển khoản được lưu kèm bản sao tài khoản nhận.
+        assertThat(jdbc.queryForObject("SELECT reference || '|' || bank_name || '|' || account_number FROM payment_refunds "
+                + "WHERE payment_id = ?::uuid", String.class, won.paymentId())).isEqualTo("FT2611140001|Techcombank|190355551234");
+        assertThat(jdbc.queryForObject("SELECT html FROM email_outbox WHERE kind = 'PAYMENT_REFUNDED' AND auction_id = ?::uuid",
+                String.class, won.auctionId())).contains("FT2611140001").contains("Techcombank").contains("1234").doesNotContain("190355551234");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notifications WHERE type = 'ORDER_REFUNDED' AND auction_id = ?::uuid",
+                Integer.class, won.auctionId())).isOne();
         assertThat(statusIn("orders", order)).isEqualTo("CANCELLED");
         assertThat(statusIn("payments", won.paymentId())).isEqualTo("REFUNDED");
         assertThat(auditOf(won.paymentId())).contains("PAYMENT_REFUNDED");
@@ -395,6 +426,7 @@ class OrderApiTest {
         String order = orderIdOf(won);
         ship(won.seller(), order).andExpect(status().isOk());
         receive(won.winner(), order).andExpect(status().isOk());
+        saveBankAccount(won.winner());
 
         refund(admin, order).andExpect(status().isConflict());
         assertThat(statusIn("payments", won.paymentId())).isEqualTo("SUCCESS");

@@ -113,7 +113,10 @@
     "payments": "Thanh toán",
     "mainNav": "Chính",
     "menuNav": "Menu",
-    "breadcrumb": "Đường dẫn"
+    "breadcrumb": "Đường dẫn",
+    "earnings": "Thu nhập",
+    "disputes": "Khiếu nại",
+    "payouts": "Chi trả"
   },
   "footer": {
     "marketplace": "Sàn đấu giá",
@@ -445,6 +448,9 @@
     "addressSaveAndPay": "Lưu và tiếp tục sang VNPay",
     "addressSave": "Lưu địa chỉ",
     "addressSaved": "Đã lưu địa chỉ",
+    "refundAccountTitle": "Tài khoản nhận hoàn tiền",
+    "refundAccountHint": "Nếu đơn được hoàn tiền, NexBid chuyển khoản vào tài khoản này. Tên chủ tài khoản phải khớp với ngân hàng.",
+    "disputeAccountHint": "Nếu NexBid hoàn tiền cho bạn, tiền sẽ được chuyển vào tài khoản này. Tài khoản được lưu vào hồ sơ của bạn.",
     "addressRecipient": "Người nhận",
     "addressPhone": "Số điện thoại",
     "addressPhoneInvalid": "Nhập từ 8 đến 20 chữ số.",
@@ -465,7 +471,33 @@
     "unsubscribeNoToken": "Link này không đầy đủ. Bạn có thể đổi cài đặt email trong hồ sơ.",
     "unsubscribeConfirm": "Tắt email bị vượt giá",
     "unsubscribedTitle": "Đã tắt email bị vượt giá",
-    "unsubscribedBody": "Bạn có thể bật lại trong hồ sơ bất cứ lúc nào."
+    "unsubscribedBody": "Bạn có thể bật lại trong hồ sơ bất cứ lúc nào.",
+    "reportProblem": "Báo sự cố",
+    "disputeTitle": "Báo sự cố với đơn hàng",
+    "disputeBody": "Cho NexBid biết chuyện gì xảy ra với {name}. Đơn sẽ tạm dừng, không tự hoàn tất, cho tới khi chúng tôi xem xét và quyết định.",
+    "disputeReasonLabel": "Vấn đề",
+    "disputeReasonPlaceholder": "Chọn vấn đề",
+    "disputeReasonRequired": "Hãy chọn vấn đề bạn gặp.",
+    "disputeDetailsLabel": "Mô tả",
+    "disputeDetailsHint": "Ít nhất 10 ký tự. Ví dụ: mã vận đơn không cập nhật từ ngày 5, hoặc màn hình bị nứt khi mở hộp.",
+    "disputeDetailsTooShort": "Hãy mô tả rõ hơn, ít nhất 10 ký tự.",
+    "disputeSubmit": "Gửi khiếu nại",
+    "disputeSent": "Đã gửi khiếu nại",
+    "disputeSentBody": "NexBid sẽ xem xét và báo kết quả qua email.",
+    "disputeLabel": "Khiếu nại",
+    "disputeNote": "Phản hồi",
+    "disputeReason": {
+      "NOT_RECEIVED": "Chưa nhận được hàng",
+      "NOT_AS_DESCRIBED": "Không đúng mô tả",
+      "DAMAGED": "Hàng bị hư hỏng",
+      "OTHER": "Lý do khác"
+    },
+    "disputeStatus": {
+      "OPEN": "Đang xem xét",
+      "REFUNDED": "Đã hoàn tiền",
+      "REJECTED": "Không chấp nhận"
+    },
+    "orderAutoCompleted": "Tự hoàn tất"
   },
   "becomeSeller": {
     "title": "Trở thành người bán",
@@ -637,7 +669,29 @@
     "shipTo": "Giao tới",
     "shipCarrier": "Đơn vị vận chuyển",
     "shipCarrierHint": "Ví dụ GHN, GHTK, Viettel Post hoặc J&T.",
-    "shipTracking": "Mã vận đơn"
+    "shipTracking": "Mã vận đơn",
+    "earningsTitle": "Thu nhập",
+    "earningsSubtitle": "Tiền bán được tính khi đơn hoàn tất. NexBid giữ phí sàn và chuyển phần còn lại vào tài khoản ngân hàng của bạn.",
+    "earningsBalance": "Chờ chi trả",
+    "earningsPaidOut": "Đã nhận",
+    "earningsFee": "Phí sàn",
+    "earningsSales": "Giao dịch đã hoàn tất",
+    "earningsEmptyTitle": "Chưa có giao dịch hoàn tất",
+    "earningsEmptyBody": "Khi người mua xác nhận đã nhận hàng, hoặc sau 7 ngày kể từ khi gửi mà không có khiếu nại, tiền bán sẽ hiện ở đây.",
+    "earningsBreakdown": "Giá {gross} − phí {fee}",
+    "earningPaid": "Đã chi trả",
+    "earningWaiting": "Chờ chi trả",
+    "bankTitle": "Tài khoản nhận tiền",
+    "bankHint": "NexBid chuyển tiền bán vào tài khoản này. Tên chủ tài khoản phải trùng với tên trên ngân hàng.",
+    "bankName": "Ngân hàng",
+    "bankNumber": "Số tài khoản",
+    "bankNumberInvalid": "Số tài khoản gồm 6 tới 30 chữ số.",
+    "bankHolder": "Chủ tài khoản",
+    "bankHolderHint": "Viết không dấu, như trên thẻ, ví dụ NGUYEN VAN A.",
+    "bankSave": "Lưu tài khoản",
+    "bankSaved": "Đã lưu tài khoản nhận tiền",
+    "bankEdit": "Đổi tài khoản",
+    "payoutHistory": "Lịch sử nhận tiền"
   },
   "admin": {
     "console": "Bảng quản trị",
@@ -697,9 +751,10 @@
     "tabAllOrders": "Tất cả",
     "refund": "Hoàn tiền",
     "refundTitle": "Hoàn tiền đơn này?",
-    "refundBody": "Đơn sẽ bị huỷ và khoản thanh toán được đánh dấu đã hoàn. Không thể hoàn tác.",
+    "refundBody": "Chuyển toàn bộ số tiền của {name} vào tài khoản người mua bên dưới, rồi nhập mã giao dịch ngân hàng. Đơn sẽ bị huỷ; không thể hoàn tác.",
+    "refundNoAccount": "Người mua chưa thêm tài khoản nhận hoàn tiền. Hãy nhờ người mua thêm trong hồ sơ, rồi hoàn tiền.",
     "refunded": "Đã hoàn tiền",
-    "refundedBody": "Khoản thanh toán đã được đánh dấu hoàn tiền.",
+    "refundedBody": "Người mua đã nhận email kèm mã giao dịch.",
     "confirmRefund": "Hoàn tiền",
     "adminNotBlockable": "Không thể khoá tài khoản admin.",
     "activityTitle": "24 giờ qua",
@@ -756,7 +811,50 @@
     "categoryCreated": "Đã tạo danh mục",
     "deniedTitle": "Khu vực dành cho quản trị viên",
     "deniedBody": "Tài khoản của bạn không có quyền vào trang quản trị.",
-    "deniedAction": "Về trang đấu giá"
+    "deniedAction": "Về trang đấu giá",
+    "disputesTitle": "Khiếu nại",
+    "disputesSubtitle": "Người mua báo sự cố với đơn hàng. Hoàn tiền cho người mua, hoặc giữ nguyên giao dịch kèm ghi chú.",
+    "disputeTab": {
+      "OPEN": "Đang mở",
+      "REFUNDED": "Đã hoàn tiền",
+      "REJECTED": "Đã bác"
+    },
+    "disputesEmptyTitle": "Không có khiếu nại",
+    "disputesEmptyBody": "Khiếu nại của người mua sẽ hiện ở đây.",
+    "disputeOpenedAt": "Gửi lúc {date}",
+    "disputeReject": "Giữ giao dịch",
+    "disputeRefund": "Hoàn tiền",
+    "disputeRefundTitle": "Hoàn tiền cho người mua?",
+    "disputeRefundBody": "Chuyển {amount} của {name} vào tài khoản người mua bên dưới, rồi nhập mã giao dịch ngân hàng. Đơn bị huỷ và người bán không nhận được khoản này.",
+    "disputeRejectTitle": "Giữ nguyên giao dịch?",
+    "disputeRejectShippedBody": "Hàng đã được gửi: đơn sẽ hoàn tất và tiền được tính cho người bán.",
+    "disputeRejectUnshippedBody": "Hàng chưa được gửi: đơn quay lại chờ người bán gửi hàng.",
+    "disputeNoteLabel": "Ghi chú cho hai bên",
+    "disputeNoteHint": "Không bắt buộc. Người mua và người bán đều thấy ghi chú này trong đơn và trong email.",
+    "disputeRefunded": "Đã hoàn tiền cho người mua",
+    "disputeRejected": "Đã giữ nguyên giao dịch",
+    "payoutsTitle": "Chi trả cho người bán",
+    "payoutsSubtitle": "Người bán có tiền đang chờ. Chuyển khoản từ tài khoản của NexBid rồi ghi nhận lại ở đây.",
+    "payoutsDue": "Đang chờ chi trả",
+    "payoutsEmptyTitle": "Không có khoản nào chờ",
+    "payoutsEmptyBody": "Khi đơn hoàn tất, số tiền nợ người bán sẽ hiện ở đây.",
+    "payoutsOrders": "{count, plural, other {# đơn}} · cũ nhất từ {date}",
+    "payoutsNoBank": "Chưa có tài khoản nhận tiền",
+    "payoutsPay": "Đã chuyển khoản",
+    "payoutsRecent": "Đã chi trả gần đây",
+    "payoutsDialogTitle": "Ghi nhận chuyển khoản",
+    "payoutsDialogBody": "Chuyển đúng số tiền này vào tài khoản bên dưới, rồi nhập mã giao dịch của ngân hàng.",
+    "payoutsAmount": "Số tiền",
+    "payoutsBank": "Ngân hàng",
+    "payoutsNumber": "Số tài khoản",
+    "payoutsHolder": "Chủ tài khoản",
+    "payoutsCopy": "Sao chép {what}",
+    "payoutsCopied": "Đã sao chép",
+    "payoutsReference": "Mã giao dịch ngân hàng",
+    "payoutsReferenceHint": "Mã trên biên lai chuyển khoản, để tra lại khi cần.",
+    "payoutsConfirm": "Xác nhận đã chuyển",
+    "payoutsRecorded": "Đã ghi nhận chi trả",
+    "payoutsRecordedBody": "Người bán đã được báo qua email."
   },
   "howItWorks": {
     "title": "NexBid hoạt động thế nào",
@@ -843,6 +941,7 @@
       "PAID": "Đã thanh toán",
       "PROCESSING": "Đang xử lý",
       "COMPLETED": "Hoàn tất",
+      "DISPUTED": "Đang khiếu nại",
       "CANCELLED": "Đã huỷ"
     },
     "notificationType": {
@@ -862,7 +961,13 @@
       "SECOND_CHANCE_ACCEPTED": "Đề nghị được nhận",
       "SECOND_CHANCE_DECLINED": "Đề nghị bị từ chối",
       "NEW_REVIEW": "Đánh giá mới",
-      "RESERVE_NOT_MET": "Chưa đạt giá sàn"
+      "RESERVE_NOT_MET": "Chưa đạt giá sàn",
+      "DISPUTE_OPENED": "Có khiếu nại mới",
+      "DISPUTE_RESOLVED": "Khiếu nại đã có kết quả",
+      "DISPUTE_SELLER_RESOLVED": "Khiếu nại đã có kết quả",
+      "PAYOUT_SENT": "Đã chuyển tiền",
+      "ORDER_COMPLETING": "Đơn sắp tự hoàn tất",
+      "ORDER_REFUNDED": "Đã chuyển tiền hoàn"
     },
     "auditAction": {
       "USER_LOGIN": "Người dùng đăng nhập",
@@ -888,7 +993,12 @@
       "RESERVE_ACCEPTED": "Bán dưới giá sàn",
       "RESERVE_REFUSED": "Giữ lại dưới giá sàn",
       "RESERVE_LAPSED": "Quá hạn quyết định giá sàn",
-      "BOUGHT_NOW": "Mua ngay"
+      "BOUGHT_NOW": "Mua ngay",
+      "DISPUTE_OPENED": "Mở khiếu nại",
+      "DISPUTE_REFUNDED": "Chấp nhận khiếu nại, hoàn tiền",
+      "DISPUTE_REJECTED": "Bác khiếu nại",
+      "PAYOUT_RECORDED": "Ghi nhận chi trả",
+      "BANK_ACCOUNT_CHANGED": "Đổi tài khoản nhận tiền"
     },
     "role": {
       "BUYER": "Người mua",
@@ -1135,6 +1245,11 @@
     "ALREADY_SELLER": "Tài khoản của bạn đã có thể bán hàng.",
     "SELLER_APPLICATION_PENDING": "Yêu cầu của bạn đang chờ duyệt.",
     "SELLER_APPLICATION_NOT_FOUND": "Yêu cầu bán hàng này không còn tồn tại.",
-    "SELLER_APPLICATION_NOT_PENDING": "Yêu cầu này đã được quyết định."
+    "SELLER_APPLICATION_NOT_PENDING": "Yêu cầu này đã được quyết định.",
+    "REFUND_ACCOUNT_REQUIRED": "Người mua chưa thêm tài khoản nhận hoàn tiền.",
+    "DISPUTE_NOT_FOUND": "Không tìm thấy khiếu nại.",
+    "DISPUTE_CLOSED": "Khiếu nại này đã được quyết định.",
+    "BANK_ACCOUNT_REQUIRED": "Người bán chưa thêm tài khoản nhận tiền.",
+    "NOTHING_TO_PAY_OUT": "Người bán không còn khoản nào chờ chi trả."
   }
 }

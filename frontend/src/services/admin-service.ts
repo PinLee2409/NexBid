@@ -7,6 +7,7 @@ import type {
   AuditLog,
   Category,
   CategoryStatus,
+  OrderDispute,
   OrderStatus,
   SellerApplication,
   SellerApplicationStatus,
@@ -25,6 +26,7 @@ import type {
 } from "./api/dto";
 import { api } from "./api/http";
 import { toAuction, toAuditLog, toCategory, toSummary, toUser } from "./api/mappers";
+import type { BankAccount } from "./bank-account-service";
 import { toEntry, type OrderEntry } from "./order-service";
 
 /**
@@ -110,9 +112,48 @@ export async function listOrders(statuses: OrderStatus[] = []): Promise<OrderEnt
   return page.items.map(toEntry);
 }
 
-/** `POST /api/admin/orders/{id}/refund` — cancels the order and gives the payment back. */
-export async function refundOrder(orderId: string): Promise<OrderEntry> {
-  return toEntry(await api<ApiOrder>(`/api/admin/orders/${orderId}/refund`, { method: "POST" }));
+/** `GET /api/admin/orders/{id}/refund-account` — where to transfer a refund; null when the buyer has not said. */
+export async function getRefundAccount(orderId: string): Promise<BankAccount | null> {
+  return (await api<BankAccount | null>(`/api/admin/orders/${orderId}/refund-account`)) ?? null;
+}
+
+/**
+ * `POST /api/admin/orders/{id}/refund` — records a transfer the admin already made to the buyer: the order is
+ * cancelled and the payment marked refunded.
+ */
+export async function refundOrder(orderId: string, reference: string): Promise<OrderEntry> {
+  return toEntry(
+    await api<ApiOrder>(`/api/admin/orders/${orderId}/refund`, { method: "POST", body: { reference: reference.trim() } }),
+  );
+}
+
+export interface DisputeEntry {
+  dispute: OrderDispute;
+  entry: OrderEntry;
+}
+
+/** `GET /api/admin/disputes?status=…` — open disputes come oldest first. */
+export async function listDisputes(status: OrderDispute["status"]): Promise<DisputeEntry[]> {
+  const rows = await api<{ dispute: OrderDispute; entry: ApiOrder }[]>("/api/admin/disputes", { query: { status } });
+  return rows.map((row) => ({ dispute: row.dispute, entry: toEntry(row.entry) }));
+}
+
+/**
+ * `POST /api/admin/disputes/{id}/resolve` — refund the buyer (a transfer already made, with its bank reference), or let
+ * the sale stand.
+ */
+export async function resolveDispute(
+  disputeId: string,
+  refund: boolean,
+  note: string,
+  reference?: string,
+): Promise<OrderEntry> {
+  return toEntry(
+    await api<ApiOrder>(`/api/admin/disputes/${disputeId}/resolve`, {
+      method: "POST",
+      body: { refund, note: note.trim() || undefined, reference: refund ? reference?.trim() : undefined },
+    }),
+  );
 }
 
 /** `GET /api/admin/analytics?hours=…` — hourly totals from the Analytics Consumer, oldest hour first. */

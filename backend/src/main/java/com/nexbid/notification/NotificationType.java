@@ -45,5 +45,20 @@ public enum NotificationType {
      *     the decision lapse. / VI: Lô đóng dưới giá sàn — báo người trả cao nhất và người bán, và báo lại người bán nếu họ
      *     để quá hạn quyết định.
      */
-    RESERVE_NOT_MET
+    RESERVE_NOT_MET,
+    /** EN: To the seller: the buyer reported a problem with an order. / VI: Gửi người bán: người mua báo có vấn đề với đơn. */
+    DISPUTE_OPENED,
+    /** EN: To the buyer: an admin decided their dispute. / VI: Gửi người mua: admin đã quyết định khiếu nại của họ. */
+    DISPUTE_RESOLVED,
+    /** EN: To the seller: an admin decided a dispute about their sale. / VI: Gửi người bán: admin đã quyết định khiếu nại về đơn bán của họ. */
+    DISPUTE_SELLER_RESOLVED,
+    /** EN: To the seller: money was transferred to their bank. / VI: Gửi người bán: tiền đã được chuyển vào ngân hàng. */
+    PAYOUT_SENT,
+    /**
+     * EN: To the buyer: a shipped order completes on its own soon unless they confirm or dispute. Once per lot.
+     * VI: Gửi người mua: đơn đã gửi sắp tự hoàn tất nếu họ không xác nhận hoặc khiếu nại. Mỗi lô một lần.
+     */
+    ORDER_COMPLETING,
+    /** EN: To the buyer: the money was transferred back to their bank account. / VI: Gửi người mua: tiền đã được chuyển trả vào tài khoản ngân hàng. */
+    ORDER_REFUNDED
 }

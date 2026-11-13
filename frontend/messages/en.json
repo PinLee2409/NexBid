@@ -113,7 +113,10 @@
     "payments": "Payments",
     "mainNav": "Main",
     "menuNav": "Menu",
-    "breadcrumb": "Breadcrumb"
+    "breadcrumb": "Breadcrumb",
+    "earnings": "Earnings",
+    "disputes": "Disputes",
+    "payouts": "Payouts"
   },
   "footer": {
     "marketplace": "Marketplace",
@@ -445,6 +448,9 @@
     "addressSaveAndPay": "Save and continue to VNPay",
     "addressSave": "Save address",
     "addressSaved": "Address saved",
+    "refundAccountTitle": "Refund account",
+    "refundAccountHint": "If an order is refunded, NexBid transfers the money here. The holder's name must match the bank's records.",
+    "disputeAccountHint": "If NexBid refunds you, the money is transferred to this account. It is saved to your profile.",
     "addressRecipient": "Recipient",
     "addressPhone": "Phone",
     "addressPhoneInvalid": "Enter 8 to 20 digits.",
@@ -465,7 +471,33 @@
     "unsubscribeNoToken": "This link is incomplete. You can change your email settings on your profile.",
     "unsubscribeConfirm": "Turn off outbid emails",
     "unsubscribedTitle": "Outbid emails are off",
-    "unsubscribedBody": "You can turn them back on from your profile at any time."
+    "unsubscribedBody": "You can turn them back on from your profile at any time.",
+    "reportProblem": "Report a problem",
+    "disputeTitle": "Report a problem with this order",
+    "disputeBody": "Tell NexBid what happened with {name}. The order is put on hold, and will not complete on its own, until we have looked into it.",
+    "disputeReasonLabel": "Problem",
+    "disputeReasonPlaceholder": "Choose a problem",
+    "disputeReasonRequired": "Choose the problem you have.",
+    "disputeDetailsLabel": "What happened",
+    "disputeDetailsHint": "At least 10 characters. For example: tracking has not moved since the 5th, or the screen was cracked when I opened the box.",
+    "disputeDetailsTooShort": "Tell us a little more, at least 10 characters.",
+    "disputeSubmit": "Send",
+    "disputeSent": "Problem reported",
+    "disputeSentBody": "NexBid will look into it and email you the outcome.",
+    "disputeLabel": "Dispute",
+    "disputeNote": "Response",
+    "disputeReason": {
+      "NOT_RECEIVED": "Not received",
+      "NOT_AS_DESCRIBED": "Not as described",
+      "DAMAGED": "Arrived damaged",
+      "OTHER": "Something else"
+    },
+    "disputeStatus": {
+      "OPEN": "Under review",
+      "REFUNDED": "Refunded",
+      "REJECTED": "Not upheld"
+    },
+    "orderAutoCompleted": "Completed automatically"
   },
   "becomeSeller": {
     "title": "Become a seller",
@@ -637,7 +669,29 @@
     "shipTo": "Ship to",
     "shipCarrier": "Carrier",
     "shipCarrierHint": "For example GHN, GHTK, Viettel Post or J&T.",
-    "shipTracking": "Tracking number"
+    "shipTracking": "Tracking number",
+    "earningsTitle": "Earnings",
+    "earningsSubtitle": "A sale counts once its order completes. NexBid keeps its fee and transfers the rest to your bank account.",
+    "earningsBalance": "Waiting to be paid",
+    "earningsPaidOut": "Paid to you",
+    "earningsFee": "Platform fee",
+    "earningsSales": "Completed sales",
+    "earningsEmptyTitle": "No completed sales yet",
+    "earningsEmptyBody": "Once a buyer confirms receipt, or 7 days after shipping with no dispute, the sale shows up here.",
+    "earningsBreakdown": "Price {gross} − fee {fee}",
+    "earningPaid": "Paid",
+    "earningWaiting": "Waiting",
+    "bankTitle": "Payout account",
+    "bankHint": "NexBid transfers your sales here. The holder's name must match the bank's records.",
+    "bankName": "Bank",
+    "bankNumber": "Account number",
+    "bankNumberInvalid": "An account number has 6 to 30 digits.",
+    "bankHolder": "Account holder",
+    "bankHolderHint": "As printed on the card, e.g. NGUYEN VAN A.",
+    "bankSave": "Save account",
+    "bankSaved": "Payout account saved",
+    "bankEdit": "Change account",
+    "payoutHistory": "Payout history"
   },
   "admin": {
     "console": "Admin console",
@@ -697,9 +751,10 @@
     "tabAllOrders": "All",
     "refund": "Refund",
     "refundTitle": "Refund this order?",
-    "refundBody": "The order is cancelled and the payment marked refunded. This cannot be undone.",
+    "refundBody": "Transfer the full amount for {name} to the buyer's account below, then enter the bank's reference. The order is cancelled; this cannot be undone.",
+    "refundNoAccount": "The buyer has not added a bank account for refunds yet. Ask them to add one in their profile, then refund.",
     "refunded": "Order refunded",
-    "refundedBody": "The payment is marked refunded.",
+    "refundedBody": "The buyer has been emailed the reference.",
     "confirmRefund": "Refund",
     "adminNotBlockable": "Admin accounts cannot be blocked.",
     "activityTitle": "Last 24 hours",
@@ -756,7 +811,50 @@
     "categoryCreated": "Category created",
     "deniedTitle": "This area is for administrators",
     "deniedBody": "Your account does not have access to the admin console.",
-    "deniedAction": "Back to the marketplace"
+    "deniedAction": "Back to the marketplace",
+    "disputesTitle": "Disputes",
+    "disputesSubtitle": "Buyers reporting a problem with an order. Refund the buyer, or let the sale stand with a note.",
+    "disputeTab": {
+      "OPEN": "Open",
+      "REFUNDED": "Refunded",
+      "REJECTED": "Turned down"
+    },
+    "disputesEmptyTitle": "No disputes",
+    "disputesEmptyBody": "Buyers' complaints will show up here.",
+    "disputeOpenedAt": "Opened {date}",
+    "disputeReject": "Let the sale stand",
+    "disputeRefund": "Refund",
+    "disputeRefundTitle": "Refund the buyer?",
+    "disputeRefundBody": "Transfer {amount} for {name} to the buyer's account below, then enter the bank's reference. The order is cancelled and the seller does not receive it.",
+    "disputeRejectTitle": "Let the sale stand?",
+    "disputeRejectShippedBody": "It was shipped: the order completes and the money counts toward the seller's earnings.",
+    "disputeRejectUnshippedBody": "It was not shipped yet: the order goes back to waiting for the seller to ship.",
+    "disputeNoteLabel": "Note to both sides",
+    "disputeNoteHint": "Optional. The buyer and the seller both see it on the order and in their email.",
+    "disputeRefunded": "Buyer refunded",
+    "disputeRejected": "Sale stands",
+    "payoutsTitle": "Seller payouts",
+    "payoutsSubtitle": "Sellers with money waiting. Transfer from NexBid's account, then record it here.",
+    "payoutsDue": "Waiting to be paid",
+    "payoutsEmptyTitle": "Nothing waiting",
+    "payoutsEmptyBody": "When orders complete, what NexBid owes each seller shows up here.",
+    "payoutsOrders": "{count, plural, one {# order} other {# orders}} · oldest from {date}",
+    "payoutsNoBank": "No payout account yet",
+    "payoutsPay": "Mark as paid",
+    "payoutsRecent": "Recent payouts",
+    "payoutsDialogTitle": "Record a transfer",
+    "payoutsDialogBody": "Transfer exactly this amount to the account below, then enter the bank's reference.",
+    "payoutsAmount": "Amount",
+    "payoutsBank": "Bank",
+    "payoutsNumber": "Account number",
+    "payoutsHolder": "Holder",
+    "payoutsCopy": "Copy {what}",
+    "payoutsCopied": "Copied",
+    "payoutsReference": "Bank reference",
+    "payoutsReferenceHint": "The code on the transfer receipt, to trace it later.",
+    "payoutsConfirm": "Confirm transfer",
+    "payoutsRecorded": "Payout recorded",
+    "payoutsRecordedBody": "The seller has been emailed."
   },
   "howItWorks": {
     "title": "How NexBid works",
@@ -843,6 +941,7 @@
       "PAID": "Paid",
       "PROCESSING": "Processing",
       "COMPLETED": "Completed",
+      "DISPUTED": "Disputed",
       "CANCELLED": "Cancelled"
     },
     "notificationType": {
@@ -862,7 +961,13 @@
       "SECOND_CHANCE_ACCEPTED": "Offer accepted",
       "SECOND_CHANCE_DECLINED": "Offer declined",
       "NEW_REVIEW": "New review",
-      "RESERVE_NOT_MET": "Reserve not met"
+      "RESERVE_NOT_MET": "Reserve not met",
+      "DISPUTE_OPENED": "Dispute opened",
+      "DISPUTE_RESOLVED": "Dispute decided",
+      "DISPUTE_SELLER_RESOLVED": "Dispute decided",
+      "PAYOUT_SENT": "Payout sent",
+      "ORDER_COMPLETING": "Order completing soon",
+      "ORDER_REFUNDED": "Refund sent"
     },
     "auditAction": {
       "USER_LOGIN": "User signed in",
@@ -888,7 +993,12 @@
       "RESERVE_ACCEPTED": "Sold below reserve",
       "RESERVE_REFUSED": "Kept below reserve",
       "RESERVE_LAPSED": "Reserve decision lapsed",
-      "BOUGHT_NOW": "Bought outright"
+      "BOUGHT_NOW": "Bought outright",
+      "DISPUTE_OPENED": "Dispute opened",
+      "DISPUTE_REFUNDED": "Dispute refunded",
+      "DISPUTE_REJECTED": "Dispute rejected",
+      "PAYOUT_RECORDED": "Payout recorded",
+      "BANK_ACCOUNT_CHANGED": "Payout bank account changed"
     },
     "role": {
       "BUYER": "Buyer",
@@ -1135,6 +1245,11 @@
     "ALREADY_SELLER": "Your account can already sell.",
     "SELLER_APPLICATION_PENDING": "Your request is already waiting for review.",
     "SELLER_APPLICATION_NOT_FOUND": "That seller request no longer exists.",
-    "SELLER_APPLICATION_NOT_PENDING": "This request has already been decided."
+    "SELLER_APPLICATION_NOT_PENDING": "This request has already been decided.",
+    "REFUND_ACCOUNT_REQUIRED": "The buyer has not added a bank account for refunds yet.",
+    "DISPUTE_NOT_FOUND": "That dispute could not be found.",
+    "DISPUTE_CLOSED": "This dispute has already been decided.",
+    "BANK_ACCOUNT_REQUIRED": "The seller has not added a payout account yet.",
+    "NOTHING_TO_PAY_OUT": "The seller has nothing waiting to be paid."
   }
 }

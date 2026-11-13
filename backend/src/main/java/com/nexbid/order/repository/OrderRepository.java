@@ -35,4 +35,18 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Order> findLockedById(UUID id);
+
+    /**
+     * EN: Shipped orders past the wait, locked and skipped when another instance holds them.
+     * VI: Đơn đã gửi quá thời gian chờ, được khoá và bỏ qua nếu instance khác đang giữ.
+     */
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT * FROM orders WHERE status = 'PROCESSING' AND shipped_at < :before
+            ORDER BY shipped_at LIMIT :limit FOR UPDATE SKIP LOCKED
+            """, nativeQuery = true)
+    List<Order> lockShippedBefore(@org.springframework.data.repository.query.Param("before") java.time.Instant before,
+            @org.springframework.data.repository.query.Param("limit") int limit);
+
+    /** EN: Shipped, not yet confirmed, shipped inside the window. / VI: Đã gửi, chưa xác nhận, gửi trong khoảng đã cho. */
+    List<Order> findByStatusAndShippedAtBetween(OrderStatus status, java.time.Instant from, java.time.Instant to);
 }

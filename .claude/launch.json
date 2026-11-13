@@ -6,6 +6,16 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "nexbid-backend",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-Command",
+        "Get-Content backend/.env -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\\s*[A-Z_]+=.+' } | ForEach-Object { $k, $v = $_ -split '=', 2; Set-Item -Path ('env:' + $k.Trim()) -Value $v.Trim() }; Set-Location backend; ./mvnw.cmd spring-boot:run"
+      ],
+      "port": 8080
     }
   ]
 }

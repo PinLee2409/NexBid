@@ -255,6 +255,16 @@
     line-height: 0.86;
   }
 
+  /*
+   * Vietnamese capitals stack marks above and below (Ở, Ộ, Ự), which the tight
+   * leading above makes collide with the next line. Beats any leading-* utility
+   * set on a heading, since every display heading is set that tight.
+   */
+  :lang(vi) .display {
+    line-height: 1.12;
+    padding-top: 0.06em;
+  }
+
   /* Label/eyebrow: small, wide, quiet. */
   .label {
     font-size: 11px;

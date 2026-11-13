@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { OrderRow } from "@/components/common/order-row";
 import { PageHeader } from "@/components/layout/page-header";
+import { RefundTransfer, useRefundAccount } from "@/components/payment/refund-transfer";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,17 +26,18 @@ import { useApiErrorMessage, useEnumLabels } from "@/hooks/use-labels";
 import { listOrders, refundOrder } from "@/services/admin-service";
 import type { OrderEntry } from "@/services/order-service";
 import type { OrderStatus } from "@/types";
-import { useMoney } from "@/hooks/use-money";
 
 type OrderTab = "ALL" | OrderStatus;
 
-const TABS: OrderTab[] = ["ALL", "PAID", "PROCESSING", "COMPLETED", "CANCELLED"];
+const TABS: OrderTab[] = ["ALL", "PAID", "PROCESSING", "DISPUTED", "COMPLETED", "CANCELLED"];
 
 /**
- * EN: Every order, by status. A paid order whose goods are not yet confirmed received can be refunded:
- *     the order is cancelled and its payment marked REFUNDED.
- * VI: Mọi đơn hàng, theo trạng thái. Đơn đã trả mà hàng chưa được xác nhận đã nhận thì hoàn tiền được: đơn bị
- *     huỷ và khoản thanh toán thành REFUNDED.
+ * EN: Every order, by status. A paid order whose goods are not yet confirmed received can be refunded: the admin
+ *     transfers the money to the buyer's bank account, then records it with the bank's reference; the order is
+ *     cancelled and its payment marked REFUNDED.
+ * VI: Mọi đơn hàng, theo trạng thái. Đơn đã trả mà hàng chưa được xác nhận đã nhận thì hoàn tiền được: admin chuyển
+ *     khoản vào tài khoản ngân hàng của người mua, rồi ghi nhận kèm mã giao dịch; đơn bị huỷ và khoản thanh toán thành
+ *     REFUNDED.
  */
 export default function AdminOrdersPage() {
   const t = useTranslations("admin");
@@ -76,7 +78,7 @@ export default function AdminOrdersPage() {
                   key={entry.order.id}
                   entry={entry}
                   action={
-                    entry.order.status === "PAID" || entry.order.status === "PROCESSING" ? (
+                    entry.order.status === "PAID" || entry.order.status === "PROCESSING" || entry.order.status === "DISPUTED" ? (
                       <Button size="sm" variant="outline" onClick={() => setRefunding(entry)}>
                         <Undo2 className="size-4" />
                         {t("refund")}
@@ -90,7 +92,12 @@ export default function AdminOrdersPage() {
         </TabsContent>
       </Tabs>
 
-      <RefundDialog entry={refunding} onClose={() => setRefunding(null)} onRefunded={refresh} />
+      <RefundDialog
+        key={refunding?.order.id ?? "none"}
+        entry={refunding}
+        onClose={() => setRefunding(null)}
+        onRefunded={refresh}
+      />
     </>
   );
 }
@@ -104,19 +111,25 @@ function RefundDialog({
   onClose: () => void;
   onRefunded: () => void;
 }) {
-  const money = useMoney();
   const t = useTranslations("admin");
   const tc = useTranslations("common");
   const errorMessage = useApiErrorMessage();
+  const account = useRefundAccount(entry?.order.id ?? null);
+  const [reference, setReference] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function refund() {
     if (!entry) return;
+    if (!reference.trim()) {
+      setError(tc("required"));
+      return;
+    }
     startTransition(async () => {
       try {
-        await refundOrder(entry.order.id);
-      } catch (error) {
-        toast.error(errorMessage(error));
+        await refundOrder(entry.order.id, reference);
+      } catch (failure) {
+        setError(errorMessage(failure));
         return;
       }
       onClose();
@@ -130,23 +143,34 @@ function RefundDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t("refundTitle")}</DialogTitle>
-          <DialogDescription>{t("refundBody")}</DialogDescription>
+          <DialogDescription>
+            {t("refundBody", { name: entry?.auction?.product.name ?? "—" })}
+          </DialogDescription>
         </DialogHeader>
 
         {entry ? (
-          <div className="border-line flex items-center justify-between gap-4 border-y px-4 py-4">
-            <span className="text-muted-foreground min-w-0 truncate text-sm">
-              {entry.auction?.product.name ?? "—"}
-            </span>
-            <span className="figure text-xl">{money.currency(entry.order.amount)}</span>
-          </div>
+          <RefundTransfer
+            account={account}
+            amount={entry.order.amount}
+            reference={reference}
+            error={error}
+            disabled={isPending}
+            onReference={(value) => {
+              setReference(value);
+              setError(null);
+            }}
+          />
         ) : null}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isPending}>
             {tc("cancel")}
           </Button>
-          <Button variant="destructive" onClick={refund} disabled={isPending}>
+          <Button
+            variant="destructive"
+            onClick={refund}
+            disabled={isPending || account.status !== "success" || account.data === null}
+          >
             {isPending ? <Loader2 className="size-4 animate-spin" /> : null}
             {t("confirmRefund")}
           </Button>

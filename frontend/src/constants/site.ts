@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Banknote,
   Bell,
   Gavel,
   Heart,
@@ -7,6 +8,7 @@ import {
   ListChecks,
   Package,
   Receipt,
+  ShieldAlert,
   Store,
   Tags,
   Trophy,
@@ -51,6 +53,7 @@ export const SELLER_NAV: AccountNavItem[] = [
   { labelKey: "products", href: "/seller/products", icon: Package },
   { labelKey: "auctions", href: "/seller/auctions", icon: Gavel },
   { labelKey: "orders", href: "/seller/orders", icon: Receipt },
+  { labelKey: "earnings", href: "/seller/earnings", icon: Wallet },
 ];
 
 /** Admin console (spec §36). */
@@ -61,6 +64,8 @@ export const ADMIN_NAV: AccountNavItem[] = [
   { labelKey: "users", href: "/admin/users", icon: UserRound },
   { labelKey: "sellerRequests", href: "/admin/sellers", icon: Store },
   { labelKey: "orders", href: "/admin/orders", icon: Receipt },
+  { labelKey: "disputes", href: "/admin/disputes", icon: ShieldAlert },
+  { labelKey: "payouts", href: "/admin/payouts", icon: Banknote },
   { labelKey: "auditLogs", href: "/admin/audit-logs", icon: ListChecks },
 ];
 

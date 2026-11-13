@@ -2,10 +2,14 @@
 
 import {
   AlertTriangle,
+  Banknote,
   CalendarClock,
   CheckCircle2,
   CreditCard,
+  PackageCheck,
   RotateCcw,
+  Scale,
+  ShieldAlert,
   Star,
   Store,
   Timer,
@@ -44,6 +48,12 @@ const ICONS: Record<NotificationType, LucideIcon> = {
   SECOND_CHANCE_DECLINED: XCircle,
   NEW_REVIEW: Star,
   RESERVE_NOT_MET: AlertTriangle,
+  DISPUTE_OPENED: ShieldAlert,
+  DISPUTE_RESOLVED: Scale,
+  DISPUTE_SELLER_RESOLVED: Scale,
+  PAYOUT_SENT: Banknote,
+  ORDER_COMPLETING: PackageCheck,
+  ORDER_REFUNDED: Banknote,
 };
 
 /** Tone carries meaning: red only for things that cost the reader something. */
@@ -65,6 +75,12 @@ const TONES: Record<NotificationType, string> = {
   SECOND_CHANCE_DECLINED: "text-dim",
   NEW_REVIEW: "text-signal-text",
   RESERVE_NOT_MET: "text-warning",
+  DISPUTE_OPENED: "text-danger-text",
+  DISPUTE_RESOLVED: "text-signal-text",
+  DISPUTE_SELLER_RESOLVED: "text-signal-text",
+  PAYOUT_SENT: "text-success",
+  ORDER_COMPLETING: "text-warning",
+  ORDER_REFUNDED: "text-success",
 };
 
 /**

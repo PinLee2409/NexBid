@@ -6,6 +6,7 @@ import type {
   ReserveDecision,
   NotificationType,
   OfferStatus,
+  OrderDispute,
   OrderStatus,
   PaymentStatus,
   ProductCondition,
@@ -252,6 +253,9 @@ export interface ApiOrder {
     carrier?: string | null;
     trackingNumber?: string | null;
     shippedAt?: IsoDateString | null;
+    completedAt?: IsoDateString | null;
+    autoCompleted?: boolean;
+    dispute?: OrderDispute | null;
   };
   payment: ApiPaymentDetails | null;
   auction: ApiAuctionSummary | null;

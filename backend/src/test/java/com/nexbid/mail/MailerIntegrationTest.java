@@ -127,7 +127,7 @@ class MailerIntegrationTest {
         try {
             MailProperties properties = new MailProperties("test-key",
                     "http://127.0.0.1:" + brevo.getAddress().getPort() + "/v3/smtp/email",
-                    "no-reply@nexbid.test", "NexBid", "http://localhost:3000", 50, 3,
+                    "no-reply@nexbid.test", "NexBid", "http://localhost:3000", "", 50, 3,
                     Duration.ofMinutes(30), Duration.ofMinutes(15));
             MailSender sender = new MailSender(outbox, properties, tx);
             jdbc.update("UPDATE email_outbox SET status = 'SKIPPED' WHERE status = 'PENDING'");

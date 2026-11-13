@@ -17,6 +17,7 @@ const STATUS_TONE: Record<OrderStatus, string | undefined> = {
   PAID: "text-success",
   PROCESSING: "text-warning",
   COMPLETED: "text-success",
+  DISPUTED: "text-danger-text",
   CANCELLED: "text-dim",
 };
 
@@ -74,6 +75,29 @@ export function OrderRow({ entry, action }: { entry: OrderEntry; action?: ReactN
             </span>
           </p>
         ) : null}
+        {entry.order.dispute ? (
+          <div
+            className={cn(
+              "mt-3 border-l-2 py-1 pl-3 text-xs leading-relaxed",
+              entry.order.dispute.status === "OPEN" ? "border-danger" : "border-line-strong",
+            )}
+          >
+            <p>
+              <span className="label-sm text-dim">{t("disputeLabel")}</span>{" "}
+              <span className="text-foreground">{t(`disputeReason.${entry.order.dispute.reason}`)}</span>
+              {" · "}
+              <span className={entry.order.dispute.status === "OPEN" ? "text-danger-text" : "text-muted-foreground"}>
+                {t(`disputeStatus.${entry.order.dispute.status}`)}
+              </span>
+            </p>
+            <p className="text-muted-foreground mt-1">{entry.order.dispute.details}</p>
+            {entry.order.dispute.resolutionNote ? (
+              <p className="text-muted-foreground mt-1">
+                <span className="label-sm text-dim">{t("disputeNote")}</span> {entry.order.dispute.resolutionNote}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div className="shrink-0">
@@ -85,6 +109,7 @@ export function OrderRow({ entry, action }: { entry: OrderEntry; action?: ReactN
         <p className="label-sm text-dim mb-1">{tc("status")}</p>
         <p className={cn("label", STATUS_TONE[entry.order.status])}>{labels.orderStatus(entry.order.status)}</p>
         {refunded ? <p className="label-sm text-dim mt-1">{labels.paymentStatus("REFUNDED")}</p> : null}
+        {entry.order.autoCompleted ? <p className="label-sm text-dim mt-1">{t("orderAutoCompleted")}</p> : null}
       </div>
 
       {action}

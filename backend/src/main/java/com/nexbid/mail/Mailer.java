@@ -39,7 +39,7 @@ public class Mailer {
         this.outbox = outbox;
         this.users = users;
         this.properties = properties;
-        this.templates = new MailTemplates(properties.siteUrl());
+        this.templates = new MailTemplates(properties.siteUrl(), properties.assetUrl());
         this.preferences = preferences;
         this.tokens = tokens;
     }

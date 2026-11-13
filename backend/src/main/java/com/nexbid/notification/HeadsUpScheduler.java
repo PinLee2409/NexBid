@@ -31,9 +31,11 @@ class HeadsUpScheduler {
         Instant now = Instant.now();
         int headsUps = triggers.sendHeadsUps(now);
         int reminders = triggers.sendPaymentReminders(now);
+        int completing = triggers.sendCompletionReminders(now);
 
-        if (headsUps > 0 || reminders > 0) {
-            log.info("Sent {} heads-up notification(s) and {} payment reminder(s)", headsUps, reminders);
+        if (headsUps > 0 || reminders > 0 || completing > 0) {
+            log.info("Sent {} heads-up notification(s), {} payment reminder(s) and {} completion reminder(s)",
+                    headsUps, reminders, completing);
         }
     }
 }

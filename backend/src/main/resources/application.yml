@@ -261,6 +261,19 @@ nexbid:
       # VI: Link thanh toán còn hiệu lực bao lâu; không bao giờ quá hạn chót của chính khoản thanh toán.
       timeout: ${NEXBID_VNPAY_TIMEOUT:15m}
 
+  order:
+    # EN: A shipped order the buyer neither confirms nor disputes completes on its own after this long.
+    # VI: Đơn đã gửi mà người mua không xác nhận cũng không khiếu nại sẽ tự hoàn tất sau khoảng này.
+    auto-complete-after: ${NEXBID_ORDER_AUTO_COMPLETE_AFTER:7d}
+    auto-complete-interval: ${NEXBID_ORDER_AUTO_COMPLETE_INTERVAL_MS:300000}
+    # EN: How long before that the buyer is reminded to confirm or dispute (ORDER_COMPLETING). Sent by the heads-up job.
+    # VI: Người mua được nhắc xác nhận hoặc khiếu nại trước lúc đó bao lâu (ORDER_COMPLETING). Do job heads-up gửi.
+    auto-complete-reminder: ${NEXBID_ORDER_AUTO_COMPLETE_REMINDER:2d}
+
+  payout:
+    # EN: The platform's cut of each completed sale, in percent. / VI: Phần sàn giữ lại trên mỗi giao dịch hoàn tất, tính theo phần trăm.
+    fee-percent: ${NEXBID_PAYOUT_FEE_PERCENT:5}
+
   mail:
     # EN: Transactional email through Brevo (https://developers.brevo.com/). Without an API key nothing is sent: each
     #     email is written to the log and kept in email_outbox as SKIPPED.
@@ -272,6 +285,11 @@ nexbid:
     sender-name: ${NEXBID_MAIL_SENDER_NAME:NexBid}
     # EN: Links in emails point here. / VI: Link trong email trỏ về đây.
     site-url: ${NEXBID_SITE_URL:http://localhost:3000}
+    # EN: Where mail clients fetch the logo (/nexbid-wordmark.png). Empty: the site itself, unless that is localhost,
+    #     which no inbox can reach; then the header shows the name as text.
+    # VI: Nơi trình đọc mail tải logo (/nexbid-wordmark.png). Để trống: chính site, trừ khi đó là localhost, nơi không
+    #     hộp thư nào tới được; khi đó đầu thư hiện tên dạng chữ.
+    asset-url: ${NEXBID_MAIL_ASSET_URL:}
     send-interval: ${NEXBID_MAIL_SEND_INTERVAL_MS:5000}
     batch-size: 50
     max-attempts: 6

@@ -1,6 +1,6 @@
 "use client";
 
-import type { AuctionSummary, Order, Payment, SellerReview } from "@/types";
+import type { AuctionSummary, DisputeReason, Order, Payment, SellerReview } from "@/types";
 
 import type { ApiOrder, ApiReview } from "./api/dto";
 import { api } from "./api/http";
@@ -39,6 +39,19 @@ export async function listOrders(): Promise<OrderEntry[]> {
 /** `POST /api/users/me/orders/{id}/received` — the buyer confirms the goods arrived. */
 export async function confirmReceipt(orderId: string): Promise<OrderEntry> {
   return toEntry(await api<ApiOrder>(`/api/users/me/orders/${orderId}/received`, { method: "POST" }));
+}
+
+/**
+ * EN: `POST /api/users/me/orders/{id}/dispute` — the buyer reports a problem; an admin decides.
+ * VI: `POST /api/users/me/orders/{id}/dispute` — người mua báo có vấn đề; admin quyết định.
+ */
+export async function openDispute(orderId: string, reason: DisputeReason, details: string): Promise<OrderEntry> {
+  return toEntry(
+    await api<ApiOrder>(`/api/users/me/orders/${orderId}/dispute`, {
+      method: "POST",
+      body: { reason, details: details.trim() },
+    }),
+  );
 }
 
 /**

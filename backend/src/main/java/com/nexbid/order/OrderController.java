@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.nexbid.common.response.ApiResponse;
 import com.nexbid.common.security.CurrentUser;
+import com.nexbid.order.dto.DisputeRequest;
 import com.nexbid.order.dto.ReviewRequest;
 
 import jakarta.validation.Valid;
@@ -57,5 +58,13 @@ public class OrderController {
     public ApiResponse<ReviewView> review(
             @AuthenticationPrincipal CurrentUser me, @PathVariable UUID id, @Valid @RequestBody ReviewRequest request) {
         return ApiResponse.of(reviews.review(me.id(), id, request.rating(), request.comment()), "Review posted");
+    }
+
+    /** EN: The buyer reports a problem; an admin decides. / VI: Người mua báo có vấn đề; admin quyết định. */
+    @PostMapping("/{id}/dispute")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<OrderView> dispute(
+            @AuthenticationPrincipal CurrentUser me, @PathVariable UUID id, @Valid @RequestBody DisputeRequest request) {
+        return ApiResponse.of(orders.openDispute(me.id(), id, request.reason(), request.details()), "Dispute opened");
     }
 }

@@ -232,3 +232,29 @@ Hiện không còn mục nào đang chờ.
   sửa menu đổi ngôn ngữ không mở được khi đang cuộn, sửa khung lượt trả giá đè lên khung đặt giá.
 - **Staging**: `deploy/staging/` chạy cả stack sau Caddy với HTTPS tự động trên domain riêng.
 - **Dữ liệu demo**: `docs/demo/enrich.mjs` thêm người bán, người mua và khoảng ba mươi lô ở mọi danh mục.
+
+## Đã làm (13/11/2026) — đợt 14: sau thanh toán
+
+- **Khiếu nại đơn hàng:** người mua báo vấn đề (chưa nhận, sai mô tả, hư hỏng, khác) với đơn đã trả, đã gửi hay chưa.
+  Đơn chờ ở `DISPUTED` và không tự hoàn tất. Admin hoàn tiền (đơn huỷ) hoặc giữ giao dịch (đơn đã gửi thì hoàn tất,
+  chưa gửi thì quay lại chờ người bán), kèm ghi chú cho cả hai bên.
+- **Tự hoàn tất:** đơn đã gửi mà người mua không xác nhận và không khiếu nại sẽ hoàn tất sau 7 ngày. Người mua được
+  nhắc một lần (trong app và email) 2 ngày trước đó (`NEXBID_ORDER_AUTO_COMPLETE_REMINDER`).
+- **Chi trả cho người bán:** mỗi đơn hoàn tất thành khoản sàn nợ người bán (giá bán trừ phí 5%). Người bán nhập tài
+  khoản ngân hàng; admin chuyển khoản rồi ghi nhận kèm mã giao dịch, chốt toàn bộ số dư một lần.
+- **Hoàn tiền bằng chuyển khoản thủ công** (bỏ API hoàn tiền của VNPay, vì sandbox luôn trả lỗi 99): người mua lưu
+  tài khoản nhận hoàn tiền trong hồ sơ hoặc ngay trong hộp khiếu nại; admin bấm hoàn tiền, thấy tài khoản để chép,
+  tự chuyển khoản rồi nhập mã giao dịch. Hệ thống huỷ đơn, ghi `payment_refunds` kèm mã và bản sao tài khoản, báo
+  người mua (email + thông báo `ORDER_REFUNDED`). Tài khoản ngân hàng dùng chung cho chi trả và hoàn tiền
+  (`bank_accounts`, `/api/users/me/bank-account`), migration V29.
+- **Thông báo:** email và thông báo trong app cho khiếu nại mở, kết quả khiếu nại (cả hai bên), tiền đã chuyển, và
+  đơn sắp tự hoàn tất.
+- **Nhật ký hệ thống:** mở khiếu nại, hoàn tiền / bác khiếu nại (kèm ghi chú), ghi nhận chi trả (số tiền, mã giao
+  dịch), đổi tài khoản nhận tiền (chỉ lưu tên ngân hàng và 4 số cuối). Đơn hoàn tất sau khi bác khiếu nại giờ ghi đúng
+  `DISPUTED → COMPLETED`.
+- **E2E:** khiếu nại → admin giữ giao dịch; khiếu nại kèm tài khoản → admin hoàn tiền bằng chuyển khoản; người bán
+  thêm tài khoản → admin ghi nhận chuyển khoản.
+- **Sửa:** hộp thoại cao hơn màn hình không cuộn được nên nút cuối bị che (giờ giới hạn chiều cao và cuộn).
+- **Sửa:** trạng thái đơn `DISPUTED` thiếu nhãn tiếng Việt / tiếng Anh, làm trang đơn hàng báo `MISSING_MESSAGE`.
+- **Kiểm chứng:** backend 445 test (độ phủ 95.3% dòng, 81.7% nhánh), frontend 143 unit test, E2E 45/45 trên stack
+  Docker riêng.

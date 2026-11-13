@@ -50,6 +50,57 @@ class MailTemplatesTest {
     }
 
     @Test
+    void theFactsCardShowsADeadlineOnlyWhereThePersonMustAct() {
+        assertThat(templates.render(MailKind.AUCTION_WON, "Linh", MailTemplates.escaped(WON)).html())
+                .contains("Giá thắng · Winning bid").contains("Hạn thanh toán · Pay by");
+        assertThat(templates.render(MailKind.OUTBID, "Linh", MailTemplates.escaped(WON)).html())
+                .contains("Giá hiện tại · Current bid").doesNotContain("Pay by");
+        assertThat(templates.render(MailKind.WELCOME, "Linh", MailTemplates.escaped(WON)).html())
+                .doesNotContain("Lô · Lot");
+    }
+
+    @Test
+    void theLogoComesFromThePublicSiteButNeverFromLocalhost() {
+        assertThat(templates.render(MailKind.WELCOME, "Linh", MailFacts.none()).html())
+                .contains("<img src=\"https://nexbid.example/nexbid-wordmark.png\"").contains("alt=\"NEXBID\"");
+        assertThat(new MailTemplates("http://localhost:3000").render(MailKind.WELCOME, "Linh", MailFacts.none()).html())
+                .doesNotContain("<img").contains("NEXBID");
+        assertThat(new MailTemplates("http://localhost:3000", "https://cdn.nexbid.example/")
+                .render(MailKind.WELCOME, "Linh", MailFacts.none()).html())
+                .contains("<img src=\"https://cdn.nexbid.example/nexbid-wordmark.png\"");
+    }
+
+    @Test
+    void aSellerHearsTheSaleThePaymentAndTheReview() {
+        assertThat(templates.render(MailKind.LOT_SOLD, "Linh", MailTemplates.escaped(WON)).html())
+                .contains("Người mua trả trước · Buyer pays by").contains("https://nexbid.example/seller/orders");
+        assertThat(templates.render(MailKind.SELLER_PAID, "Linh", MailTemplates.escaped(WON)).subject())
+                .startsWith("Người mua đã thanh toán, hãy gửi hàng");
+        MailTemplates.Rendered review = templates.render(MailKind.NEW_REVIEW, "Linh",
+                MailTemplates.escaped(MailFacts.lot(WON.auctionId(), "Rolex", null).withRating(4)));
+        assertThat(review.html()).contains("Đánh giá · Rating").contains("4/5");
+        assertThat(review.text()).contains("4/5 sao").contains("4/5 stars");
+    }
+
+    @Test
+    void everyStyledElementCarriesTheSameFontSoNoPartFallsBackToAnother() {
+        String html = templates.render(MailKind.OUTBID, "Linh", MailTemplates.escaped(WON), "https://u").html();
+
+        assertThat(html.split("style=\"", -1).length - 1)
+                .isEqualTo(html.split("style=\"font-family:Arial,", -1).length - 1);
+        assertThat(html).doesNotContain("font-weight:800");
+    }
+
+    @Test
+    void theCompletionReminderSaysWhenTheChanceToDisputeEnds() {
+        MailTemplates.Rendered mail = templates.render(MailKind.ORDER_COMPLETING, "Linh",
+                MailTemplates.escaped(MailFacts.lot(WON.auctionId(), "Rolex", null).withUntil(WON.until())));
+
+        assertThat(mail.html()).contains("Khiếu nại trước · Dispute by").contains("https://nexbid.example/orders");
+        assertThat(mail.text()).contains("12:30 14/11/2026 (GMT+7)");
+    }
+
+    @Test
     void aRejectionQuotesTheReason() {
         MailTemplates.Rendered mail = templates.render(MailKind.SELLER_REJECTED, "Linh", MailTemplates.escaped(WON));
 

@@ -91,6 +91,15 @@ public enum ErrorCode {
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND),
     // EN: A step out of order, e.g. confirming receipt of an order never shipped. / VI: Sai thứ tự bước, ví dụ xác nhận đã nhận một đơn chưa gửi.
     ORDER_STATUS_INVALID(HttpStatus.CONFLICT),
+    // EN: A refund is a bank transfer: the buyer must have said where to. / VI: Hoàn tiền là chuyển khoản: người mua phải cho biết chuyển về đâu.
+    REFUND_ACCOUNT_REQUIRED(HttpStatus.CONFLICT),
+    DISPUTE_NOT_FOUND(HttpStatus.NOT_FOUND),
+    // EN: Already decided. / VI: Đã được quyết định rồi.
+    DISPUTE_CLOSED(HttpStatus.CONFLICT),
+    // EN: A payout needs somewhere to send the money. / VI: Chi trả cần có nơi để chuyển tiền.
+    BANK_ACCOUNT_REQUIRED(HttpStatus.CONFLICT),
+    // EN: The seller has no completed sale waiting to be paid. / VI: Người bán không có đơn hoàn tất nào đang chờ chi trả.
+    NOTHING_TO_PAY_OUT(HttpStatus.CONFLICT),
     // EN: Second-chance offers (spec §17): the lot cannot be offered, nobody to offer it to, or offered already.
     // VI: Đề nghị cơ hội thứ hai (spec §17): lô không đề nghị được, không có ai để đề nghị, hoặc đã đề nghị rồi.
     SECOND_CHANCE_UNAVAILABLE(HttpStatus.CONFLICT),
