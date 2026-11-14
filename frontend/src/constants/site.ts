@@ -5,6 +5,7 @@ import {
   BellRing,
   Flag,
   Mail,
+  MessagesSquare,
   Gavel,
   Heart,
   LayoutDashboard,
@@ -49,6 +50,7 @@ export const BUYER_NAV: AccountNavItem[] = [
   { labelKey: "notifications", href: "/notifications", icon: Bell },
   { labelKey: "payments", href: "/payments", icon: Wallet },
   { labelKey: "orders", href: "/orders", icon: Receipt },
+  { labelKey: "messages", href: "/messages", icon: MessagesSquare },
 ];
 
 /** Seller workspace (spec §36). */
@@ -58,6 +60,7 @@ export const SELLER_NAV: AccountNavItem[] = [
   { labelKey: "auctions", href: "/seller/auctions", icon: Gavel },
   { labelKey: "orders", href: "/seller/orders", icon: Receipt },
   { labelKey: "earnings", href: "/seller/earnings", icon: Wallet },
+  { labelKey: "messages", href: "/messages", icon: MessagesSquare },
 ];
 
 /** Admin console (spec §36). */

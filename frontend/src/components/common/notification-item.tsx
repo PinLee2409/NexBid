@@ -2,6 +2,7 @@
 
 import {
   AlertTriangle,
+  BadgeCheck,
   Banknote,
   BellRing,
   CalendarClock,
@@ -10,6 +11,7 @@ import {
   Flag,
   MessageCircleQuestion,
   MessageSquareReply,
+  MessagesSquare,
   PackageCheck,
   RotateCcw,
   Scale,
@@ -62,6 +64,8 @@ const ICONS: Record<NotificationType, LucideIcon> = {
   SALE_REFUNDED: RotateCcw,
   LOT_REMOVED: Flag,
   REPORT_RESOLVED: Flag,
+  SELLER_VERIFIED: BadgeCheck,
+  NEW_MESSAGE: MessagesSquare,
   NEW_QUESTION: MessageCircleQuestion,
   QUESTION_ANSWERED: MessageSquareReply,
   LOT_ALERT: BellRing,
@@ -96,6 +100,8 @@ const TONES: Record<NotificationType, string> = {
   SALE_REFUNDED: "text-danger-text",
   LOT_REMOVED: "text-danger-text",
   REPORT_RESOLVED: "text-signal-text",
+  SELLER_VERIFIED: "text-success",
+  NEW_MESSAGE: "text-signal-text",
   NEW_QUESTION: "text-signal-text",
   QUESTION_ANSWERED: "text-signal-text",
   LOT_ALERT: "text-signal-text",

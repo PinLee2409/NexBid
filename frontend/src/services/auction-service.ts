@@ -84,7 +84,7 @@ export async function getAuction(auctionId: string): Promise<AuctionDetail | nul
       updatedAt: auction.updatedAt,
     },
     category,
-    seller: { id: detail.seller.id, displayName: detail.seller.displayName },
+    seller: { id: detail.seller.id, displayName: detail.seller.displayName, verified: detail.seller.verified ?? false },
     viewerCount: detail.viewerCount ?? undefined,
     watched: false,
     recentBids: bids.items.map((bid) => toBid(bid, null)),

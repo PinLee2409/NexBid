@@ -71,6 +71,25 @@ public class OrderService {
     }
 
     /** EN: A shipped order nobody confirmed yet, and when it completes on its own. / VI: Một đơn đã gửi chưa ai xác nhận, và lúc nó tự hoàn tất. */
+    /** EN: Who is party to an order, for its messages. / VI: Ai là bên của một đơn, cho phần tin nhắn. */
+    public record Parties(UUID orderId, UUID auctionId, UUID buyerId, UUID sellerId, OrderStatus status,
+            Instant completedAt) {
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Optional<Parties> partiesOf(UUID orderId) {
+        return orders.findById(orderId).map(order -> new Parties(order.getId(), order.getAuctionId(),
+                order.getBuyerId(), order.getSellerId(), order.getStatus(), order.getCompletedAt()));
+    }
+
+    /** EN: The same for many orders at once. / VI: Như trên, cho nhiều đơn cùng lúc. */
+    @Transactional(readOnly = true)
+    public Map<UUID, Parties> partiesOf(java.util.Collection<UUID> orderIds) {
+        return orders.findAllById(orderIds).stream().collect(Collectors.toMap(Order::getId, order -> new Parties(
+                order.getId(), order.getAuctionId(), order.getBuyerId(), order.getSellerId(), order.getStatus(),
+                order.getCompletedAt())));
+    }
+
     public record AwaitingReceipt(UUID orderId, UUID auctionId, UUID buyerId, Instant completesAt) {
     }
 
@@ -166,6 +185,18 @@ public class OrderService {
      * VI: Đơn đã gửi mà không ai xác nhận và không ai khiếu nại sẽ tự hoàn tất sau {@code shippedBefore}, để người mua
      *     quên bấm không giữ tiền của người bán mãi được. Trả về số đơn đã hoàn tất.
      */
+    /**
+     * EN: Orders the carrier delivered before the time given, which the buyer neither confirmed nor disputed, complete.
+     * VI: Đơn đơn vị vận chuyển đã giao trước thời điểm cho trước, mà người mua không xác nhận cũng không khiếu nại, sẽ hoàn tất.
+     */
+    @Transactional
+    public int completeDelivered(Instant deliveredBefore, int limit) {
+        List<Order> delivered = orders.lockDeliveredBefore(deliveredBefore, limit);
+        Instant now = Instant.now();
+        delivered.forEach(order -> complete(order, null, true, now));
+        return delivered.size();
+    }
+
     @Transactional
     public int completeOverdue(Instant shippedBefore, int limit) {
         List<Order> overdue = orders.lockShippedBefore(shippedBefore, limit);
@@ -342,7 +373,9 @@ public class OrderService {
                                 order.getShippedAt(),
                                 order.getCompletedAt(),
                                 order.isAutoCompleted(),
-                                disputed.containsKey(order.getId()) ? disputed.get(order.getId()).view() : null),
+                                disputed.containsKey(order.getId()) ? disputed.get(order.getId()).view() : null,
+                                order.getShippingStatus(),
+                                order.getDeliveredAt()),
                         paid.get(order.getPaymentId()),
                         lots.get(order.getAuctionId()),
                         reviewed.get(order.getId()),

@@ -80,6 +80,11 @@ export const ERROR_CODES = [
   "REPORT_LIMIT",
   "BUYER_REVIEW_NOT_ALLOWED",
   "BIDDER_RESTRICTED",
+  "NOT_A_SELLER",
+  "MESSAGES_CLOSED",
+  "MESSAGE_BLOCKED",
+  "MESSAGE_LIMIT",
+  "SHIPPING_UNAVAILABLE",
   "QUESTION_NOT_FOUND",
   "QUESTION_NOT_ALLOWED",
   "QUESTION_LIMIT",
@@ -132,6 +137,8 @@ export interface User {
   email: string;
   /** Masked handle shown in public bid history, e.g. `pin***`. */
   displayName: string;
+  /** EN: A seller whose papers an admin checked. / VI: Người bán đã được admin xác minh giấy tờ. */
+  verified?: boolean;
   avatarUrl?: string;
   roles: UserRole[];
   status: UserStatus;
@@ -514,7 +521,9 @@ export type NotificationType =
   | "STRAY_CHARGE"
   | "SALE_REFUNDED"
   | "LOT_REMOVED"
-  | "REPORT_RESOLVED";
+  | "REPORT_RESOLVED"
+  | "SELLER_VERIFIED"
+  | "NEW_MESSAGE";
 
 export interface AppNotification {
   id: Id;
@@ -589,6 +598,9 @@ export interface Order {
   /** EN: Completed because the buyer stayed silent past the wait. / VI: Hoàn tất vì người mua im lặng quá thời gian chờ. */
   autoCompleted: boolean;
   dispute: OrderDispute | null;
+  /** EN: The carrier's latest status (GHN), and when it delivered. / VI: Trạng thái mới nhất của đơn vị vận chuyển (GHN), và lúc giao. */
+  shippingStatus: string | null;
+  deliveredAt: IsoDateString | null;
 }
 
 interface OrderShipping {
@@ -642,7 +654,8 @@ export type AuditAction =
   | "PAYOUT_RECORDED"
   | "BANK_ACCOUNT_CHANGED"
   | "STRAY_CHARGE_REFUNDED"
-  | "AUCTION_REMOVED";
+  | "AUCTION_REMOVED"
+  | "SELLER_VERIFIED";
 
 export interface AuditLog {
   id: Id;

@@ -103,7 +103,8 @@
     "payouts": "Chi trả",
     "alerts": "Báo lô mới",
     "reports": "Báo cáo",
-    "emails": "Email"
+    "emails": "Email",
+    "messages": "Tin nhắn"
   },
   "footer": {
     "marketplace": "Sàn đấu giá",
@@ -513,7 +514,10 @@
     "unsubscribeDigestTitle": "Tắt email lô mới?",
     "unsubscribeDigestBody": "Bạn sẽ không nhận email tổng hợp lô mới mỗi ngày nữa. Thông báo trên trang vẫn tiếp tục.",
     "unsubscribeDigestConfirm": "Tắt email lô mới",
-    "unsubscribedDigestTitle": "Đã tắt email lô mới"
+    "unsubscribedDigestTitle": "Đã tắt email lô mới",
+    "orderDelivered": "Đã giao {date}",
+    "orderCarrierStatus": "Vận chuyển:",
+    "orderMessages": "Tin nhắn"
   },
   "becomeSeller": {
     "title": "Trở thành người bán",
@@ -923,7 +927,12 @@
     "emailsEmptyBody": "Danh sách này chưa có email nào.",
     "emailsAttempts": "{count} lần thử",
     "emailsRetry": "Gửi lại",
-    "emailsRetried": "Đã xếp hàng lại. Email sẽ đi trong vài giây."
+    "emailsRetried": "Đã xếp hàng lại. Email sẽ đi trong vài giây.",
+    "verifySeller": "Xác minh người bán",
+    "unverifySeller": "Gỡ huy hiệu",
+    "sellerVerified": "Đã xác minh người bán",
+    "sellerUnverified": "Đã gỡ huy hiệu xác minh",
+    "verifiedBadge": "Người bán đã xác minh"
   },
   "howItWorks": {
     "title": "NexBid hoạt động thế nào",
@@ -1044,7 +1053,9 @@
       "STRAY_CHARGE": "Khoản thu thừa",
       "SALE_REFUNDED": "Giao dịch đã hoàn tiền",
       "LOT_REMOVED": "Lô bị gỡ",
-      "REPORT_RESOLVED": "Báo cáo đã xử lý"
+      "REPORT_RESOLVED": "Báo cáo đã xử lý",
+      "SELLER_VERIFIED": "Người bán đã xác minh",
+      "NEW_MESSAGE": "Tin nhắn mới"
     },
     "auditAction": {
       "USER_LOGIN": "Người dùng đăng nhập",
@@ -1077,7 +1088,8 @@
       "PAYOUT_RECORDED": "Ghi nhận chi trả",
       "BANK_ACCOUNT_CHANGED": "Đổi tài khoản nhận tiền",
       "STRAY_CHARGE_REFUNDED": "Trả lại khoản VNPay thu thừa",
-      "AUCTION_REMOVED": "Gỡ lô"
+      "AUCTION_REMOVED": "Gỡ lô",
+      "SELLER_VERIFIED": "Đổi xác minh người bán"
     },
     "role": {
       "BUYER": "Người mua",
@@ -1347,6 +1359,27 @@
     "REPORT_DUPLICATE": "Bạn đã báo cáo lô này rồi. NexBid sẽ xem xét.",
     "REPORT_LIMIT": "Bạn có 10 báo cáo đang chờ xử lý. Hãy đợi một số được xử lý xong.",
     "BUYER_REVIEW_NOT_ALLOWED": "Bạn đánh giá người mua được khi đơn đã hoàn tất.",
-    "BIDDER_RESTRICTED": "Bạn đã bỏ không trả tiền 2 lô thắng trở lên, nên tạm thời không được trả giá từ 20.000.000 ₫ trở lên."
+    "BIDDER_RESTRICTED": "Bạn đã bỏ không trả tiền 2 lô thắng trở lên, nên tạm thời không được trả giá từ 20.000.000 ₫ trở lên.",
+    "NOT_A_SELLER": "Chỉ người bán mới được xác minh.",
+    "MESSAGES_CLOSED": "Tin nhắn của đơn này đã đóng.",
+    "MESSAGE_BLOCKED": "Tin nhắn không được chứa số điện thoại, email, đường link, số tài khoản hay ứng dụng khác. Hãy giữ giao dịch trên NexBid để được bảo vệ.",
+    "MESSAGE_LIMIT": "Bạn gửi quá nhanh. Hãy đợi vài phút.",
+    "SHIPPING_UNAVAILABLE": "Hiện chưa giao hàng qua GHN được."
+  },
+  "messages": {
+    "title": "Tin nhắn",
+    "subtitle": "Trao đổi với người mua hoặc người bán của từng đơn: thời gian giao, kiện hàng, câu hỏi về món hàng.",
+    "safety": "Số điện thoại, email, đường link và số tài khoản bị chặn: giao dịch ngoài NexBid mất quyền được bảo vệ.",
+    "threads": "Cuộc trò chuyện",
+    "emptyTitle": "Chưa có tin nhắn",
+    "emptyBody": "Mở một đơn hàng và chọn Tin nhắn để trao đổi với bên kia.",
+    "withBuyer": "Với người mua {name}",
+    "withSeller": "Với người bán {name}",
+    "you": "Bạn",
+    "startHint": "Chưa có tin nhắn. Chào bên kia và thống nhất việc giao hàng.",
+    "draftLabel": "Tin nhắn của bạn",
+    "draftPlaceholder": "Viết tin nhắn… (Enter để gửi, Shift+Enter để xuống dòng)",
+    "send": "Gửi",
+    "closed": "Cuộc trò chuyện đã đóng: đơn đã huỷ hoặc đã hoàn tất hơn 30 ngày."
   }
 }

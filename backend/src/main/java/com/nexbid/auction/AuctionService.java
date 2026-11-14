@@ -672,6 +672,9 @@ public class AuctionService {
         // EN: The card is cached; the auction itself (price, bids, status, clock) is always read fresh.
         // VI: Thẻ được cache; bản thân phiên (giá, lượt, trạng thái, đồng hồ) luôn đọc mới.
         Map<UUID, LotCard> cardsById = cards.cardsFor(lots);
+        // EN: Read fresh, not from the cached card: the badge changes the moment an admin sets it.
+        // VI: Đọc mới, không lấy từ thẻ đã cache: huy hiệu đổi ngay khi admin đặt.
+        java.util.Set<UUID> verified = users.verifiedAmong(lots.stream().map(Auction::getSellerId).distinct().toList());
 
         return auction -> {
             LotCard card = cardsById.get(auction.getId());
@@ -686,7 +689,8 @@ public class AuctionService {
                     card == null ? null : card.category(),
                     new AuctionSummaryView.Seller(
                             auction.getSellerId(),
-                            card == null ? "Unknown seller" : card.sellerName()));
+                            card == null ? "Unknown seller" : card.sellerName(),
+                            verified.contains(auction.getSellerId())));
         };
     }
 
@@ -839,7 +843,8 @@ public class AuctionService {
                 new AuctionDetailPublicView.Product(card.productId(), card.name(), card.description(), card.condition()),
                 card.category(),
                 card.images(),
-                new AuctionDetailPublicView.Seller(auction.getSellerId(), card.sellerName()),
+                new AuctionDetailPublicView.Seller(auction.getSellerId(), card.sellerName(),
+                        !users.verifiedAmong(List.of(auction.getSellerId())).isEmpty()),
                 AuctionRules.minimumNextBid(auction),
                 AuctionRules.isOpenForBidding(auction, now),
                 viewers.countOf(auction.getId()),

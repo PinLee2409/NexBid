@@ -74,5 +74,9 @@ public enum NotificationType {
     /** EN: To the seller: an admin took the lot down. / VI: Gửi người bán: admin đã gỡ lô. */
     LOT_REMOVED,
     /** EN: To the reporter: the report was decided. / VI: Gửi người báo cáo: báo cáo đã được xử lý. */
-    REPORT_RESOLVED
+    REPORT_RESOLVED,
+    /** EN: To the seller: an admin verified their account. / VI: Gửi người bán: admin đã xác minh tài khoản. */
+    SELLER_VERIFIED,
+    /** EN: A new message about an order. / VI: Tin nhắn mới về một đơn hàng. */
+    NEW_MESSAGE
 }

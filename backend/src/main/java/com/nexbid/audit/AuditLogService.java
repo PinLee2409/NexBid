@@ -146,6 +146,12 @@ public class AuditLogService {
     }
 
     @EventListener
+    void onSellerVerified(com.nexbid.user.SellerVerifiedEvent event) {
+        record(event.actorId(), AuditAction.SELLER_VERIFIED, "User", event.sellerId(),
+                String.valueOf(!event.verified()), String.valueOf(event.verified()));
+    }
+
+    @EventListener
     void onUserStatus(UserStatusChangedEvent event) {
         AuditAction action = event.after() == com.nexbid.user.UserStatus.BLOCKED
                 ? AuditAction.USER_BLOCKED : AuditAction.USER_UNBLOCKED;

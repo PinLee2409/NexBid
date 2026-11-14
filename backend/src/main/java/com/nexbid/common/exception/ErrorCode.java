@@ -116,6 +116,15 @@ public enum ErrorCode {
     // EN: Buyer reviews and the unpaid-win limit. / VI: Đánh giá người mua và giới hạn với người hay bỏ không trả.
     BUYER_REVIEW_NOT_ALLOWED(HttpStatus.CONFLICT),
     BIDDER_RESTRICTED(HttpStatus.FORBIDDEN),
+    // EN: Only a seller carries the verified badge. / VI: Chỉ người bán mới mang huy hiệu xác minh.
+    NOT_A_SELLER(HttpStatus.CONFLICT),
+    // EN: Order messages: closed (cancelled, or long completed), contact details refused, too many at once.
+    // VI: Tin nhắn đơn hàng: đã đóng (đơn huỷ hoặc hoàn tất lâu rồi), chứa thông tin liên lạc, gửi quá nhiều.
+    MESSAGES_CLOSED(HttpStatus.CONFLICT),
+    MESSAGE_BLOCKED(HttpStatus.UNPROCESSABLE_ENTITY),
+    MESSAGE_LIMIT(HttpStatus.TOO_MANY_REQUESTS),
+    // EN: GHN is not connected, or did not answer. / VI: Chưa kết nối GHN, hoặc GHN không trả lời.
+    SHIPPING_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE),
     // EN: Questions on a lot: none such, closed lot or own lot, too many waiting, or already answered.
     // VI: Hỏi đáp trên lô: không có câu hỏi, lô đã đóng hoặc lô của chính mình, quá nhiều câu đang chờ, hoặc đã trả lời.
     QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND),

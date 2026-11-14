@@ -184,6 +184,37 @@ public class UserService {
     }
 
     /**
+     * EN: Marks a seller as verified (papers checked) or not. Only a seller can carry the badge. Audited, and the seller
+     *     hears when it is given.
+     * VI: Đánh dấu người bán đã xác minh (đã kiểm giấy tờ) hoặc bỏ. Chỉ người bán mới mang huy hiệu. Có ghi nhật ký, và
+     *     người bán được báo khi được cấp.
+     */
+    @Transactional
+    public UserAccount setVerified(java.util.UUID id, java.util.UUID adminId, boolean verified) {
+        User user = users.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.USER_NOT_FOUND, "No account with id " + id));
+        if (verified && !roleNames(user).contains(RoleName.SELLER)) {
+            throw new BusinessException(ErrorCode.NOT_A_SELLER, "Only a seller can be verified");
+        }
+        if (user.isSellerVerified() != verified) {
+            user.setSellerVerified(verified);
+            users.save(user);
+            events.publishEvent(new SellerVerifiedEvent(id, adminId, verified, java.time.Instant.now()));
+        }
+        return toAccount(user);
+    }
+
+    /** EN: Which of these sellers carry the badge. / VI: Những người bán nào trong số này có huy hiệu. */
+    public java.util.Set<java.util.UUID> verifiedAmong(java.util.Collection<java.util.UUID> ids) {
+        if (ids.isEmpty()) {
+            return java.util.Set.of();
+        }
+        return users.findAllById(ids).stream().filter(User::isSellerVerified).map(User::getId)
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    /**
      * EN: "Nguyen Van A" becomes "ngu***" (spec §37): the public handle in bid history and reviews. Enough for
      *     people to recognise their own line, not enough for anyone else to work out who they are.
      * VI: "Nguyen Van A" thành "ngu***" (spec §37): tên công khai trong lịch sử trả giá và đánh giá. Đủ để người
@@ -205,7 +236,8 @@ public class UserService {
                 user.getEmail(),
                 roleNames(user),
                 user.getStatus(),
-                user.getCreatedAt());
+                user.getCreatedAt(),
+                user.isSellerVerified());
     }
 
     private static java.util.Set<RoleName> roleNames(User user) {

@@ -23,11 +23,14 @@ class OrderScheduler {
     private final OrderService orders;
     private final Duration wait;
     private final int batchSize;
+    private final Duration afterDelivery;
 
     OrderScheduler(
             OrderService orders,
             @Value("${nexbid.order.auto-complete-after}") Duration wait,
-            @Value("${nexbid.scheduler.batch-size}") int batchSize) {
+            @Value("${nexbid.scheduler.batch-size}") int batchSize,
+            @Value("${nexbid.order.complete-after-delivery}") Duration afterDelivery) {
+        this.afterDelivery = afterDelivery;
         this.orders = orders;
         this.wait = wait;
         this.batchSize = batchSize;
@@ -35,7 +38,8 @@ class OrderScheduler {
 
     @Scheduled(fixedDelayString = "${nexbid.order.auto-complete-interval}")
     void tick() {
-        int completed = orders.completeOverdue(Instant.now().minus(wait), batchSize);
+        int completed = orders.completeOverdue(Instant.now().minus(wait), batchSize)
+                + orders.completeDelivered(Instant.now().minus(afterDelivery), batchSize);
         if (completed > 0) {
             log.info("Completed {} shipped order(s) the buyer did not confirm in {}", completed, wait);
         }

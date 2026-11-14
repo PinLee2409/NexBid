@@ -3,6 +3,7 @@ package com.nexbid.order;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -468,5 +469,148 @@ class AfterSaleApiTest {
         mockMvc.perform(post(bid).header("Authorization", "Bearer " + sale.buyer())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":25000000}"))
                 .andExpect(status().isCreated());
+    }
+
+    @Autowired
+    private OrderService orderService;
+
+    @Autowired
+    private com.nexbid.order.repository.OrderRepository orderRepository;
+
+    private ResultActions message(String token, String orderId, String body) throws Exception {
+        return mockMvc.perform(post("/api/orders/" + orderId + "/messages").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"body\":\"" + body + "\"}"));
+    }
+
+    @Test
+    void theBuyerAndTheSellerTalkAboutTheirOrderAndNobodyElse() throws Exception {
+        Sale sale = paidSale("messages");
+        String stranger = tokenFor("as.stranger.messages@nexbid.com", "Stranger Messages", RoleName.BUYER);
+
+        message(sale.buyer(), sale.orderId(), "Hello, when will you ship it?").andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.mine").value(true));
+        message(sale.buyer(), sale.orderId(), "Thanks a lot!").andExpect(status().isCreated());
+        message(stranger, sale.orderId(), "Let me in").andExpect(status().isNotFound());
+        message(sale.buyer(), sale.orderId(), " ").andExpect(status().isBadRequest());
+
+        // EN: Contact details stay off the platform. / VI: Thông tin liên lạc không được đưa ra ngoài sàn.
+        for (String leak : List.of("call me 0912 345 678", "mail me at pin@gmail.com", "add me on Zalo",
+                "pay to account 1903-5555-1234", "see www.shop.vn")) {
+            message(sale.seller(), sale.orderId(), leak).andExpect(status().isUnprocessableContent())
+                    .andExpect(jsonPath("$.code").value("MESSAGE_BLOCKED"));
+        }
+
+        // EN: Two unread messages make one notice. / VI: Hai tin chưa đọc chỉ tạo một thông báo.
+        assertThat(noticesTo(sale.sellerId()).stream().filter("NEW_MESSAGE"::equals).count()).isEqualTo(1);
+        mockMvc.perform(get("/api/messages/unread-count").header("Authorization", "Bearer " + sale.seller()))
+                .andExpect(jsonPath("$.data.unread").value(2));
+        mockMvc.perform(get("/api/messages").header("Authorization", "Bearer " + sale.seller()))
+                .andExpect(jsonPath("$.data[0].orderId").value(sale.orderId()))
+                .andExpect(jsonPath("$.data[0].asSeller").value(true))
+                .andExpect(jsonPath("$.data[0].unread").value(2))
+                .andExpect(jsonPath("$.data[0].lastMessage").value("Thanks a lot!"));
+
+        mockMvc.perform(get("/api/orders/" + sale.orderId() + "/messages").header("Authorization", "Bearer " + sale.seller()))
+                .andExpect(jsonPath("$.data.messages.length()").value(2))
+                .andExpect(jsonPath("$.data.messages[0].mine").value(false))
+                .andExpect(jsonPath("$.data.thread.lotTitle").value("After sale messages"));
+        mockMvc.perform(get("/api/messages/unread-count").header("Authorization", "Bearer " + sale.seller()))
+                .andExpect(jsonPath("$.data.unread").value(0));
+        message(sale.seller(), sale.orderId(), "Shipping tomorrow morning.").andExpect(status().isCreated());
+        assertThat(noticesTo(sale.buyerId())).contains("NEW_MESSAGE");
+
+        mockMvc.perform(get("/api/admin/orders/" + sale.orderId() + "/messages").header("Authorization", "Bearer " + sale.admin()))
+                .andExpect(jsonPath("$.data.length()").value(3));
+        mockMvc.perform(get("/api/admin/orders/" + sale.orderId() + "/messages").header("Authorization", "Bearer " + sale.buyer()))
+                .andExpect(status().isForbidden());
+
+        // EN: A cancelled order closes the conversation. / VI: Đơn đã huỷ thì đóng cuộc trò chuyện.
+        jdbc.update("UPDATE orders SET status = 'CANCELLED' WHERE id = ?::uuid", sale.orderId());
+        message(sale.buyer(), sale.orderId(), "Still there?").andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("MESSAGES_CLOSED"));
+    }
+
+    @Test
+    void anAdminVerifiesASellerAndTheBadgeShowsOnTheirLots() throws Exception {
+        Sale sale = paidSale("verified");
+        mockMvc.perform(get("/api/auctions/" + sale.auctionId())).andExpect(jsonPath("$.data.seller.verified").value(false));
+
+        mockMvc.perform(patch("/api/admin/users/" + sale.buyerId() + "/verified").header("Authorization", "Bearer " + sale.admin())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"verified\":true}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("NOT_A_SELLER"));
+        mockMvc.perform(patch("/api/admin/users/" + sale.sellerId() + "/verified").header("Authorization", "Bearer " + sale.seller())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"verified\":true}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(patch("/api/admin/users/" + sale.sellerId() + "/verified").header("Authorization", "Bearer " + sale.admin())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"verified\":true}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.verified").value(true));
+
+        mockMvc.perform(get("/api/auctions/" + sale.auctionId())).andExpect(jsonPath("$.data.seller.verified").value(true));
+        assertThat(noticesTo(sale.sellerId())).contains("SELLER_VERIFIED");
+        assertThat(auditOf(sale.sellerId().toString())).contains("SELLER_VERIFIED false -> true");
+
+        mockMvc.perform(patch("/api/admin/users/" + sale.sellerId() + "/verified").header("Authorization", "Bearer " + sale.admin())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"verified\":false}"))
+                .andExpect(jsonPath("$.data.verified").value(false));
+        mockMvc.perform(get("/api/auctions/" + sale.auctionId())).andExpect(jsonPath("$.data.seller.verified").value(false));
+    }
+
+    @Test
+    void ghnIsOffUntilConfiguredAndADeliveredParcelCompletesTheOrder() throws Exception {
+        mockMvc.perform(get("/api/shipping/status")).andExpect(jsonPath("$.data.ghn").value(false));
+        mockMvc.perform(post("/api/shipping/ghn/webhook").param("secret", "anything")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"OrderCode\":\"X\",\"Status\":\"delivered\"}"))
+                .andExpect(status().isNotFound());
+        Sale sale = paidSale("ghn");
+        mockMvc.perform(get("/api/shipping/ghn/provinces").header("Authorization", "Bearer " + sale.buyer()))
+                .andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.code").value("SHIPPING_UNAVAILABLE"));
+
+        // EN: A GHN gateway played by a local server. / VI: Gateway GHN do một server cục bộ đóng vai.
+        com.sun.net.httpserver.HttpServer gateway = com.sun.net.httpserver.HttpServer.create(
+                new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+        java.util.List<String> tokens = new java.util.concurrent.CopyOnWriteArrayList<>();
+        gateway.createContext("/", exchange -> {
+            tokens.add(exchange.getRequestHeaders().getFirst("Token"));
+            String path = exchange.getRequestURI().getPath();
+            String body = switch (path) {
+                case "/v2/shipping-order/fee" -> "{\"code\":200,\"message\":\"Success\",\"data\":{\"total\":36300}}";
+                case "/v2/shipping-order/detail" -> "{\"code\":200,\"data\":{\"status\":\"delivered\"}}";
+                case "/master-data/province" -> "{\"code\":200,\"data\":[{\"ProvinceID\":202,\"ProvinceName\":\"Hồ Chí Minh\"}]}";
+                default -> "{\"code\":400,\"message\":\"bad\",\"data\":null}";
+            };
+            byte[] bytes = body.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+        });
+        gateway.start();
+        try {
+            var client = com.nexbid.order.shipping.GhnTestAccess.client(
+                    "http://127.0.0.1:" + gateway.getAddress().getPort(), "test-token", "885");
+            var ghn = com.nexbid.order.shipping.GhnTestAccess.shipping(orderRepository, client, "s3cret");
+            assertThat(com.nexbid.order.shipping.GhnTestAccess.fee(ghn)).isEqualByComparingTo("36300");
+            assertThat(ghn.provinces()).extracting("name").containsExactly("Hồ Chí Minh");
+            assertThat(tokens).containsOnly("test-token");
+
+            mockMvc.perform(post("/api/seller/orders/" + sale.orderId() + "/ship").header("Authorization", "Bearer " + sale.seller())
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"carrier\":\"GHN\",\"trackingNumber\":\"LBK6DA\"}"))
+                    .andExpect(status().isOk());
+            assertThat(ghn.refresh(50)).isGreaterThanOrEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT shipping_status FROM orders WHERE id = ?::uuid", String.class,
+                    sale.orderId())).isEqualTo("delivered");
+            assertThat(ghn.record("unknown-code", "delivered", Instant.now())).isFalse();
+        } finally {
+            gateway.stop(0);
+        }
+
+        // EN: Delivered three days ago and never disputed: the order completes. / VI: Đã giao ba ngày trước mà không khiếu nại: đơn hoàn tất.
+        jdbc.update("UPDATE orders SET delivered_at = now() - interval '4 days' WHERE id = ?::uuid", sale.orderId());
+        assertThat(orderService.completeDelivered(Instant.now().minus(Duration.ofDays(3)), 50)).isGreaterThanOrEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT status FROM orders WHERE id = ?::uuid", String.class, sale.orderId()))
+                .isEqualTo("COMPLETED");
+        mockMvc.perform(get("/api/users/me/orders").header("Authorization", "Bearer " + sale.buyer()))
+                .andExpect(jsonPath("$.data[0].order.shippingStatus").value("delivered"))
+                .andExpect(jsonPath("$.data[0].order.deliveredAt").isNotEmpty());
     }
 }

@@ -68,6 +68,13 @@ public class Order {
     @Column(name = "completed_at")
     private Instant completedAt;
 
+    // EN: What the carrier last reported (GHN), and when it said delivered. / VI: Trạng thái đơn vị vận chuyển báo gần nhất (GHN), và lúc báo đã giao.
+    @Column(name = "shipping_status", length = 40)
+    private String shippingStatus;
+
+    @Column(name = "delivered_at")
+    private Instant deliveredAt;
+
     @Column(name = "auto_completed", nullable = false)
     private boolean autoCompleted;
 
@@ -193,5 +200,21 @@ public class Order {
 
     public boolean isAutoCompleted() {
         return autoCompleted;
+    }
+
+    public String getShippingStatus() {
+        return shippingStatus;
+    }
+
+    public Instant getDeliveredAt() {
+        return deliveredAt;
+    }
+
+    /** EN: The carrier's latest word; the first "delivered" sets the delivery time. / VI: Thông tin mới nhất của đơn vị vận chuyển; lần "đã giao" đầu tiên đặt giờ giao. */
+    public void recordCarrierStatus(String status, boolean delivered, Instant at) {
+        this.shippingStatus = status;
+        if (delivered && this.deliveredAt == null) {
+            this.deliveredAt = at;
+        }
     }
 }

@@ -106,6 +106,11 @@ export async function setUserBlocked(userId: string, blocked: boolean): Promise<
   );
 }
 
+/** `PATCH /api/admin/users/{id}/verified` — gives or takes away a seller's verified badge. */
+export async function setSellerVerified(userId: string, verified: boolean): Promise<User> {
+  return toUser(await api<ApiUser>(`/api/admin/users/${userId}/verified`, { method: "PATCH", body: { verified } }));
+}
+
 /** `GET /api/admin/orders?status=…` — every order when no status is given, most recently changed first. */
 export async function listOrders(statuses: OrderStatus[] = []): Promise<OrderEntry[]> {
   const page = await api<ApiPage<ApiOrder>>("/api/admin/orders", { query: { status: statuses, size: 100 } });

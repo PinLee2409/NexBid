@@ -334,3 +334,26 @@ Phần khoá dòng, chống trùng và chạy nhiều máy đã chắc; sửa 6 
 - **Kiểm chứng:** backend 465 test (độ phủ 95.8% dòng, 81.2% nhánh); test mới (báo cáo và gỡ lô, khoá người bán, đánh giá người mua, giới hạn trả giá, email admin, mã
   giao dịch trùng); frontend 149 unit test; E2E 50/50 (test mới: báo cáo rồi gỡ lô, đánh giá người mua, trang VNPay không
   cần đăng nhập và trang Email của admin).
+
+## Đã làm (15/11/2026) — đợt 19: huy hiệu xác minh, nhắn tin, khung GHN, ảnh README mới
+
+- **Huy hiệu "người bán đã xác minh":** admin bật/tắt ở trang Người dùng (chỉ cho người bán, `NOT_A_SELLER`). Cột
+  `users.seller_verified` (V35), đọc mới mỗi lần (không lấy từ thẻ lô đã cache) nên huy hiệu đổi ngay; hiện trên trang lô
+  và có trong thẻ danh mục. Người bán nhận thông báo `SELLER_VERIFIED`; nhật ký ghi `SELLER_VERIFIED`.
+- **Nhắn tin giữa người mua và người bán của một đơn** (module `message`, bảng `order_messages`): mở từ lúc thắng tới 30
+  ngày sau khi hoàn tất, đơn huỷ thì đóng (`MESSAGES_CLOSED`); chặn số điện thoại, dãy số dài (số tài khoản), email,
+  đường link và tên ứng dụng chat/ví (Zalo, Messenger, Momo…) kể cả khi viết cách quãng (`MESSAGE_BLOCKED`); tối đa 20
+  tin mỗi 10 phút (`MESSAGE_LIMIT`). Tin tới trực tiếp qua socket `/user/queue/messages`; thông báo `NEW_MESSAGE` chỉ
+  khi mở đầu một loạt tin chưa đọc. Trang **Tin nhắn** (`/messages`): danh sách cuộc trò chuyện và khung chat, số tin
+  chưa đọc ở menu tài khoản, link "Tin nhắn" trên từng đơn của người mua và người bán; admin đọc được để xử lý khiếu nại.
+- **Khung tích hợp GHN** (chờ key): client gọi phí ship, trạng thái vận đơn và danh sách tỉnh/quận/phường; webhook
+  `/api/shipping/ghn/webhook?secret=…` và lượt hỏi 30 phút một lần ghi trạng thái vào đơn (`orders.shipping_status`,
+  `delivered_at`); GHN báo đã giao thì đơn tự hoàn tất sau 3 ngày nếu không khiếu nại. Chưa có key thì các endpoint trả
+  `SHIPPING_UNAVAILABLE` và mọi thứ chạy như trước. Biến môi trường trong `backend/.env.example`.
+- **README:** chụp lại toàn bộ ảnh và GIF trả giá trực tiếp theo giao diện mới, thêm ảnh trang Tin nhắn, thêm phần
+  "Shipping with GHN" và các endpoint mới.
+- **E2E phát hiện:** WebSocket chỉ cho đăng ký phòng lô và hộp thông báo, nên hàng đợi tin nhắn bị từ chối và socket
+  đóng luôn (kéo theo thông báo trực tiếp hỏng). Đã cho phép `/user/queue/messages` với người đã đăng nhập.
+- **Kiểm chứng:** backend 468 test (độ phủ 95.6% dòng, 79.9% nhánh, vẫn trên ngưỡng); frontend 150 unit test; E2E 52/52 (test mới: nhắn tin hai chiều kèm chặn số điện thoại, admin xác minh
+  người bán và huy hiệu hiện trên lô).
+

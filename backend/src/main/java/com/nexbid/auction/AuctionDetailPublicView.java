@@ -33,6 +33,6 @@ public record AuctionDetailPublicView(
     public record Product(UUID id, String name, String description, String condition) {
     }
 
-    public record Seller(UUID id, String displayName) {
+    public record Seller(UUID id, String displayName, boolean verified) {
     }
 }

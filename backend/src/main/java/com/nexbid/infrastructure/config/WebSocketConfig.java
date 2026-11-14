@@ -96,8 +96,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 if (command == StompCommand.SUBSCRIBE) {
                     String destination = accessor.getDestination();
                     boolean lot = destination != null && destination.startsWith(AuctionChannel.TOPIC_PREFIX);
-                    boolean inbox = NotificationChannel.SUBSCRIPTION.equals(destination) && accessor.getUser() != null;
+                    boolean inbox = (NotificationChannel.SUBSCRIPTION.equals(destination)
+                            || com.nexbid.message.MessageChannel.SUBSCRIPTION.equals(destination))
+                            && accessor.getUser() != null;
 
+                    // EN: Lot rooms and the user's own queues (notices, messages).
+                    // VI: Phòng của lô và các hàng đợi riêng của người dùng (thông báo, tin nhắn).
                     // EN: Two shapes of destination exist. Anything else is a client exploring.
                     // VI: Chỉ có hai dạng đích tồn tại. Ngoài ra là client đang dò tìm.
                     if (!lot && !inbox) {

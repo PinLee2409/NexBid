@@ -281,6 +281,23 @@ nexbid:
     # EN: How long before that the buyer is reminded to confirm or dispute (ORDER_COMPLETING). Sent by the heads-up job.
     # VI: Người mua được nhắc xác nhận hoặc khiếu nại trước lúc đó bao lâu (ORDER_COMPLETING). Do job heads-up gửi.
     auto-complete-reminder: ${NEXBID_ORDER_AUTO_COMPLETE_REMINDER:2d}
+    # EN: Once the carrier reports delivery (GHN), the order completes after this long instead.
+    # VI: Khi đơn vị vận chuyển báo đã giao (GHN), đơn hoàn tất sau khoảng này thay vì khoảng trên.
+    complete-after-delivery: ${NEXBID_ORDER_COMPLETE_AFTER_DELIVERY:3d}
+
+  shipping:
+    ghn:
+      # EN: GHN (Giao Hang Nhanh). Without a token the integration is off and sellers type the tracking number by hand.
+      #     The default gateway is GHN's sandbox; production is https://online-gateway.ghn.vn/shiip/public-api.
+      # VI: GHN (Giao Hàng Nhanh). Không có token thì tích hợp tắt và người bán tự nhập mã vận đơn. Gateway mặc định là
+      #     sandbox của GHN; production là https://online-gateway.ghn.vn/shiip/public-api.
+      token: ${NEXBID_GHN_TOKEN:}
+      shop-id: ${NEXBID_GHN_SHOP_ID:}
+      base-url: ${NEXBID_GHN_BASE_URL:https://dev-online-gateway.ghn.vn/shiip/public-api}
+      # EN: Part of the webhook URL GHN calls: /api/shipping/ghn/webhook?secret=... / VI: Một phần URL webhook GHN gọi.
+      webhook-secret: ${NEXBID_GHN_WEBHOOK_SECRET:}
+      # EN: How often parcels in transit are checked, in case a webhook was missed. / VI: Bao lâu kiểm tra kiện đang giao một lần, phòng khi lỡ webhook.
+      poll-interval: ${NEXBID_GHN_POLL_INTERVAL_MS:1800000}
 
   payout:
     # EN: The platform's cut of each completed sale, in percent. / VI: Phần sàn giữ lại trên mỗi giao dịch hoàn tất, tính theo phần trăm.

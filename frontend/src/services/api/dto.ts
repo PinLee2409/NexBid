@@ -37,6 +37,7 @@ export interface ApiUser {
   roles: UserRole[];
   status: UserStatus;
   createdAt?: IsoDateString;
+  verified?: boolean;
 }
 
 export interface ApiLogin {
@@ -85,7 +86,7 @@ export interface ApiAuctionSummary {
   auction: ApiAuction;
   product: { id: string; name: string; coverImageUrl: string | null; condition: ProductCondition | null };
   category: ApiCategory | null;
-  seller: { id: string; displayName: string };
+  seller: { id: string; displayName: string; verified?: boolean };
 }
 
 export interface ApiImage {
@@ -115,7 +116,7 @@ export interface ApiAuctionDetail {
   product: { id: string; name: string; description: string; condition: ProductCondition };
   category: ApiCategory | null;
   images: ApiImage[];
-  seller: { id: string; displayName: string };
+  seller: { id: string; displayName: string; verified?: boolean };
   minimumNextBid: number;
   openForBidding: boolean;
   /** EN: Null when the server cannot count right now. / VI: Null khi server tạm thời không đếm được. */
@@ -256,6 +257,8 @@ export interface ApiOrder {
     completedAt?: IsoDateString | null;
     autoCompleted?: boolean;
     dispute?: OrderDispute | null;
+    shippingStatus?: string | null;
+    deliveredAt?: IsoDateString | null;
   };
   payment: ApiPaymentDetails | null;
   auction: ApiAuctionSummary | null;

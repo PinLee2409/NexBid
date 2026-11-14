@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, ShieldOff, UserRound, Users } from "lucide-react";
+import { BadgeCheck, Loader2, ShieldOff, UserRound, Users } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage, useEnumLabels } from "@/hooks/use-labels";
 import { cn } from "@/lib/utils";
-import { listUsers, setUserBlocked } from "@/services/admin-service";
+import { listUsers, setSellerVerified, setUserBlocked } from "@/services/admin-service";
 import type { User } from "@/types";
 
 export default function AdminUsersPage() {
@@ -75,6 +75,21 @@ function UserRow({ user, onChanged }: { user: User; onChanged: () => void }) {
   // Admin accounts cannot be blocked, not even your own; unblocking stays available.
   const protectedAdmin = user.roles.includes("ADMIN") && !blocked;
 
+  const seller = user.roles.includes("SELLER");
+
+  function toggleVerified() {
+    startTransition(async () => {
+      try {
+        await setSellerVerified(user.id, !user.verified);
+      } catch (error) {
+        toast.error(errorMessage(error));
+        return;
+      }
+      onChanged();
+      toast.success(user.verified ? t("sellerUnverified") : t("sellerVerified"), { description: user.email });
+    });
+  }
+
   function toggleBlocked() {
     startTransition(async () => {
       try {
@@ -100,7 +115,10 @@ function UserRow({ user, onChanged }: { user: User; onChanged: () => void }) {
       </span>
 
       <div className="min-w-[12rem] flex-1">
-        <p className="label">{user.fullName}</p>
+        <p className="label flex items-center gap-1.5">
+          {user.fullName}
+          {user.verified ? <BadgeCheck className="text-signal-text size-4" aria-label={t("verifiedBadge")} /> : null}
+        </p>
         <p className="text-muted-foreground mt-1 text-sm">{user.email}</p>
       </div>
 
@@ -124,6 +142,13 @@ function UserRow({ user, onChanged }: { user: User; onChanged: () => void }) {
       >
         {labels.userStatus(user.status)}
       </p>
+
+      {seller ? (
+        <Button variant="outline" onClick={toggleVerified} disabled={isPending} className="shrink-0">
+          <BadgeCheck className="size-3.5" />
+          {user.verified ? t("unverifySeller") : t("verifySeller")}
+        </Button>
+      ) : null}
 
       <Button
         variant={blocked ? "outline" : "destructive"}

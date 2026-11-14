@@ -21,6 +21,7 @@ import { getToken, onTokenChange, subjectOf } from "./api/token-store";
 // EN: Straight to the backend: the Next.js rewrites only carry HTTP. / VI: Nối thẳng tới backend: rewrite của Next.js chỉ chuyển HTTP.
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8080/ws";
 const INBOX = "/user/queue/notifications";
+const MESSAGES = "/user/queue/messages";
 
 type Listener = (event: AuctionEvent) => void;
 
@@ -41,6 +42,9 @@ const rooms = new Map<string, Room>();
 const inboxListeners = new Set<InboxListener>();
 let client: Client | null = null;
 let inbox: StompSubscription | null = null;
+/** EN: Order messages pushed to the signed-in user. / VI: Tin nhắn đơn hàng được đẩy tới người đang đăng nhập. */
+const messageListeners = new Set<(message: unknown) => void>();
+let messageQueue: StompSubscription | null = null;
 // EN: The token the current connection carried — only with one is there an inbox to join.
 // VI: Token mà kết nối hiện tại mang theo — chỉ khi có token thì mới có hộp thư để vào.
 let connectedAs: string | null = null;
@@ -129,6 +133,21 @@ function joinInbox(): void {
   for (const listener of inboxListeners) listener.onReady();
 }
 
+function joinMessages(): void {
+  if (messageQueue || !client?.connected || !connectedAs || connectedAs === refusedToken || messageListeners.size === 0) {
+    return;
+  }
+  messageQueue = client.subscribe(MESSAGES, (frame) => {
+    let message: unknown;
+    try {
+      message = JSON.parse(frame.body);
+    } catch {
+      return;
+    }
+    for (const listener of messageListeners) listener(message);
+  });
+}
+
 /** EN: Connects again right away, e.g. after signing in. / VI: Kết nối lại ngay, ví dụ sau khi đăng nhập. */
 async function reconnect(): Promise<void> {
   const current = client;
@@ -160,8 +179,10 @@ function ensureClient(): void {
     // EN: On every (re)connect, re-join the rooms still open and the inbox. / VI: Mỗi lần (kết nối lại), vào lại các phòng còn mở và hộp thư.
     onConnect: () => {
       inbox = null;
+      messageQueue = null;
       for (const [auctionId, room] of rooms) room.subscription = subscribeRoom(auctionId);
       joinInbox();
+      joinMessages();
     },
     onStompError: () => {
       if (inbox) refusedToken = connectedAs;
@@ -173,7 +194,7 @@ function ensureClient(): void {
 
 /** EN: The last listener leaving closes the socket. / VI: Người nghe cuối cùng rời đi thì đóng socket. */
 function closeIfIdle(): void {
-  if (rooms.size === 0 && inboxListeners.size === 0 && client) {
+  if (rooms.size === 0 && inboxListeners.size === 0 && messageListeners.size === 0 && client) {
     void client.deactivate();
     client = null;
   }
@@ -219,6 +240,26 @@ export function subscribeToInbox(listener: InboxListener): Unsubscribe {
     if (inboxListeners.size === 0) {
       inbox?.unsubscribe();
       inbox = null;
+    }
+    closeIfIdle();
+  };
+}
+
+/**
+ * EN: Listens to the signed-in user's order messages as they arrive. Signed out, nothing arrives.
+ * VI: Nghe tin nhắn đơn hàng của người đang đăng nhập khi chúng tới. Khi chưa đăng nhập thì không có gì tới.
+ */
+export function subscribeToMessages(listener: (message: unknown) => void): Unsubscribe {
+  messageListeners.add(listener);
+  ensureClient();
+  joinMessages();
+
+  return () => {
+    messageListeners.delete(listener);
+    if (messageListeners.size === 0) {
+      // EN: Only on a live socket; a closed one has dropped it already. / VI: Chỉ khi socket còn sống; socket đã đóng thì đã bỏ rồi.
+      if (client?.connected) messageQueue?.unsubscribe();
+      messageQueue = null;
     }
     closeIfIdle();
   };

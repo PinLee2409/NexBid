@@ -103,7 +103,8 @@
     "payouts": "Payouts",
     "alerts": "Alerts",
     "reports": "Reports",
-    "emails": "Emails"
+    "emails": "Emails",
+    "messages": "Messages"
   },
   "footer": {
     "marketplace": "Marketplace",
@@ -513,7 +514,10 @@
     "unsubscribeDigestTitle": "Stop new-lot emails?",
     "unsubscribeDigestBody": "You will no longer get the daily email of new lots. Notifications on the site keep coming.",
     "unsubscribeDigestConfirm": "Turn off new-lot emails",
-    "unsubscribedDigestTitle": "New-lot emails are off"
+    "unsubscribedDigestTitle": "New-lot emails are off",
+    "orderDelivered": "Delivered {date}",
+    "orderCarrierStatus": "Carrier:",
+    "orderMessages": "Messages"
   },
   "becomeSeller": {
     "title": "Become a seller",
@@ -923,7 +927,12 @@
     "emailsEmptyBody": "No emails in this list.",
     "emailsAttempts": "{count, plural, one {# try} other {# tries}}",
     "emailsRetry": "Send again",
-    "emailsRetried": "Queued again. It goes out within a few seconds."
+    "emailsRetried": "Queued again. It goes out within a few seconds.",
+    "verifySeller": "Verify seller",
+    "unverifySeller": "Remove badge",
+    "sellerVerified": "Seller verified",
+    "sellerUnverified": "Verified badge removed",
+    "verifiedBadge": "Verified seller"
   },
   "howItWorks": {
     "title": "How NexBid works",
@@ -1044,7 +1053,9 @@
       "STRAY_CHARGE": "Extra charge",
       "SALE_REFUNDED": "Sale refunded",
       "LOT_REMOVED": "Lot taken down",
-      "REPORT_RESOLVED": "Report reviewed"
+      "REPORT_RESOLVED": "Report reviewed",
+      "SELLER_VERIFIED": "Verified seller",
+      "NEW_MESSAGE": "New message"
     },
     "auditAction": {
       "USER_LOGIN": "User signed in",
@@ -1077,7 +1088,8 @@
       "PAYOUT_RECORDED": "Payout recorded",
       "BANK_ACCOUNT_CHANGED": "Payout bank account changed",
       "STRAY_CHARGE_REFUNDED": "Extra VNPay charge sent back",
-      "AUCTION_REMOVED": "Lot taken down"
+      "AUCTION_REMOVED": "Lot taken down",
+      "SELLER_VERIFIED": "Seller verification changed"
     },
     "role": {
       "BUYER": "Buyer",
@@ -1347,6 +1359,27 @@
     "REPORT_DUPLICATE": "You have already reported this lot. NexBid will look into it.",
     "REPORT_LIMIT": "You have 10 reports waiting for review. Wait until some are decided.",
     "BUYER_REVIEW_NOT_ALLOWED": "You can rate the buyer once the order is completed.",
-    "BIDDER_RESTRICTED": "You left 2 or more won lots unpaid, so you cannot bid 20,000,000 ₫ or more for now."
+    "BIDDER_RESTRICTED": "You left 2 or more won lots unpaid, so you cannot bid 20,000,000 ₫ or more for now.",
+    "NOT_A_SELLER": "Only a seller can be verified.",
+    "MESSAGES_CLOSED": "Messages on this order are closed.",
+    "MESSAGE_BLOCKED": "Messages cannot contain phone numbers, emails, links, account numbers or other apps. Keep the sale on NexBid so it stays protected.",
+    "MESSAGE_LIMIT": "You are sending too fast. Wait a few minutes.",
+    "SHIPPING_UNAVAILABLE": "Shipping with GHN is not available right now."
+  },
+  "messages": {
+    "title": "Messages",
+    "subtitle": "Talk with the buyer or seller of each order: delivery times, the parcel, questions about the item.",
+    "safety": "Phone numbers, emails, links and account numbers are blocked: deals made outside NexBid lose the buyer’s protection.",
+    "threads": "Conversations",
+    "emptyTitle": "No messages yet",
+    "emptyBody": "Open an order and choose Messages to talk with the other side.",
+    "withBuyer": "With buyer {name}",
+    "withSeller": "With seller {name}",
+    "you": "You",
+    "startHint": "No messages yet. Say hello and agree on the delivery.",
+    "draftLabel": "Your message",
+    "draftPlaceholder": "Write a message… (Enter to send, Shift+Enter for a new line)",
+    "send": "Send",
+    "closed": "This conversation is closed: the order was cancelled or completed more than 30 days ago."
   }
 }

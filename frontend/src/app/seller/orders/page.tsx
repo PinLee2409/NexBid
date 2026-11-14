@@ -111,6 +111,7 @@ function SalesList({
           <OrderRow
             key={entry.order.id}
             entry={entry}
+            messages
             extra={<BuyerRecordLine entry={entry} />}
             action={
               entry.order.status === "PAID" ? (

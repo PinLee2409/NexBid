@@ -48,7 +48,10 @@ public record OrderView(Details order, PaymentView.Details payment, AuctionSumma
             Instant shippedAt,
             Instant completedAt,
             boolean autoCompleted,
-            Dispute dispute) {
+            Dispute dispute,
+            // EN: The carrier's latest status and delivery time, when tracked (GHN). / VI: Trạng thái mới nhất và giờ giao của đơn vị vận chuyển, khi được theo dõi (GHN).
+            String shippingStatus,
+            Instant deliveredAt) {
     }
 
     /**
