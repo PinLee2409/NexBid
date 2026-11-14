@@ -42,5 +42,9 @@ public enum MailKind {
     /** EN: To the seller: money was transferred. / VI: Gửi người bán: tiền đã được chuyển. */
     SELLER_PAYOUT,
     /** EN: To the buyer: the order completes on its own soon. / VI: Gửi người mua: đơn sắp tự hoàn tất. */
-    ORDER_COMPLETING
+    ORDER_COMPLETING,
+    /** EN: To the seller: a question on their lot. / VI: Gửi người bán: một câu hỏi trên lô của họ. */
+    LOT_QUESTION,
+    /** EN: To the asker: the seller answered. / VI: Gửi người hỏi: người bán đã trả lời. */
+    QUESTION_ANSWERED
 }

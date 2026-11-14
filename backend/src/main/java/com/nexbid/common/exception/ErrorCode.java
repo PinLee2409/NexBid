@@ -93,6 +93,12 @@ public enum ErrorCode {
     ORDER_STATUS_INVALID(HttpStatus.CONFLICT),
     // EN: A refund is a bank transfer: the buyer must have said where to. / VI: Hoàn tiền là chuyển khoản: người mua phải cho biết chuyển về đâu.
     REFUND_ACCOUNT_REQUIRED(HttpStatus.CONFLICT),
+    // EN: Questions on a lot: none such, closed lot or own lot, too many waiting, or already answered.
+    // VI: Hỏi đáp trên lô: không có câu hỏi, lô đã đóng hoặc lô của chính mình, quá nhiều câu đang chờ, hoặc đã trả lời.
+    QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND),
+    QUESTION_NOT_ALLOWED(HttpStatus.CONFLICT),
+    QUESTION_LIMIT(HttpStatus.TOO_MANY_REQUESTS),
+    QUESTION_ANSWERED(HttpStatus.CONFLICT),
     DISPUTE_NOT_FOUND(HttpStatus.NOT_FOUND),
     // EN: Already decided. / VI: Đã được quyết định rồi.
     DISPUTE_CLOSED(HttpStatus.CONFLICT),

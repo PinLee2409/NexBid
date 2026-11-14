@@ -6,6 +6,8 @@ import {
   CalendarClock,
   CheckCircle2,
   CreditCard,
+  MessageCircleQuestion,
+  MessageSquareReply,
   PackageCheck,
   RotateCcw,
   Scale,
@@ -54,6 +56,8 @@ const ICONS: Record<NotificationType, LucideIcon> = {
   PAYOUT_SENT: Banknote,
   ORDER_COMPLETING: PackageCheck,
   ORDER_REFUNDED: Banknote,
+  NEW_QUESTION: MessageCircleQuestion,
+  QUESTION_ANSWERED: MessageSquareReply,
 };
 
 /** Tone carries meaning: red only for things that cost the reader something. */
@@ -81,6 +85,8 @@ const TONES: Record<NotificationType, string> = {
   PAYOUT_SENT: "text-success",
   ORDER_COMPLETING: "text-warning",
   ORDER_REFUNDED: "text-success",
+  NEW_QUESTION: "text-signal-text",
+  QUESTION_ANSWERED: "text-signal-text",
 };
 
 /**

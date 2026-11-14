@@ -1,16 +1,17 @@
 # NexBid: hiện trạng và việc tiếp theo
 
-Cập nhật: 13/11/2026. Lịch sử chi tiết từng đợt nằm trong [NexBid_Backlog.md](NexBid_Backlog.md).
+Cập nhật: 14/11/2026. Lịch sử chi tiết từng đợt nằm trong [NexBid_Backlog.md](NexBid_Backlog.md).
 
 ## 1. Web đã tới đâu
 
 ### Người mua
 - Duyệt, tìm kiếm, lọc lô theo danh mục; trang lô cập nhật giá trực tiếp qua WebSocket, đồng hồ đếm ngược, chống bắn tỉa (gia hạn phút cuối).
 - Trả giá, tự động trả giá (auto-bid), mua ngay, theo dõi lô.
+- Hỏi đáp công khai trên trang lô: người mua hỏi, người bán trả lời ngay dưới câu hỏi; mỗi người tối đa 3 câu đang chờ trên một lô.
 - Giá sàn ẩn: người mua chỉ thấy "chưa đạt / đã đạt giá sàn".
 - Thanh toán qua VNPay (bản demo đã bỏ). Phải có địa chỉ nhận hàng trước khi thanh toán.
 - Đơn hàng: theo dõi mã vận đơn, xác nhận đã nhận, đánh giá người bán (1–5 sao).
-- Khiếu nại đơn hàng (chưa nhận, sai mô tả, hư hỏng, khác) *(mới, chưa commit)*.
+- Khiếu nại đơn hàng (chưa nhận, sai mô tả, hư hỏng, khác).
 - Cơ hội thứ hai: khi người thắng không trả tiền, người trả giá kế tiếp được mời mua.
 - Thông báo trong app và email song ngữ; tắt được email bị vượt giá, có link huỷ đăng ký một chạm.
 - Giao diện tiếng Việt và tiếng Anh, giá theo ngôn ngữ (`18.500.000 ₫` / `₫18,500,000`), giao diện sáng và tối, dùng tốt trên điện thoại.
@@ -20,25 +21,25 @@ Cập nhật: 13/11/2026. Lịch sử chi tiết từng đợt nằm trong [NexB
 - Đăng sản phẩm kèm ảnh, tạo phiên đấu giá (giá khởi điểm, bước giá, giá sàn, giá mua ngay).
 - Quyết định bán khi lô đóng dưới giá sàn (trong 24 giờ).
 - Đơn bán: xem địa chỉ giao, nhập đơn vị vận chuyển và mã vận đơn.
-- Thu nhập: số tiền chờ chi trả, đã nhận, phí sàn 5%, tài khoản ngân hàng nhận tiền *(mới, chưa commit)*.
+- Thu nhập: số tiền chờ chi trả, đã nhận, phí sàn 5%, tài khoản ngân hàng nhận tiền.
 
 ### Admin (trang đăng nhập riêng `/admin/login`)
 - Duyệt lô, quản lý danh mục, người dùng (khoá / mở khoá), yêu cầu bán hàng.
-- Đơn hàng: hoàn tiền bằng chuyển khoản thủ công vào tài khoản người mua đã cho, kèm mã giao dịch *(mới, chưa commit)*.
-- Khiếu nại: hoàn tiền cho người mua hoặc giữ giao dịch, kèm ghi chú *(mới, chưa commit)*.
-- Chi trả cho người bán: danh sách người bán đang chờ tiền, ghi nhận chuyển khoản kèm mã giao dịch *(mới, chưa commit)*.
+- Đơn hàng: hoàn tiền bằng chuyển khoản thủ công vào tài khoản người mua đã cho, kèm mã giao dịch.
+- Khiếu nại: hoàn tiền cho người mua hoặc giữ giao dịch, kèm ghi chú.
+- Chi trả cho người bán: danh sách người bán đang chờ tiền, ghi nhận chuyển khoản kèm mã giao dịch.
 - Nhật ký hệ thống, thống kê hoạt động.
 
 ### Hệ thống
 - Backend Spring Boot 4 chia module (Spring Modulith), Postgres, Redis, Kafka (outbox), OpenTelemetry.
-- Đơn đã gửi tự hoàn tất sau 7 ngày nếu người mua không xác nhận và không khiếu nại *(mới, chưa commit)*.
-- 26 loại email song ngữ qua Brevo, có logo, tự gửi lại khi lỗi *(chưa commit: toàn bộ giao diện mới, logo, và 14 loại mới — 9 cho người bán, hoàn tiền và mua ngay, 5 cho khiếu nại và chi trả, 1 nhắc đơn sắp tự hoàn tất)*.
+- Đơn đã gửi tự hoàn tất sau 7 ngày nếu người mua không xác nhận và không khiếu nại.
+- 26 loại email song ngữ qua Brevo, có logo, tự gửi lại khi lỗi.
 - CI: test backend (độ phủ JaCoCo), kiểm tra frontend, test E2E Playwright.
 - File deploy staging với HTTPS tự động (Caddy) trong `deploy/staging/`, chưa deploy thật.
 
-## 2. Việc đang dở (đợt 14: sau thanh toán)
+## 2. Đợt 14 (sau thanh toán) và đợt 15 (hỏi đáp)
 
-Code đã viết xong và đã kiểm chứng, chưa commit, chưa push.
+Đã commit và push lên `dev` (14/11/2026).
 
 - [x] **Chạy lại toàn bộ test backend** (`mvn verify`): 449/449 test qua, đạt ngưỡng độ phủ (95.4% dòng, 81.5% nhánh).
 - [x] **Kiểm tra trên trình duyệt** trên stack Docker riêng (project `nexbid-e2e`, cổng 18080/13000, Postgres, Redis,
@@ -55,7 +56,7 @@ Code đã viết xong và đã kiểm chứng, chưa commit, chưa push.
 - [x] **Email nhắc người mua** 2 ngày trước khi đơn tự hoàn tất (`ORDER_COMPLETING`, một lần mỗi đơn, migration V28).
 - [x] **Test E2E** cho luồng khiếu nại và chi trả (`frontend/e2e/after-sale.spec.ts`); cả bộ E2E 43/43.
 - [x] Cập nhật Backlog và README.
-- [ ] Commit và push.
+- [x] Commit và push.
 
 ## 3. VNPay: chỉ dùng để thanh toán; hoàn tiền là chuyển khoản thủ công
 
@@ -91,8 +92,8 @@ mục `nexbid-backend` của `.claude/launch.json` nạp file này; chạy bằn
 ### Nên làm trước
 
 1. **Đặt cọc trước khi đấu giá lô giá trị cao.** Với lô từ một mức giá cấu hình được (ví dụ 20 triệu), người mua phải cọc qua VNPay khoảng 5–10% mới được trả giá. Thắng mà không trả tiền thì mất cọc; thua thì được hoàn cọc tự động. Giải quyết vấn đề lớn nhất của sàn đấu giá: người thắng bỏ không trả tiền.
-2. **Hỏi đáp trên trang lô.** Người mua đặt câu hỏi công khai, người bán trả lời, ai cũng xem được. Người bán nhận email khi có câu hỏi mới.
-3. **Lưu tìm kiếm và theo dõi người bán.** Lưu bộ lọc (ví dụ "đồng hồ Seiko dưới 10 triệu") hoặc theo dõi một người bán; có lô mới khớp thì nhận thông báo và email tổng hợp mỗi ngày.
+   *Lưu ý (14/11/2026): hoàn tiền giờ là chuyển khoản tay, nên trước khi làm cần chọn cách hoàn cọc: số dư ví trên NexBid, hoặc chờ VNPay bật API hoàn tiền.*
+2. **Lưu tìm kiếm và theo dõi người bán.** Lưu bộ lọc (ví dụ "đồng hồ Seiko dưới 10 triệu") hoặc theo dõi một người bán; có lô mới khớp thì nhận thông báo và email tổng hợp mỗi ngày.
 
 ### Làm sau
 

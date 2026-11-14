@@ -60,5 +60,9 @@ public enum NotificationType {
      */
     ORDER_COMPLETING,
     /** EN: To the buyer: the money was transferred back to their bank account. / VI: Gửi người mua: tiền đã được chuyển trả vào tài khoản ngân hàng. */
-    ORDER_REFUNDED
+    ORDER_REFUNDED,
+    /** EN: To the seller: a buyer asked about their lot. / VI: Gửi người bán: một người mua hỏi về lô của họ. */
+    NEW_QUESTION,
+    /** EN: To the asker: the seller answered. / VI: Gửi người hỏi: người bán đã trả lời. */
+    QUESTION_ANSWERED
 }

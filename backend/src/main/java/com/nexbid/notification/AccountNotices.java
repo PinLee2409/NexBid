@@ -14,6 +14,7 @@ import com.nexbid.mail.Mailer;
 import com.nexbid.order.OrderEvents;
 import com.nexbid.payment.PaymentEvents;
 import com.nexbid.payout.PayoutEvents;
+import com.nexbid.question.QuestionEvents;
 import com.nexbid.user.SellerApplicationEvent;
 
 /**
@@ -155,6 +156,26 @@ class AccountNotices {
         mailer.send(event.buyerId(), MailKind.ORDER_SHIPPED,
                 MailFacts.lot(event.auctionId(), auctions.lotTitleOf(event.auctionId()), null)
                         .withTracking(event.carrier(), event.trackingNumber()));
+    }
+
+    /** EN: The seller hears each question while the lot is open. / VI: Người bán được báo mỗi câu hỏi khi lô còn mở. */
+    @EventListener
+    void onQuestion(QuestionEvents.Asked event) {
+        String title = auctions.lotTitleOf(event.auctionId());
+        notifications.notify(event.sellerId(), NotificationType.NEW_QUESTION, "New question",
+                clip(title + ": " + event.body()), event.auctionId(), event.at());
+        mailer.send(event.sellerId(), MailKind.LOT_QUESTION,
+                MailFacts.lot(event.auctionId(), title, null).withReason(event.body()));
+    }
+
+    /** EN: The asker hears the answer. / VI: Người hỏi được báo câu trả lời. */
+    @EventListener
+    void onAnswer(QuestionEvents.Answered event) {
+        String title = auctions.lotTitleOf(event.auctionId());
+        notifications.notify(event.askerId(), NotificationType.QUESTION_ANSWERED, "The seller answered",
+                clip(title + ": " + event.answer()), event.auctionId(), event.at());
+        mailer.send(event.askerId(), MailKind.QUESTION_ANSWERED,
+                MailFacts.lot(event.auctionId(), title, null).withReason(event.answer()));
     }
 
     /** EN: The seller hears each review, with the stars. / VI: Người bán được báo mỗi đánh giá, kèm số sao. */

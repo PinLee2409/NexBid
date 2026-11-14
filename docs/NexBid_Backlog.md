@@ -258,3 +258,15 @@ Hiện không còn mục nào đang chờ.
 - **Sửa:** trạng thái đơn `DISPUTED` thiếu nhãn tiếng Việt / tiếng Anh, làm trang đơn hàng báo `MISSING_MESSAGE`.
 - **Kiểm chứng:** backend 445 test (độ phủ 95.3% dòng, 81.7% nhánh), frontend 143 unit test, E2E 45/45 trên stack
   Docker riêng.
+
+## Đã làm (14/11/2026) — đợt 15: hỏi đáp trên trang lô
+
+- **Hỏi đáp công khai:** trên trang lô, người mua đã đăng nhập hỏi khi lô sắp mở hoặc đang mở (5–500 ký tự); người bán
+  của lô trả lời một lần, ngay dưới câu hỏi. Ai cũng đọc được, tên người hỏi được che như lịch sử trả giá. Người bán
+  không tự hỏi lô của mình; mỗi người tối đa 3 câu đang chờ trên một lô (`QUESTION_LIMIT`); lô đã đóng thì không nhận
+  câu hỏi. Bảng `lot_questions`, migration V30, module `question`.
+- **Thông báo:** người bán nhận email `LOT_QUESTION` và thông báo `NEW_QUESTION`; người hỏi nhận email
+  `QUESTION_ANSWERED` và thông báo cùng tên. Bấm thông báo mở thẳng phần hỏi đáp của lô.
+- **E2E:** khách thấy link đăng nhập; người mua hỏi; người bán trả lời; người mua thấy câu trả lời và thông báo.
+- **Kiểm chứng:** backend 449 test (độ phủ 95.4% dòng, 81.9% nhánh), frontend 145 unit test, E2E 45/45 trên stack Docker
+  riêng.

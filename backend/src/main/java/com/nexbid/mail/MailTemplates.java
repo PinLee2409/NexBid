@@ -345,6 +345,24 @@ final class MailTemplates {
                                     + "seller. If it arrived as described, confirm and rate the seller; if not, open a "
                                     + "dispute before then." + trackingEn,
                             "View order"));
+            case LOT_QUESTION -> build(kind, facts, "Câu hỏi mới: " + lot, "New question: " + lot,
+                    lotLink + "#questions",
+                    new Half("Có người hỏi về lô của bạn",
+                            "Một người mua hỏi về <b>" + lot + "</b>: <i>" + reason + "</i><br>Câu trả lời hiện công khai "
+                                    + "trên trang lô; trả lời sớm giúp người mua yên tâm trả giá.",
+                            "Trả lời"),
+                    new Half("Someone asked about your lot",
+                            "A buyer asked about <b>" + lot + "</b>: <i>" + reason + "</i><br>Your answer shows publicly "
+                                    + "on the lot page; a quick answer helps buyers bid with confidence.",
+                            "Answer"));
+            case QUESTION_ANSWERED -> build(kind, facts, "Người bán đã trả lời: " + lot, "The seller answered: " + lot,
+                    lotLink + "#questions",
+                    new Half("Câu hỏi của bạn đã có câu trả lời",
+                            "Người bán <b>" + lot + "</b> trả lời: <i>" + reason + "</i>",
+                            "Xem lô"),
+                    new Half("Your question was answered",
+                            "The seller of <b>" + lot + "</b> answered: <i>" + reason + "</i>",
+                            "View lot"));
             case NEW_REVIEW -> build(kind, facts, "Đánh giá mới: " + lot, "New review: " + lot, lotLink,
                     new Half("Bạn vừa nhận một đánh giá",
                             "Người mua <b>" + lot + "</b> đã đánh giá bạn <b>" + stars(facts.rating())
@@ -403,6 +421,8 @@ final class MailTemplates {
             case DISPUTE_SELLER_REJECTED -> new Tag("Khiếu nại đã đóng · Closed", false);
             case SELLER_PAYOUT -> new Tag("Đã chuyển tiền · Paid out", false);
             case ORDER_COMPLETING -> new Tag("Sắp hoàn tất · Completing soon", false);
+            case LOT_QUESTION -> new Tag("Câu hỏi · Question", false);
+            case QUESTION_ANSWERED -> new Tag("Đã trả lời · Answered", false);
         };
     }
 

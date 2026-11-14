@@ -162,6 +162,9 @@ function hrefFor(notification: ApiNotification): string | undefined {
     case "DISPUTE_RESOLVED":
     case "ORDER_COMPLETING":
       return "/orders";
+    case "NEW_QUESTION":
+    case "QUESTION_ANSWERED":
+      return notification.auctionId ? `/auctions/${notification.auctionId}#questions` : undefined;
     case "ORDER_REFUNDED":
       return "/payments";
     case "PAYOUT_SENT":
