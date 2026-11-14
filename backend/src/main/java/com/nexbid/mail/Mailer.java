@@ -2,6 +2,7 @@ package com.nexbid.mail;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -74,6 +75,29 @@ public class Mailer {
         users.findById(userId).ifPresent(account -> queue(account, MailKind.OUTBID, facts, now));
     }
 
+    /**
+     * EN: The daily digest of new lots, unless the person turned it off. {@code lots} is what fits in one email;
+     *     {@code total} counts them all.
+     * VI: Email tổng hợp lô mới hằng ngày, trừ khi người đó đã tắt. {@code lots} là phần vừa một email; {@code total}
+     *     đếm tất cả.
+     */
+    @Transactional
+    public boolean sendDigest(UUID userId, List<DigestLot> lots, int total) {
+        if (lots.isEmpty() || !preferences.wantsDigestEmails(userId)) {
+            return false;
+        }
+        Optional<UserAccount> account = users.findById(userId);
+        if (account.isEmpty()) {
+            return false;
+        }
+        String token = tokens.tokenFor(userId);
+        String pageLink = siteUrl() + "/unsubscribe?token=" + token + "&list=digest";
+        String oneClick = siteUrl() + UnsubscribeController.PATH + "?token=" + token + "&list=digest";
+        store(account.get(), MailKind.LOT_DIGEST, null, templates.renderDigest(lots, total, pageLink), Instant.now(),
+                oneClick);
+        return true;
+    }
+
     private void queue(UserAccount account, MailKind kind, MailFacts facts, Instant now) {
         String name = HtmlUtils.htmlEscape(account.fullName());
         // EN: Only optional emails carry a way out; the others are about the person's own money or goods.
@@ -82,8 +106,13 @@ public class Mailer {
         String pageLink = token == null ? null : siteUrl() + "/unsubscribe?token=" + token;
         String oneClick = token == null ? null : siteUrl() + UnsubscribeController.PATH + "?token=" + token;
         MailTemplates.Rendered mail = templates.render(kind, name, MailTemplates.escaped(facts), pageLink);
+        store(account, kind, facts.auctionId(), mail, now, oneClick);
+    }
+
+    private void store(UserAccount account, MailKind kind, UUID auctionId, MailTemplates.Rendered mail, Instant now,
+            String oneClick) {
         String status = properties.sending() ? "PENDING" : "SKIPPED";
-        outbox.insert(account.id(), account.email(), account.fullName(), kind, facts.auctionId(), mail, status, now,
+        outbox.insert(account.id(), account.email(), account.fullName(), kind, auctionId, mail, status, now,
                 oneClick);
         if (!properties.sending()) {
             log.info("Email not sent (no NEXBID_BREVO_API_KEY): {} to {} — {}", kind, account.email(), mail.subject());

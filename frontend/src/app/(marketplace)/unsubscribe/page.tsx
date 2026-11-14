@@ -8,10 +8,11 @@ import { Container } from "@/components/layout/container";
 import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
 import { useApiErrorMessage } from "@/hooks/use-labels";
-import { unsubscribeFromOutbidEmails } from "@/services/account-service";
+import { unsubscribeFromEmails } from "@/services/account-service";
 
 const noSubscription = () => () => {};
 const readToken = () => new URLSearchParams(window.location.search).get("token");
+const readList = () => new URLSearchParams(window.location.search).get("list");
 
 /**
  * EN: Where the link in an outbid email lands. It asks for a click rather than acting on arrival: mail scanners open
@@ -23,6 +24,8 @@ export default function UnsubscribePage() {
   const t = useTranslations("account");
   const errorMessage = useApiErrorMessage();
   const token = useSyncExternalStore(noSubscription, readToken, () => null);
+  const list = useSyncExternalStore(noSubscription, readList, () => null);
+  const digest = list === "digest";
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -31,7 +34,7 @@ export default function UnsubscribePage() {
     if (!token) return;
     startTransition(async () => {
       try {
-        await unsubscribeFromOutbidEmails(token);
+        await unsubscribeFromEmails(token, list);
         setDone(true);
       } catch (failure) {
         setError(errorMessage(failure));
@@ -45,7 +48,7 @@ export default function UnsubscribePage() {
         {done ? (
           <EmptyState
             icon={MailCheck}
-            title={t("unsubscribedTitle")}
+            title={t(digest ? "unsubscribedDigestTitle" : "unsubscribedTitle")}
             description={t("unsubscribedBody")}
             action={{ label: t("emailTitle"), href: "/profile#email" }}
           />
@@ -53,13 +56,13 @@ export default function UnsubscribePage() {
           <EmptyState
             icon={BellOff}
             tone={error ? "error" : "default"}
-            title={t("unsubscribeTitle")}
-            description={error ?? (token ? t("unsubscribeBody") : t("unsubscribeNoToken"))}
+            title={t(digest ? "unsubscribeDigestTitle" : "unsubscribeTitle")}
+            description={error ?? (token ? t(digest ? "unsubscribeDigestBody" : "unsubscribeBody") : t("unsubscribeNoToken"))}
           >
             {token ? (
               <Button onClick={confirm} disabled={isPending} className="mt-6">
                 {isPending ? <Loader2 className="size-4 animate-spin" /> : <BellOff className="size-4" />}
-                {t("unsubscribeConfirm")}
+                {t(digest ? "unsubscribeDigestConfirm" : "unsubscribeConfirm")}
               </Button>
             ) : null}
           </EmptyState>

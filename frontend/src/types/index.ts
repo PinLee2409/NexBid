@@ -70,6 +70,9 @@ export const ERROR_CODES = [
   "QUESTION_NOT_ALLOWED",
   "QUESTION_LIMIT",
   "QUESTION_ANSWERED",
+  "SAVED_SEARCH_NOT_FOUND",
+  "SAVED_SEARCH_LIMIT",
+  "FOLLOW_NOT_ALLOWED",
   "DISPUTE_NOT_FOUND",
   "DISPUTE_CLOSED",
   "BANK_ACCOUNT_REQUIRED",
@@ -486,7 +489,8 @@ export type NotificationType =
   | "ORDER_COMPLETING"
   | "ORDER_REFUNDED"
   | "NEW_QUESTION"
-  | "QUESTION_ANSWERED";
+  | "QUESTION_ANSWERED"
+  | "LOT_ALERT";
 
 export interface AppNotification {
   id: Id;

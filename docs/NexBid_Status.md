@@ -8,6 +8,7 @@ Cập nhật: 14/11/2026. Lịch sử chi tiết từng đợt nằm trong [NexB
 - Duyệt, tìm kiếm, lọc lô theo danh mục; trang lô cập nhật giá trực tiếp qua WebSocket, đồng hồ đếm ngược, chống bắn tỉa (gia hạn phút cuối).
 - Trả giá, tự động trả giá (auto-bid), mua ngay, theo dõi lô.
 - Hỏi đáp công khai trên trang lô: người mua hỏi, người bán trả lời ngay dưới câu hỏi; mỗi người tối đa 3 câu đang chờ trên một lô.
+- Lưu tìm kiếm và theo dõi người bán: có lô mới khớp thì nhận thông báo ngay, và email tổng hợp mỗi ngày lúc 8:00 *(mới, chưa commit)*.
 - Giá sàn ẩn: người mua chỉ thấy "chưa đạt / đã đạt giá sàn".
 - Thanh toán qua VNPay (bản demo đã bỏ). Phải có địa chỉ nhận hàng trước khi thanh toán.
 - Đơn hàng: theo dõi mã vận đơn, xác nhận đã nhận, đánh giá người bán (1–5 sao).
@@ -47,8 +48,7 @@ Cập nhật: 14/11/2026. Lịch sử chi tiết từng đợt nằm trong [NexB
   quả và thông báo; người bán nhập tài khoản, xem thu nhập → admin ghi nhận chuyển khoản → người bán thấy mã giao dịch và
   thông báo. Phát hiện và sửa: trạng thái đơn `DISPUTED` thiếu nhãn ở `enums.orderStatus` (lỗi `MISSING_MESSAGE`).
   Nhánh admin **chấp nhận** khiếu nại (hoàn tiền) mới được test ở API, chưa bấm thử trên giao diện.
-- [ ] **Gửi mẫu 6 email mới** để duyệt giao diện: đã dựng bản xem trước HTML (khiếu nại mở, khiếu nại bị bác cho người
-  mua và người bán, đã hoàn tiền cho người mua (gửi người bán), đã chuyển tiền, đơn sắp tự hoàn tất); chưa gửi thật qua Brevo.
+- [x] **Gửi mẫu 6 email mới** (14/11/2026): đã gửi qua Brevo tới Gmail của chủ dự án, cùng 2 email hỏi đáp.
 - [x] **Ghi nhật ký hệ thống**: mở khiếu nại, hoàn tiền / bác khiếu nại (kèm ghi chú), ghi nhận chi trả, đổi tài khoản
   nhận tiền (chỉ tên ngân hàng và 4 số cuối). Đơn hoàn tất sau khi bác khiếu nại giờ ghi `DISPUTED → COMPLETED`.
 - [x] **Thông báo trong app**: `DISPUTE_OPENED` (người bán), `DISPUTE_RESOLVED` (người mua), `DISPUTE_SELLER_RESOLVED`
@@ -93,12 +93,11 @@ mục `nexbid-backend` của `.claude/launch.json` nạp file này; chạy bằn
 
 1. **Đặt cọc trước khi đấu giá lô giá trị cao.** Với lô từ một mức giá cấu hình được (ví dụ 20 triệu), người mua phải cọc qua VNPay khoảng 5–10% mới được trả giá. Thắng mà không trả tiền thì mất cọc; thua thì được hoàn cọc tự động. Giải quyết vấn đề lớn nhất của sàn đấu giá: người thắng bỏ không trả tiền.
    *Lưu ý (14/11/2026): hoàn tiền giờ là chuyển khoản tay, nên trước khi làm cần chọn cách hoàn cọc: số dư ví trên NexBid, hoặc chờ VNPay bật API hoàn tiền.*
-2. **Lưu tìm kiếm và theo dõi người bán.** Lưu bộ lọc (ví dụ "đồng hồ Seiko dưới 10 triệu") hoặc theo dõi một người bán; có lô mới khớp thì nhận thông báo và email tổng hợp mỗi ngày.
+2. **Báo cáo lô vi phạm** (hàng giả, mô tả sai), kèm hàng chờ duyệt cho admin.
 
 ### Làm sau
 
 4. **Tích hợp GHN hoặc GHTK:** tính phí ship theo tỉnh lúc thanh toán, tự lấy trạng thái vận đơn, đơn tự hoàn tất khi đơn vị vận chuyển báo đã giao.
 5. **Nhắn tin giữa người mua và người bán** sau khi thắng, để hẹn giao hàng hoặc hỏi về kiện hàng.
-6. **Báo cáo lô vi phạm** (hàng giả, mô tả sai), kèm hàng chờ duyệt cho admin.
-7. **Người bán đánh giá người mua**, để biết người mua nào hay bỏ đơn.
-8. **Huy hiệu người bán đã xác minh** (đã xác minh giấy tờ), hiện trên trang lô.
+6. **Người bán đánh giá người mua**, để biết người mua nào hay bỏ đơn.
+7. **Huy hiệu người bán đã xác minh** (đã xác minh giấy tờ), hiện trên trang lô.

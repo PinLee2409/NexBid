@@ -270,3 +270,21 @@ Hiện không còn mục nào đang chờ.
 - **E2E:** khách thấy link đăng nhập; người mua hỏi; người bán trả lời; người mua thấy câu trả lời và thông báo.
 - **Kiểm chứng:** backend 449 test (độ phủ 95.4% dòng, 81.9% nhánh), frontend 145 unit test, E2E 45/45 trên stack Docker
   riêng.
+
+## Đã làm (14/11/2026) — đợt 16: lưu tìm kiếm và theo dõi người bán
+
+- **Lưu tìm kiếm:** trên trang danh mục, khi đã tìm hoặc lọc (từ khoá, danh mục, tình trạng, khoảng giá), nút
+  **Lưu tìm kiếm này** lưu bộ lọc (khách được đưa đi đăng nhập rồi quay lại đúng bộ lọc). Tối đa 10 bộ lọc mỗi người
+  (`SAVED_SEARCH_LIMIT`); lưu trùng thì trả về bộ lọc cũ. Trạng thái, sắp xếp và "sắp đóng" không được lưu.
+- **Theo dõi người bán:** nút **Theo dõi người bán** cạnh tên người bán trên trang lô; người bán không tự theo dõi mình.
+- **Báo lô mới:** khi admin duyệt một lô, ai có bộ lọc khớp (giá so với giá hiện tại của lô) hoặc đang theo dõi người bán
+  của lô nhận ngay một thông báo `LOT_ALERT`, mỗi người mỗi lô một lần (bảng `lot_alerts`). Bộ lọc của chính người bán
+  không báo lô của họ.
+- **Email tổng hợp hằng ngày** `LOT_DIGEST` lúc 8:00 giờ Việt Nam (`NEXBID_ALERT_DIGEST_CRON`): các lô được ghi từ lần
+  trước mà vẫn còn mở, tối đa 20 lô một email. Tắt được trong Hồ sơ (cột `users.digest_emails`) hoặc bằng link một chạm
+  trong email (`/unsubscribe?…&list=digest`).
+- **Trang Báo lô mới** (`/alerts`) trong tài khoản: danh sách bộ lọc (xem kết quả, xoá) và người bán đang theo dõi (bỏ
+  theo dõi). Module `alert`, migration V31.
+- **Kiểm chứng:** backend 452 test (độ phủ 95.4% dòng, 81.4% nhánh), frontend 146 unit test, E2E 46/46 trên stack Docker
+  riêng (test mới: khách thấy link đăng nhập, lưu tìm kiếm, nhận thông báo khi lô khớp được duyệt, theo dõi người bán, quản
+  lý ở trang Báo lô mới).

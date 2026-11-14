@@ -116,7 +116,8 @@
     "breadcrumb": "Đường dẫn",
     "earnings": "Thu nhập",
     "disputes": "Khiếu nại",
-    "payouts": "Chi trả"
+    "payouts": "Chi trả",
+    "alerts": "Báo lô mới"
   },
   "footer": {
     "marketplace": "Sàn đấu giá",
@@ -215,7 +216,12 @@
     "browseAll": "Xem tất cả phiên",
     "pagination": "Trang {page} / {total}",
     "searchLabel": "Tìm phiên đấu giá",
-    "resultsHeading": "Kết quả"
+    "resultsHeading": "Kết quả",
+    "saveSearch": "Lưu tìm kiếm này",
+    "saveSearchSignIn": "Đăng nhập để lưu tìm kiếm",
+    "saveSearchSaved": "Đã lưu. Chúng tôi sẽ báo khi có lô mới khớp.",
+    "saveSearchManage": "Xem báo lô mới",
+    "saveSearchHint": "Tìm hoặc lọc trước, rồi lưu lại để được báo khi có lô mới."
   },
   "auction": {
     "backToAuctions": "Về danh sách phiên",
@@ -290,7 +296,12 @@
     "confirmAction": "Xác nhận trả giá",
     "notFoundTitle": "Không tìm thấy phiên đấu giá",
     "notFoundBody": "Sản phẩm này có thể đã bị gỡ, hoặc đường dẫn không còn hiệu lực.",
-    "similarLots": "Thêm trong {category}"
+    "similarLots": "Thêm trong {category}",
+    "followSeller": "Theo dõi người bán",
+    "followingSeller": "Đang theo dõi",
+    "followSignIn": "Đăng nhập để theo dõi",
+    "followed": "Bạn sẽ được báo khi người bán này đăng lô mới.",
+    "unfollowed": "Đã bỏ theo dõi người bán này."
   },
   "bidErrors": {
     "NOT_AUTHENTICATED": "Đăng nhập để đặt giá.",
@@ -512,7 +523,30 @@
       "REFUNDED": "Đã hoàn tiền",
       "REJECTED": "Không chấp nhận"
     },
-    "orderAutoCompleted": "Tự hoàn tất"
+    "orderAutoCompleted": "Tự hoàn tất",
+    "alertsTitle": "Báo lô mới",
+    "alertsSubtitle": "Tìm kiếm đã lưu và người bán bạn theo dõi. Khi có lô mới khớp, bạn nhận thông báo, và email mỗi ngày tổng hợp lại.",
+    "alertsSearchesTitle": "Tìm kiếm đã lưu",
+    "alertsSearchesEmpty": "Chưa có tìm kiếm nào. Lọc danh mục, rồi bấm Lưu tìm kiếm này.",
+    "alertsSellersTitle": "Người bán đang theo dõi",
+    "alertsSellersEmpty": "Bạn chưa theo dõi ai. Bấm Theo dõi người bán trên bất kỳ lô nào của họ.",
+    "alertsBrowse": "Xem phiên đấu giá",
+    "alertsView": "Xem lô",
+    "alertsDelete": "Xoá tìm kiếm",
+    "alertsDeleted": "Đã xoá tìm kiếm",
+    "alertsUnfollow": "Bỏ theo dõi",
+    "alertsSince": "Từ {date}",
+    "alertsAny": "Mọi lô mới",
+    "alertsPriceFrom": "từ {price}",
+    "alertsPriceTo": "đến {price}",
+    "alertsDigestNote": "Email lô mới: mỗi ngày một lần lúc 8:00.",
+    "alertsDigestSettings": "Cài đặt email",
+    "emailDigest": "Email lô mới hằng ngày",
+    "emailDigestHint": "Lô mới khớp tìm kiếm đã lưu và người bán bạn theo dõi, mỗi ngày một lần lúc 8:00.",
+    "unsubscribeDigestTitle": "Tắt email lô mới?",
+    "unsubscribeDigestBody": "Bạn sẽ không nhận email tổng hợp lô mới mỗi ngày nữa. Thông báo trên trang vẫn tiếp tục.",
+    "unsubscribeDigestConfirm": "Tắt email lô mới",
+    "unsubscribedDigestTitle": "Đã tắt email lô mới"
   },
   "becomeSeller": {
     "title": "Trở thành người bán",
@@ -984,7 +1018,8 @@
       "ORDER_COMPLETING": "Đơn sắp tự hoàn tất",
       "ORDER_REFUNDED": "Đã chuyển tiền hoàn",
       "NEW_QUESTION": "Câu hỏi mới",
-      "QUESTION_ANSWERED": "Đã có câu trả lời"
+      "QUESTION_ANSWERED": "Đã có câu trả lời",
+      "LOT_ALERT": "Lô mới cho bạn"
     },
     "auditAction": {
       "USER_LOGIN": "Người dùng đăng nhập",
@@ -1271,6 +1306,9 @@
     "DISPUTE_NOT_FOUND": "Không tìm thấy khiếu nại.",
     "DISPUTE_CLOSED": "Khiếu nại này đã được quyết định.",
     "BANK_ACCOUNT_REQUIRED": "Người bán chưa thêm tài khoản nhận tiền.",
-    "NOTHING_TO_PAY_OUT": "Người bán không còn khoản nào chờ chi trả."
+    "NOTHING_TO_PAY_OUT": "Người bán không còn khoản nào chờ chi trả.",
+    "SAVED_SEARCH_NOT_FOUND": "Tìm kiếm đã lưu này không còn nữa.",
+    "SAVED_SEARCH_LIMIT": "Bạn lưu được tối đa 10 tìm kiếm. Hãy xoá bớt một cái.",
+    "FOLLOW_NOT_ALLOWED": "Bạn không thể tự theo dõi mình."
   }
 }

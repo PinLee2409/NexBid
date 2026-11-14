@@ -116,7 +116,8 @@
     "breadcrumb": "Breadcrumb",
     "earnings": "Earnings",
     "disputes": "Disputes",
-    "payouts": "Payouts"
+    "payouts": "Payouts",
+    "alerts": "Alerts"
   },
   "footer": {
     "marketplace": "Marketplace",
@@ -215,7 +216,12 @@
     "browseAll": "Browse all auctions",
     "pagination": "Page {page} of {total}",
     "searchLabel": "Search auctions",
-    "resultsHeading": "Results"
+    "resultsHeading": "Results",
+    "saveSearch": "Save this search",
+    "saveSearchSignIn": "Sign in to save this search",
+    "saveSearchSaved": "Search saved. We'll tell you when new lots match.",
+    "saveSearchManage": "See alerts",
+    "saveSearchHint": "Search or filter first, then save it to hear of new lots."
   },
   "auction": {
     "backToAuctions": "Back to auctions",
@@ -290,7 +296,12 @@
     "confirmAction": "Confirm bid",
     "notFoundTitle": "Auction not found",
     "notFoundBody": "This lot may have been removed, or the link is no longer valid.",
-    "similarLots": "More in {category}"
+    "similarLots": "More in {category}",
+    "followSeller": "Follow seller",
+    "followingSeller": "Following",
+    "followSignIn": "Sign in to follow",
+    "followed": "You'll hear when this seller lists something new.",
+    "unfollowed": "You no longer follow this seller."
   },
   "bidErrors": {
     "NOT_AUTHENTICATED": "Sign in to place a bid.",
@@ -512,7 +523,30 @@
       "REFUNDED": "Refunded",
       "REJECTED": "Not upheld"
     },
-    "orderAutoCompleted": "Completed automatically"
+    "orderAutoCompleted": "Completed automatically",
+    "alertsTitle": "Alerts",
+    "alertsSubtitle": "Saved searches and sellers you follow. When a new lot fits, you get a notification, and a daily email lists them.",
+    "alertsSearchesTitle": "Saved searches",
+    "alertsSearchesEmpty": "No saved searches yet. Filter the catalogue, then press Save this search.",
+    "alertsSellersTitle": "Sellers you follow",
+    "alertsSellersEmpty": "You don't follow anyone yet. Use Follow seller on any of their lots.",
+    "alertsBrowse": "Browse auctions",
+    "alertsView": "View lots",
+    "alertsDelete": "Delete search",
+    "alertsDeleted": "Search deleted",
+    "alertsUnfollow": "Unfollow",
+    "alertsSince": "Since {date}",
+    "alertsAny": "All new lots",
+    "alertsPriceFrom": "from {price}",
+    "alertsPriceTo": "up to {price}",
+    "alertsDigestNote": "New-lot email: once a day at 8:00.",
+    "alertsDigestSettings": "Email settings",
+    "emailDigest": "Daily new-lot email",
+    "emailDigestHint": "New lots for your saved searches and the sellers you follow, once a day at 8:00.",
+    "unsubscribeDigestTitle": "Stop new-lot emails?",
+    "unsubscribeDigestBody": "You will no longer get the daily email of new lots. Notifications on the site keep coming.",
+    "unsubscribeDigestConfirm": "Turn off new-lot emails",
+    "unsubscribedDigestTitle": "New-lot emails are off"
   },
   "becomeSeller": {
     "title": "Become a seller",
@@ -984,7 +1018,8 @@
       "ORDER_COMPLETING": "Order completing soon",
       "ORDER_REFUNDED": "Refund sent",
       "NEW_QUESTION": "New question",
-      "QUESTION_ANSWERED": "Question answered"
+      "QUESTION_ANSWERED": "Question answered",
+      "LOT_ALERT": "New lot for you"
     },
     "auditAction": {
       "USER_LOGIN": "User signed in",
@@ -1271,6 +1306,9 @@
     "DISPUTE_NOT_FOUND": "That dispute could not be found.",
     "DISPUTE_CLOSED": "This dispute has already been decided.",
     "BANK_ACCOUNT_REQUIRED": "The seller has not added a payout account yet.",
-    "NOTHING_TO_PAY_OUT": "The seller has nothing waiting to be paid."
+    "NOTHING_TO_PAY_OUT": "The seller has nothing waiting to be paid.",
+    "SAVED_SEARCH_NOT_FOUND": "That saved search no longer exists.",
+    "SAVED_SEARCH_LIMIT": "You can save up to 10 searches. Delete one first.",
+    "FOLLOW_NOT_ALLOWED": "You cannot follow yourself."
   }
 }

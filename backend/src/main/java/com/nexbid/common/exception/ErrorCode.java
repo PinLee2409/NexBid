@@ -99,6 +99,11 @@ public enum ErrorCode {
     QUESTION_NOT_ALLOWED(HttpStatus.CONFLICT),
     QUESTION_LIMIT(HttpStatus.TOO_MANY_REQUESTS),
     QUESTION_ANSWERED(HttpStatus.CONFLICT),
+    // EN: Lot alerts: no such saved search, too many saved, or following someone who cannot be followed.
+    // VI: Báo lô mới: không có bộ lọc đã lưu này, lưu quá nhiều, hoặc theo dõi người không theo dõi được.
+    SAVED_SEARCH_NOT_FOUND(HttpStatus.NOT_FOUND),
+    SAVED_SEARCH_LIMIT(HttpStatus.CONFLICT),
+    FOLLOW_NOT_ALLOWED(HttpStatus.CONFLICT),
     DISPUTE_NOT_FOUND(HttpStatus.NOT_FOUND),
     // EN: Already decided. / VI: Đã được quyết định rồi.
     DISPUTE_CLOSED(HttpStatus.CONFLICT),

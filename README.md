@@ -355,6 +355,7 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | Catalogue | `GET /api/auctions`, `GET /api/auctions/{id}`, `GET /api/categories`, `GET /api/server-time` — public |
 | Bidding | `GET`/`POST /api/auctions/{id}/questions` (public Q&A; reading needs no sign-in), `POST /api/auctions/{id}/bids`, `GET /api/auctions/{id}/bids`, `/api/auctions/{id}/auto-bid`, `POST /api/auctions/{id}/buy-now` |
 | Account | `GET`/`PUT /api/users/me/address` (delivery address, required before paying), `GET`/`PUT /api/users/me/email-preferences`, `POST /api/email/unsubscribe` (signed link, public) |
+| Alerts | `GET`/`POST /api/alerts/searches`, `DELETE /api/alerts/searches/{id}` (saved catalogue searches, 10 each), `GET /api/alerts/sellers`, `GET`/`PUT`/`DELETE /api/alerts/sellers/{id}` (follow a seller) |
 | Payment | `POST /api/payments/{id}/vnpay` (signed VNPay checkout link), `GET /api/payments/vnpay/ipn` and `GET /api/payments/vnpay/return` (VNPay's callbacks, public, checked by signature) |
 | Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders` (`…/{id}/received`, `…/{id}/dispute`), `…/me/bank-account` (payouts and refunds go here), `…/me/watchlist`, `…/me/offers` (`…/{id}/accept`, `…/{id}/decline`), `…/me/orders/{id}/review`, `…/me/seller-application`, `/api/notifications`, `GET /api/sellers/{id}/reviews` (public) |
 | Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions`, `/api/seller/auctions/{id}/second-chance`, `/api/seller/auctions/{id}/reserve-decision`, `/api/seller/second-chances`, `/api/seller/orders` (`…/{id}/ship`), `/api/seller/earnings`, `/api/seller/questions/{id}/answer` |
@@ -485,6 +486,9 @@ to `https://<tunnel>/api/payments/vnpay/ipn`. The `prod` profile refuses to star
 - seller request approved or rejected
 - order shipped
 - outbid: at most one email per person per lot every 30 minutes, but every time in a lot's final 15 minutes
+- new lots: once a day (08:00 Vietnam time, `NEXBID_ALERT_DIGEST_CRON`), the lots approved since the last digest that
+  fit a saved search or come from a followed seller and are still open. Each match is also an in-app notification
+  as soon as the lot is approved. Like outbid emails, it can be turned off in the profile or by the one-click link.
 
 Emails are written to `email_outbox` in the same transaction as their event and sent by a background job with
 retries. Set `NEXBID_BREVO_API_KEY` and a sender address verified in Brevo (`NEXBID_MAIL_SENDER_EMAIL`,

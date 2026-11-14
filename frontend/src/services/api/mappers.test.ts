@@ -179,6 +179,7 @@ describe("where a notification leads", () => {
     ["ORDER_REFUNDED", "/payments"],
     ["NEW_QUESTION", "/auctions/a1#questions"],
     ["QUESTION_ANSWERED", "/auctions/a1#questions"],
+    ["LOT_ALERT", "/auctions/a1"],
   ] as const)("%s opens %s", (type, href) => {
     expect(toNotification(notice(type), "u1").href).toBe(href);
   });

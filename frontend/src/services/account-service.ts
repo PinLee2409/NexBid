@@ -173,6 +173,8 @@ export async function saveShippingAddress(address: ShippingAddress): Promise<Shi
 export interface EmailPreferences {
   /** EN: The only optional email; the rest are about money and goods. / VI: Email duy nhất có thể tắt. */
   outbid: boolean;
+  /** EN: The daily new-lot email; left out, it keeps its value. / VI: Email lô mới hằng ngày; bỏ trống thì giữ nguyên. */
+  digest?: boolean;
 }
 
 export async function getEmailPreferences(): Promise<EmailPreferences> {
@@ -183,7 +185,10 @@ export async function saveEmailPreferences(preferences: EmailPreferences): Promi
   return api<EmailPreferences>("/api/users/me/email-preferences", { method: "PUT", body: preferences });
 }
 
-/** `POST /api/email/unsubscribe` — from the link in an email, no sign-in needed. */
-export async function unsubscribeFromOutbidEmails(token: string): Promise<void> {
-  await api("/api/email/unsubscribe", { method: "POST", body: { token } });
+/**
+ * `POST /api/email/unsubscribe` — from the link in an email, no sign-in needed. `list` is "digest" for the daily
+ * new-lot email; otherwise outbid emails are turned off.
+ */
+export async function unsubscribeFromEmails(token: string, list: string | null): Promise<void> {
+  await api("/api/email/unsubscribe", { method: "POST", body: { token, list } });
 }

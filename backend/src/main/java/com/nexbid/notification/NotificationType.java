@@ -64,5 +64,7 @@ public enum NotificationType {
     /** EN: To the seller: a buyer asked about their lot. / VI: Gửi người bán: một người mua hỏi về lô của họ. */
     NEW_QUESTION,
     /** EN: To the asker: the seller answered. / VI: Gửi người hỏi: người bán đã trả lời. */
-    QUESTION_ANSWERED
+    QUESTION_ANSWERED,
+    /** EN: A new lot fits a saved search or comes from a followed seller. / VI: Lô mới khớp bộ lọc đã lưu hoặc từ người bán đang theo dõi. */
+    LOT_ALERT
 }

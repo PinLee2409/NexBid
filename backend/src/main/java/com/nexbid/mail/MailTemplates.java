@@ -72,13 +72,19 @@ final class MailTemplates {
      * VI: {@code unsubscribeUrl} chỉ có ở email có thể tắt; nó thêm link một chạm để tắt chúng.
      */
     Rendered render(MailKind kind, String name, MailFacts facts, String unsubscribeUrl) {
-        Rendered body = body(kind, name, facts);
+        return wrap(body(kind, name, facts), kind, unsubscribeUrl);
+    }
+
+    private Rendered wrap(Rendered body, MailKind kind, String unsubscribeUrl) {
         String settings = siteUrl + "/profile#email";
+        String off = kind == MailKind.LOT_DIGEST
+                ? "Tắt email lô mới · Turn off new-lot emails"
+                : "Tắt email bị vượt giá · Turn off outbid emails";
         String footer = "<a href=\"" + HtmlUtils.htmlEscape(settings) + "\" style=\"color:#6b6b65\">Cài đặt email · Email settings</a>"
                 + (unsubscribeUrl == null ? "" : " &nbsp;|&nbsp; <a href=\"" + HtmlUtils.htmlEscape(unsubscribeUrl)
-                        + "\" style=\"color:#6b6b65\">Tắt email bị vượt giá · Turn off outbid emails</a>");
+                        + "\" style=\"color:#6b6b65\">" + off + "</a>");
         String text = body.text() + "\nCài đặt email · Email settings: " + settings + "\n"
-                + (unsubscribeUrl == null ? "" : "Tắt email bị vượt giá · Turn off outbid emails: " + unsubscribeUrl + "\n");
+                + (unsubscribeUrl == null ? "" : off + ": " + unsubscribeUrl + "\n");
         return new Rendered(body.subject(), withFont(body.html().replace(FOOTER_SLOT, footer)), text);
     }
 
@@ -372,7 +378,42 @@ final class MailTemplates {
                             "The buyer of <b>" + lot + "</b> rated you <b>" + stars(facts.rating())
                                     + " stars</b>. Reviews show on all your lots and help future buyers trust you.",
                             "See the review"));
+            case LOT_DIGEST -> digestBody(List.of(), 0);
         };
+    }
+
+    /** EN: The daily list of new lots; {@code total} may exceed the lots listed. / VI: Danh sách lô mới hằng ngày; {@code total} có thể nhiều hơn số lô được liệt kê. */
+    Rendered renderDigest(List<DigestLot> lots, int total, String unsubscribeUrl) {
+        return wrap(digestBody(lots, total), MailKind.LOT_DIGEST, unsubscribeUrl);
+    }
+
+    private Rendered digestBody(List<DigestLot> lots, int total) {
+        StringBuilder list = new StringBuilder();
+        for (DigestLot lot : lots) {
+            String link = HtmlUtils.htmlEscape(siteUrl + "/auctions/" + lot.auctionId());
+            list.append("""
+                    <tr><td style="padding:12px 0;border-bottom:1px solid %s">
+                    <a href="%s" style="font-size:15px;font-weight:bold;color:%s;text-decoration:none">%s</a><br>
+                    <span style="font-size:13px;color:%s">%s · %s%s</span>
+                    </td></tr>
+                    """.formatted(LINE, link, INK, HtmlUtils.htmlEscape(lot.title()), DIM,
+                    money(lot.price(), Locale.forLanguageTag("vi-VN")),
+                    lot.endsAt() == null ? "" : "đóng · ends " + WHEN.format(lot.endsAt()),
+                    lot.why() == null ? "" : " · " + HtmlUtils.htmlEscape(lot.why())));
+        }
+        String table = lots.isEmpty() ? "" : "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" "
+                + "cellspacing=\"0\" style=\"margin-top:12px\">" + list + "</table>";
+        String more = total > lots.size() ? "<br>…và " + (total - lots.size()) + " lô khác." : "";
+        String moreEn = total > lots.size() ? " …and " + (total - lots.size()) + " more." : "";
+        return build(MailKind.LOT_DIGEST, MailFacts.none(), total + " lô mới cho bạn", total + " new lots for you",
+                siteUrl + "/alerts",
+                new Half("Lô mới khớp với theo dõi của bạn",
+                        "Các lô vừa được đăng khớp với tìm kiếm đã lưu hoặc người bán bạn theo dõi:" + table + more,
+                        "Quản lý theo dõi"),
+                new Half("New lots for your alerts",
+                        "Lots listed since yesterday that match your saved searches or the sellers you follow are "
+                                + "listed above." + moreEn,
+                        "Manage alerts"));
     }
 
     private static String stars(Integer rating) {
@@ -423,6 +464,7 @@ final class MailTemplates {
             case ORDER_COMPLETING -> new Tag("Sắp hoàn tất · Completing soon", false);
             case LOT_QUESTION -> new Tag("Câu hỏi · Question", false);
             case QUESTION_ANSWERED -> new Tag("Đã trả lời · Answered", false);
+            case LOT_DIGEST -> new Tag("Lô mới · New lots", false);
         };
     }
 

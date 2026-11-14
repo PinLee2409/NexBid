@@ -235,6 +235,11 @@ nexbid:
     # VI: Người thắng chưa trả được nhắc (PAYMENT_REQUIRED) trước hạn thanh toán bao lâu.
     payment-reminder: ${NEXBID_PAYMENT_REMINDER:12h}
 
+  alert:
+    # EN: When the daily email of new lots matching saved searches and followed sellers goes out (Vietnam time).
+    # VI: Lúc gửi email hằng ngày về lô mới khớp bộ lọc đã lưu và người bán đang theo dõi (giờ Việt Nam).
+    digest-cron: ${NEXBID_ALERT_DIGEST_CRON:0 0 8 * * *}
+
   payment:
     # EN: How long a winner has to pay, counted from the close. Matches the frontend's demo data.
     # VI: Người thắng có bao lâu để trả, tính từ lúc đóng phiên. Khớp với dữ liệu demo của frontend.

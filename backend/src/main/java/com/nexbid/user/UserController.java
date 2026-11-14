@@ -81,19 +81,28 @@ public class UserController {
     }
 
     /** EN: The optional emails. Payment, order and account emails cannot be turned off. / VI: Các email có thể tắt. Email về thanh toán, đơn hàng và tài khoản thì không tắt được. */
-    public record EmailPreferences(boolean outbid) {
+    /**
+     * EN: {@code digest} is the daily new-lot email; a client that does not send it leaves it as it was.
+     * VI: {@code digest} là email lô mới hằng ngày; client không gửi trường này thì giữ nguyên giá trị cũ.
+     */
+    public record EmailPreferences(boolean outbid, Boolean digest) {
     }
 
     @GetMapping("/me/email-preferences")
     public ApiResponse<EmailPreferences> emailPreferences(@AuthenticationPrincipal CurrentUser caller) {
-        return ApiResponse.of(new EmailPreferences(addresses.wantsOutbidEmails(caller.id())));
+        return ApiResponse.of(new EmailPreferences(addresses.wantsOutbidEmails(caller.id()),
+                addresses.wantsDigestEmails(caller.id())));
     }
 
     @PutMapping("/me/email-preferences")
     public ApiResponse<EmailPreferences> saveEmailPreferences(
             @AuthenticationPrincipal CurrentUser caller, @RequestBody EmailPreferences request) {
         addresses.setOutbidEmails(caller.id(), request.outbid());
-        return ApiResponse.of(request, "Email preferences saved");
+        if (request.digest() != null) {
+            addresses.setDigestEmails(caller.id(), request.digest());
+        }
+        return ApiResponse.of(new EmailPreferences(request.outbid(), addresses.wantsDigestEmails(caller.id())),
+                "Email preferences saved");
     }
 
     /**

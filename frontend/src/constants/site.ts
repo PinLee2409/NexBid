@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Banknote,
   Bell,
+  BellRing,
   Gavel,
   Heart,
   LayoutDashboard,
@@ -42,6 +43,7 @@ export const BUYER_NAV: AccountNavItem[] = [
   { labelKey: "myBids", href: "/my-bids", icon: Gavel },
   { labelKey: "myWins", href: "/my-wins", icon: Trophy },
   { labelKey: "watchlist", href: "/watchlist", icon: Heart },
+  { labelKey: "alerts", href: "/alerts", icon: BellRing },
   { labelKey: "notifications", href: "/notifications", icon: Bell },
   { labelKey: "payments", href: "/payments", icon: Wallet },
   { labelKey: "orders", href: "/orders", icon: Receipt },

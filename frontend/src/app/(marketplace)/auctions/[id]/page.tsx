@@ -9,6 +9,7 @@ import { CategoryName } from "@/components/common/category-name";
 import { StarRating } from "@/components/common/star-rating";
 import { AuctionRoomView } from "@/components/nexbid/auction-room";
 import { AuctionCatalogueItem } from "@/components/nexbid/catalogue-item";
+import { FollowSellerButton } from "@/components/nexbid/follow-seller-button";
 import { LotQuestions } from "@/components/nexbid/lot-questions";
 import { ProductStage } from "@/components/nexbid/product-stage";
 import { SectionHead } from "@/components/nexbid/section-head";
@@ -152,6 +153,7 @@ export default async function AuctionDetailPage(
                     </p>
                   ) : null}
                 </div>
+                <FollowSellerButton sellerId={auction.seller.id} returnTo={`/auctions/${auction.id}`} />
               </div>
 
               {reputation && reputation.reviews.length > 0 ? (

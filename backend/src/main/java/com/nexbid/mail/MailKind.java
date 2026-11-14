@@ -46,5 +46,7 @@ public enum MailKind {
     /** EN: To the seller: a question on their lot. / VI: Gửi người bán: một câu hỏi trên lô của họ. */
     LOT_QUESTION,
     /** EN: To the asker: the seller answered. / VI: Gửi người hỏi: người bán đã trả lời. */
-    QUESTION_ANSWERED
+    QUESTION_ANSWERED,
+    // EN: The daily list of new lots for saved searches and followed sellers. / VI: Danh sách lô mới hằng ngày cho bộ lọc đã lưu và người bán đang theo dõi.
+    LOT_DIGEST
 }

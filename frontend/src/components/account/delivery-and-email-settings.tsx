@@ -16,9 +16,9 @@ import { getMyBankAccount } from "@/services/bank-account-service";
 
 /**
  * EN: The profile's delivery address, the bank account refunds are sent to, and email choices. Emails about money and
- *     goods always go out; only outbid emails can be turned off, which is also what the link in those emails does.
+ *     goods always go out; outbid emails and the daily new-lot email can be turned off, as the link in each also does.
  * VI: Địa chỉ nhận hàng, tài khoản ngân hàng nhận tiền hoàn, và lựa chọn email trong hồ sơ. Email về tiền và hàng luôn
- *     được gửi; chỉ email bị vượt giá là tắt được, cũng là việc mà link trong các email đó làm.
+ *     được gửi; email bị vượt giá và email lô mới hằng ngày thì tắt được, link trong từng email cũng làm vậy.
  */
 export function DeliveryAndEmailSettings() {
   const t = useTranslations("account");
@@ -28,6 +28,7 @@ export function DeliveryAndEmailSettings() {
   const errorMessage = useApiErrorMessage();
   const [isPending, startTransition] = useTransition();
   const [outbid, setOutbid] = useState<boolean | null>(null);
+  const [digest, setDigest] = useState<boolean | null>(null);
 
   // EN: The email footer links to #email; scroll there once the section exists. / VI: Footer email trỏ tới #email; cuộn tới khi phần này đã có.
   useEffect(() => {
@@ -35,15 +36,29 @@ export function DeliveryAndEmailSettings() {
   }, []);
 
   const outbidOn = outbid ?? (preferences.state.status === "success" ? preferences.state.data.outbid : true);
+  const digestOn = digest ?? (preferences.state.status === "success" ? preferences.state.data.digest !== false : true);
 
   function toggleOutbid(next: boolean) {
     setOutbid(next);
     startTransition(async () => {
       try {
-        await saveEmailPreferences({ outbid: next });
+        await saveEmailPreferences({ outbid: next, digest: digestOn });
         toast.success(t("emailSaved"));
       } catch (error) {
         setOutbid(!next);
+        toast.error(errorMessage(error));
+      }
+    });
+  }
+
+  function toggleDigest(next: boolean) {
+    setDigest(next);
+    startTransition(async () => {
+      try {
+        await saveEmailPreferences({ outbid: outbidOn, digest: next });
+        toast.success(t("emailSaved"));
+      } catch (error) {
+        setDigest(!next);
         toast.error(errorMessage(error));
       }
     });
@@ -116,6 +131,21 @@ export function DeliveryAndEmailSettings() {
             checked={outbidOn}
             disabled={isPending || preferences.state.status === "loading"}
             onCheckedChange={toggleOutbid}
+          />
+        </div>
+
+        <div className="border-line flex max-w-2xl items-start justify-between gap-6 border-b py-5">
+          <div>
+            <Label htmlFor="email-digest" className="text-base font-medium">
+              {t("emailDigest")}
+            </Label>
+            <p className="text-muted-foreground mt-1 text-sm leading-relaxed">{t("emailDigestHint")}</p>
+          </div>
+          <Switch
+            id="email-digest"
+            checked={digestOn}
+            disabled={isPending || preferences.state.status === "loading"}
+            onCheckedChange={toggleDigest}
           />
         </div>
       </section>

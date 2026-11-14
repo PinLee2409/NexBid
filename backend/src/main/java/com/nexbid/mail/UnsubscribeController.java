@@ -33,22 +33,33 @@ public class UnsubscribeController {
         this.addresses = addresses;
     }
 
-    public record UnsubscribeRequest(String token) {
+    /**
+     * EN: {@code list} names the email to turn off: "digest" for the daily new-lot email, anything else (or nothing,
+     *     as in links sent before digests existed) for outbid emails.
+     * VI: {@code list} cho biết tắt email nào: "digest" là email lô mới hằng ngày, còn lại (hoặc không có, như link gửi
+     *     trước khi có email tổng hợp) là email bị vượt giá.
+     */
+    public record UnsubscribeRequest(String token, String list) {
     }
 
     @PostMapping(path = PATH, consumes = MediaType.APPLICATION_JSON_VALUE)
     public ApiResponse<Map<String, Boolean>> fromPage(@RequestBody UnsubscribeRequest request) {
-        return turnOff(request.token());
+        return turnOff(request.token(), request.list());
     }
 
     @PostMapping(path = PATH, consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-    public ApiResponse<Map<String, Boolean>> oneClick(@RequestParam("token") String token) {
-        return turnOff(token);
+    public ApiResponse<Map<String, Boolean>> oneClick(@RequestParam("token") String token,
+            @RequestParam(name = "list", required = false) String list) {
+        return turnOff(token, list);
     }
 
-    private ApiResponse<Map<String, Boolean>> turnOff(String token) {
+    private ApiResponse<Map<String, Boolean>> turnOff(String token, String list) {
         UUID userId = tokens.userOf(token).orElseThrow(() ->
                 new BusinessException(ErrorCode.VALIDATION_ERROR, "This unsubscribe link is not valid"));
+        if ("digest".equals(list)) {
+            addresses.setDigestEmails(userId, false);
+            return ApiResponse.of(Map.of("digest", false), "New-lot emails turned off");
+        }
         addresses.setOutbidEmails(userId, false);
         return ApiResponse.of(Map.of("outbid", false), "Outbid emails turned off");
     }
