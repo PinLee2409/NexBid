@@ -152,8 +152,12 @@ public class BidService {
      *     chưa từng phải chạm tới.
      */
     public Optional<RunnerUp> runnerUpOf(UUID auctionId, UUID winnerId) {
+        // EN: A blocked account is passed over: it cannot sign in to answer, and should not be sold to.
+        // VI: Tài khoản bị khoá được bỏ qua: không đăng nhập được để trả lời, và không nên bán cho họ.
         return bids.findHighestPerBidder(auctionId).stream()
                 .filter(row -> !row.getBidderId().equals(winnerId))
+                .filter(row -> users.findById(row.getBidderId())
+                        .map(account -> account.status() != com.nexbid.user.UserStatus.BLOCKED).orElse(false))
                 .findFirst()
                 .map(row -> new RunnerUp(row.getBidderId(), row.getHighest()));
     }

@@ -147,6 +147,18 @@ public class AuctionService {
      * VI: Người thắng để quá hạn thanh toán (spec §17). Giao dịch không thành, nên lô bị huỷ và sản phẩm trở
      *     về tay người bán — nếu không nó sẽ bị khoá mãi cho một người mua không bao giờ trả tiền.
      */
+    /**
+     * EN: A paid sale was refunded: the lot stays in the record as it closed, but the product is the seller's to list
+     *     again.
+     * VI: Một giao dịch đã trả tiền bị hoàn: lô vẫn giữ nguyên như lúc đóng trong lịch sử, nhưng sản phẩm trở lại để người
+     *     bán đăng bán lại.
+     */
+    @Transactional
+    public void releaseRefundedProduct(UUID auctionId) {
+        auctions.findById(auctionId).ifPresent(auction ->
+                products.markAuctionState(auction.getProductId(), ProductStatus.AVAILABLE));
+    }
+
     @Transactional
     public void cancelUnpaid(UUID auctionId) {
         Auction auction = auctions.findByIdForUpdate(auctionId)

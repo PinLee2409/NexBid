@@ -97,6 +97,13 @@ public class AuditLogService {
                 "SUCCESS", "REFUNDED");
     }
 
+    /** EN: A stray VNPay charge sent back; the payment itself is untouched. / VI: Khoản VNPay thu thừa đã được trả lại; bản thân khoản thanh toán không đổi. */
+    @EventListener
+    void onStrayRefund(PaymentEvents.StrayRefunded event) {
+        record(event.actorId(), AuditAction.STRAY_CHARGE_REFUNDED, "StrayCharge", event.strayId(), "WAITING",
+                "REFUNDED");
+    }
+
     @EventListener
     void onShipped(OrderEvents.Shipped event) {
         record(event.actorId(), AuditAction.ORDER_SHIPPED, "Order", event.orderId(), "PAID", "PROCESSING");

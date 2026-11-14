@@ -127,6 +127,51 @@ export async function refundOrder(orderId: string, reference: string): Promise<O
   );
 }
 
+/**
+ * EN: Money VNPay took that no payment could use — confirmed after the deadline (LATE) or a second charge (DUPLICATE) —
+ *     waiting for the admin to transfer it back.
+ * VI: Tiền VNPay đã thu mà không khoản nào dùng được — xác nhận sau hạn (LATE) hoặc thu lần hai (DUPLICATE) — chờ admin
+ *     chuyển trả lại.
+ */
+export interface StrayCharge {
+  id: string;
+  paymentId: string;
+  auctionId: string;
+  buyerId: string;
+  buyerName: string;
+  buyerEmail: string;
+  txnRef: string;
+  amount: number;
+  reason: "LATE" | "DUPLICATE";
+  createdAt: string;
+  refundedAt: string | null;
+  reference: string | null;
+  buyerAccount: BankAccount | null;
+  auction: AuctionSummary | null;
+}
+
+interface ApiStrayCharge extends Omit<StrayCharge, "amount" | "auction"> {
+  amount: number | string;
+  auction: ApiAuctionSummary | null;
+}
+
+/** `GET /api/admin/stray-charges` — waiting ones first, then the latest refunded. */
+export async function listStrayCharges(): Promise<StrayCharge[]> {
+  return (await api<ApiStrayCharge[]>("/api/admin/stray-charges")).map((charge) => ({
+    ...charge,
+    amount: Number(charge.amount),
+    refundedAt: charge.refundedAt ?? null,
+    reference: charge.reference ?? null,
+    buyerAccount: charge.buyerAccount ?? null,
+    auction: charge.auction ? toSummary(charge.auction) : null,
+  }));
+}
+
+/** `POST /api/admin/stray-charges/{id}/refund` — records a transfer the admin already made back to the buyer. */
+export async function refundStrayCharge(id: string, reference: string): Promise<void> {
+  await api(`/api/admin/stray-charges/${id}/refund`, { method: "POST", body: { reference: reference.trim() } });
+}
+
 export interface DisputeEntry {
   dispute: OrderDispute;
   entry: OrderEntry;

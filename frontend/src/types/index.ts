@@ -66,6 +66,9 @@ export const ERROR_CODES = [
   "ORDER_NOT_FOUND",
   "ORDER_STATUS_INVALID",
   "REFUND_ACCOUNT_REQUIRED",
+  "STRAY_CHARGE_NOT_FOUND",
+  "STRAY_CHARGE_REFUNDED",
+  "PAYOUT_AMOUNT_CHANGED",
   "QUESTION_NOT_FOUND",
   "QUESTION_NOT_ALLOWED",
   "QUESTION_LIMIT",
@@ -490,7 +493,9 @@ export type NotificationType =
   | "ORDER_REFUNDED"
   | "NEW_QUESTION"
   | "QUESTION_ANSWERED"
-  | "LOT_ALERT";
+  | "LOT_ALERT"
+  | "STRAY_CHARGE"
+  | "SALE_REFUNDED";
 
 export interface AppNotification {
   id: Id;
@@ -616,7 +621,8 @@ export type AuditAction =
   | "DISPUTE_REFUNDED"
   | "DISPUTE_REJECTED"
   | "PAYOUT_RECORDED"
-  | "BANK_ACCOUNT_CHANGED";
+  | "BANK_ACCOUNT_CHANGED"
+  | "STRAY_CHARGE_REFUNDED";
 
 export interface AuditLog {
   id: Id;

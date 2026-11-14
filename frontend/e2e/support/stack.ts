@@ -255,3 +255,22 @@ async function payThroughVnpay(paymentId: string, token: string): Promise<void> 
     throw new Error(`VNPay IPN for payment ${paymentId} answered ${JSON.stringify(answer)}`);
   }
 }
+
+/** EN: Saves a refund account for the session's user. / VI: Lưu tài khoản nhận hoàn tiền cho người dùng của phiên. */
+export async function saveBankAccount(session: Session, holder: string): Promise<void> {
+  await call("PUT", "/api/users/me/bank-account", {
+    token: session.token,
+    body: { bankName: "Techcombank", accountNumber: "1903 5555 1234", accountHolder: holder },
+  });
+}
+
+/**
+ * EN: Records a second VNPay charge on a paid lot, as the IPN does when a buyer pays twice (the backend tests drive the
+ *     IPN itself).
+ * VI: Ghi một lần VNPay thu thêm cho lô đã trả, như IPN làm khi người mua trả hai lần (test backend chạy chính IPN).
+ */
+export function chargeTwice(auctionId: string): void {
+  sql(`INSERT INTO stray_charges (id, payment_id, txn_ref, amount, reason, created_at)
+       SELECT gen_random_uuid(), id, 'E2E' || floor(random() * 1e12)::text, amount, 'DUPLICATE', now()
+       FROM payments WHERE auction_id = '${auctionId}' AND status = 'SUCCESS'`);
+}

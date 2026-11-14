@@ -903,7 +903,14 @@
     "payoutsReferenceHint": "Mã trên biên lai chuyển khoản, để tra lại khi cần.",
     "payoutsConfirm": "Xác nhận đã chuyển",
     "payoutsRecorded": "Đã ghi nhận chi trả",
-    "payoutsRecordedBody": "Người bán đã được báo qua email."
+    "payoutsRecordedBody": "Người bán đã được báo qua email.",
+    "strayTitle": "{count} khoản VNPay cần trả lại",
+    "strayBody": "VNPay đã thu số tiền này nhưng không khoản thanh toán nào dùng được: được xác nhận sau hạn chót, hoặc lô đã được trả rồi. Hãy chuyển khoản trả lại cho người mua, rồi ghi mã giao dịch.",
+    "strayLate": "sau hạn chót",
+    "strayDuplicate": "trả hai lần",
+    "strayRefundTitle": "Trả lại khoản thu thừa",
+    "strayRefundBody": "Chuyển số tiền này của {name} vào tài khoản nhận hoàn tiền của người mua, rồi nhập mã giao dịch ngân hàng.",
+    "strayRefunded": "Đã trả lại. Người mua đã được báo."
   },
   "howItWorks": {
     "title": "NexBid hoạt động thế nào",
@@ -1019,7 +1026,9 @@
       "ORDER_REFUNDED": "Đã chuyển tiền hoàn",
       "NEW_QUESTION": "Câu hỏi mới",
       "QUESTION_ANSWERED": "Đã có câu trả lời",
-      "LOT_ALERT": "Lô mới cho bạn"
+      "LOT_ALERT": "Lô mới cho bạn",
+      "STRAY_CHARGE": "Khoản thu thừa",
+      "SALE_REFUNDED": "Giao dịch đã hoàn tiền"
     },
     "auditAction": {
       "USER_LOGIN": "Người dùng đăng nhập",
@@ -1050,7 +1059,8 @@
       "DISPUTE_REFUNDED": "Chấp nhận khiếu nại, hoàn tiền",
       "DISPUTE_REJECTED": "Bác khiếu nại",
       "PAYOUT_RECORDED": "Ghi nhận chi trả",
-      "BANK_ACCOUNT_CHANGED": "Đổi tài khoản nhận tiền"
+      "BANK_ACCOUNT_CHANGED": "Đổi tài khoản nhận tiền",
+      "STRAY_CHARGE_REFUNDED": "Trả lại khoản VNPay thu thừa"
     },
     "role": {
       "BUYER": "Người mua",
@@ -1309,6 +1319,9 @@
     "NOTHING_TO_PAY_OUT": "Người bán không còn khoản nào chờ chi trả.",
     "SAVED_SEARCH_NOT_FOUND": "Tìm kiếm đã lưu này không còn nữa.",
     "SAVED_SEARCH_LIMIT": "Bạn lưu được tối đa 10 tìm kiếm. Hãy xoá bớt một cái.",
-    "FOLLOW_NOT_ALLOWED": "Bạn không thể tự theo dõi mình."
+    "FOLLOW_NOT_ALLOWED": "Bạn không thể tự theo dõi mình.",
+    "STRAY_CHARGE_NOT_FOUND": "Khoản thu này không còn nữa.",
+    "STRAY_CHARGE_REFUNDED": "Khoản thu này đã được trả lại rồi.",
+    "PAYOUT_AMOUNT_CHANGED": "Số dư của người bán đã thay đổi kể từ lúc bạn mở. Tải lại trang và kiểm tra số tiền trước khi ghi nhận chuyển khoản."
   }
 }

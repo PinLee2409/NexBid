@@ -45,6 +45,13 @@ public final class OrderEvents {
     }
 
     /** EN: The buyer reviewed the seller; the seller hears of it. / VI: Người mua đã đánh giá người bán; người bán được báo. */
+    /**
+     * EN: An admin refunded the buyer straight from the orders page, with no dispute open; the seller hears of it.
+     * VI: Admin hoàn tiền cho người mua ngay từ trang đơn hàng, không có khiếu nại nào đang mở; người bán được báo.
+     */
+    public record SaleRefunded(UUID orderId, UUID auctionId, UUID sellerId, UUID actorId, Instant at) {
+    }
+
     public record Reviewed(
             UUID reviewId, UUID orderId, UUID auctionId, UUID sellerId, UUID buyerId, int rating, Instant at) {
     }

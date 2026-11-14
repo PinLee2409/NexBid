@@ -150,7 +150,7 @@ public class PayoutService {
      *     trước, để hai admin bấm cùng lúc không ghi cùng một khoản tiền hai lần.
      */
     @Transactional
-    public Payout payOut(UUID adminId, UUID sellerId, String reference) {
+    public Payout payOut(UUID adminId, UUID sellerId, String reference, BigDecimal expected) {
         List<UUID> unpaid = jdbc.queryForList(
                 "SELECT id FROM seller_earnings WHERE seller_id = ? AND payout_id IS NULL FOR UPDATE",
                 UUID.class, sellerId);
@@ -162,6 +162,11 @@ public class PayoutService {
         BigDecimal amount = jdbc.queryForObject(
                 "SELECT SUM(net) FROM seller_earnings WHERE seller_id = ? AND payout_id IS NULL",
                 BigDecimal.class, sellerId);
+        if (amount.compareTo(expected) != 0) {
+            throw new BusinessException(ErrorCode.PAYOUT_AMOUNT_CHANGED,
+                    "The seller is now owed " + amount.toPlainString() + ", not " + expected.toPlainString()
+                            + "; reload and check the transfer before recording it");
+        }
 
         UUID id = UUID.randomUUID();
         Instant now = Instant.now();

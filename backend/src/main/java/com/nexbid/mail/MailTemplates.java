@@ -379,6 +379,44 @@ final class MailTemplates {
                                     + " stars</b>. Reviews show on all your lots and help future buyers trust you.",
                             "See the review"));
             case LOT_DIGEST -> digestBody(List.of(), 0);
+            case STRAY_CHARGE -> build(kind, facts, "Khoản thanh toán thừa sẽ được hoàn: " + lot,
+                    "Extra charge to be refunded: " + lot, siteUrl + "/profile#bank-account",
+                    new Half("VNPay đã thu một khoản NexBid không dùng được",
+                            "Khoản <b>" + vnd + "</b> cho <b>" + lot + "</b> được VNPay xác nhận "
+                                    + ("LATE".equals(reason) ? "sau khi hạn thanh toán đã qua" : "khi lô này đã được thanh toán rồi")
+                                    + ". NexBid sẽ chuyển trả lại vào tài khoản nhận hoàn tiền của bạn. Nếu chưa có, hãy "
+                                    + "thêm trong Hồ sơ.",
+                            "Tài khoản nhận hoàn tiền"),
+                    new Half("We will send this money back",
+                            "VNPay confirmed <b>" + vndEn + "</b> for <b>" + lot + "</b> "
+                                    + ("LATE".equals(reason) ? "after the payment deadline had passed" : "after the lot was already paid for")
+                                    + ". NexBid will transfer it back to your refund account. If you have not added one, "
+                                    + "add it in your profile.",
+                            "Refund account"));
+            case STRAY_REFUNDED -> build(kind, facts, "Đã trả lại khoản thừa: " + lot, "Extra charge refunded: " + lot,
+                    siteUrl + "/payments",
+                    new Half("Khoản thừa đã được chuyển trả",
+                            "NexBid đã chuyển trả <b>" + vnd + "</b> cho <b>" + lot + "</b> vào tài khoản ngân hàng của bạn."
+                                    + (reason.isEmpty() ? "" : " Mã giao dịch: <b>" + reason + "</b>.")
+                                    + " Tiền thường về trong ngày làm việc.",
+                            "Xem thanh toán"),
+                    new Half("The extra charge is on its way back",
+                            "NexBid transferred <b>" + vndEn + "</b> for <b>" + lot + "</b> back to your bank account."
+                                    + (reason.isEmpty() ? "" : " Reference: <b>" + reason + "</b>.")
+                                    + " It usually arrives within a working day.",
+                            "View payments"));
+            case SALE_REFUNDED -> build(kind, facts, "Giao dịch đã huỷ và hoàn tiền: " + lot, "Sale refunded: " + lot,
+                    siteUrl + "/seller/orders",
+                    new Half("NexBid đã hoàn tiền cho người mua",
+                            "Đơn <b>" + lot + "</b> đã bị huỷ và người mua được hoàn tiền. Đơn không được tính vào thu nhập "
+                                    + "của bạn. Nếu bạn đã gửi hàng, hãy liên hệ NexBid để nhận lại. Sản phẩm đã có thể đăng "
+                                    + "bán lại.",
+                            "Xem đơn bán"),
+                    new Half("NexBid refunded the buyer",
+                            "The order for <b>" + lot + "</b> is cancelled and the buyer was refunded. It does not count "
+                                    + "toward your earnings. If you already shipped it, contact NexBid to get it back. You "
+                                    + "can list the product again.",
+                            "View sales"));
         };
     }
 
@@ -465,6 +503,9 @@ final class MailTemplates {
             case LOT_QUESTION -> new Tag("Câu hỏi · Question", false);
             case QUESTION_ANSWERED -> new Tag("Đã trả lời · Answered", false);
             case LOT_DIGEST -> new Tag("Lô mới · New lots", false);
+            case STRAY_CHARGE -> new Tag("Thu thừa · Extra charge", true);
+            case STRAY_REFUNDED -> new Tag("Hoàn tiền · Refund", false);
+            case SALE_REFUNDED -> new Tag("Đã hoàn tiền · Refunded", true);
         };
     }
 
@@ -478,7 +519,8 @@ final class MailTemplates {
             case RESERVE_DECISION -> "Giá cao nhất · Highest bid";
             case PAYMENT_REFUNDED -> "Đã hoàn · Refunded";
             case OFFER_ACCEPTED -> "Giá bán · Sale price";
-            case DISPUTE_SELLER_REFUNDED -> "Đã hoàn · Refunded";
+            case DISPUTE_SELLER_REFUNDED, STRAY_REFUNDED, SALE_REFUNDED -> "Đã hoàn · Refunded";
+            case STRAY_CHARGE -> "Sẽ hoàn · To be refunded";
             case SELLER_PAYOUT -> "Số tiền chuyển · Amount sent";
             default -> "Số tiền · Amount";
         };

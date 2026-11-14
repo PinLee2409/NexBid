@@ -93,7 +93,12 @@ export async function listRecentPayouts(): Promise<Payout[]> {
   return (await api<Payout[]>("/api/admin/payouts")).map(toPayout);
 }
 
-/** `POST /api/admin/payouts` — the admin made the transfer. */
-export async function recordPayout(sellerId: string, reference: string): Promise<Payout> {
-  return toPayout(await api<Payout>("/api/admin/payouts", { method: "POST", body: { sellerId, reference: reference.trim() } }));
+/**
+ * `POST /api/admin/payouts` — the admin made the transfer. `amount` is the balance they saw and sent; the server
+ * refuses if it has changed since (PAYOUT_AMOUNT_CHANGED).
+ */
+export async function recordPayout(sellerId: string, reference: string, amount: number): Promise<Payout> {
+  return toPayout(
+    await api<Payout>("/api/admin/payouts", { method: "POST", body: { sellerId, reference: reference.trim(), amount } }),
+  );
 }

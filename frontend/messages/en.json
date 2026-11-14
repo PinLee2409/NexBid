@@ -903,7 +903,14 @@
     "payoutsReferenceHint": "The code on the transfer receipt, to trace it later.",
     "payoutsConfirm": "Confirm transfer",
     "payoutsRecorded": "Payout recorded",
-    "payoutsRecordedBody": "The seller has been emailed."
+    "payoutsRecordedBody": "The seller has been emailed.",
+    "strayTitle": "{count, plural, one {# VNPay charge to send back} other {# VNPay charges to send back}}",
+    "strayBody": "VNPay took this money but no payment could use it: it was confirmed after the deadline, or the lot was already paid. Transfer it back to the buyer, then record the bank reference.",
+    "strayLate": "after the deadline",
+    "strayDuplicate": "paid twice",
+    "strayRefundTitle": "Send the charge back",
+    "strayRefundBody": "Transfer this amount for {name} to the buyer's refund account, then enter the bank's reference.",
+    "strayRefunded": "Charge refunded. The buyer has been told."
   },
   "howItWorks": {
     "title": "How NexBid works",
@@ -1019,7 +1026,9 @@
       "ORDER_REFUNDED": "Refund sent",
       "NEW_QUESTION": "New question",
       "QUESTION_ANSWERED": "Question answered",
-      "LOT_ALERT": "New lot for you"
+      "LOT_ALERT": "New lot for you",
+      "STRAY_CHARGE": "Extra charge",
+      "SALE_REFUNDED": "Sale refunded"
     },
     "auditAction": {
       "USER_LOGIN": "User signed in",
@@ -1050,7 +1059,8 @@
       "DISPUTE_REFUNDED": "Dispute refunded",
       "DISPUTE_REJECTED": "Dispute rejected",
       "PAYOUT_RECORDED": "Payout recorded",
-      "BANK_ACCOUNT_CHANGED": "Payout bank account changed"
+      "BANK_ACCOUNT_CHANGED": "Payout bank account changed",
+      "STRAY_CHARGE_REFUNDED": "Extra VNPay charge sent back"
     },
     "role": {
       "BUYER": "Buyer",
@@ -1309,6 +1319,9 @@
     "NOTHING_TO_PAY_OUT": "The seller has nothing waiting to be paid.",
     "SAVED_SEARCH_NOT_FOUND": "That saved search no longer exists.",
     "SAVED_SEARCH_LIMIT": "You can save up to 10 searches. Delete one first.",
-    "FOLLOW_NOT_ALLOWED": "You cannot follow yourself."
+    "FOLLOW_NOT_ALLOWED": "You cannot follow yourself.",
+    "STRAY_CHARGE_NOT_FOUND": "That charge no longer exists.",
+    "STRAY_CHARGE_REFUNDED": "This charge has already been sent back.",
+    "PAYOUT_AMOUNT_CHANGED": "The seller's balance changed since you opened this. Reload the page and check the amount before recording the transfer."
   }
 }

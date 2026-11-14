@@ -408,6 +408,14 @@ class OrderApiTest {
         assertThat(jdbc.queryForObject("SELECT user_id FROM audit_logs WHERE entity_id = ?::uuid AND action = 'PAYMENT_REFUNDED'",
                 UUID.class, won.paymentId())).isEqualTo(idOf(admin));
 
+        // EN: The seller hears the sale was undone, and may list the product again.
+        // VI: Người bán được báo giao dịch đã bị huỷ, và được đăng bán lại sản phẩm.
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notifications WHERE type = 'SALE_REFUNDED' AND auction_id = ?::uuid",
+                Integer.class, won.auctionId())).isOne();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM email_outbox WHERE kind = 'SALE_REFUNDED' AND auction_id = ?::uuid",
+                Integer.class, won.auctionId())).isOne();
+        assertThat(statusIn("products", won.productId())).isEqualTo("AVAILABLE");
+
         refund(admin, order)
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("ORDER_STATUS_INVALID"));

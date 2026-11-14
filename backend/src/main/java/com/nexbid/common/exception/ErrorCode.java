@@ -93,6 +93,12 @@ public enum ErrorCode {
     ORDER_STATUS_INVALID(HttpStatus.CONFLICT),
     // EN: A refund is a bank transfer: the buyer must have said where to. / VI: Hoàn tiền là chuyển khoản: người mua phải cho biết chuyển về đâu.
     REFUND_ACCOUNT_REQUIRED(HttpStatus.CONFLICT),
+    // EN: Money VNPay took that no payment could use: none such, or already sent back.
+    // VI: Tiền VNPay đã thu mà không khoản nào dùng được: không có khoản này, hoặc đã trả lại rồi.
+    STRAY_CHARGE_NOT_FOUND(HttpStatus.NOT_FOUND),
+    STRAY_CHARGE_REFUNDED(HttpStatus.CONFLICT),
+    // EN: The seller's balance changed after the admin read it. / VI: Số dư của người bán đã đổi sau khi admin xem.
+    PAYOUT_AMOUNT_CHANGED(HttpStatus.CONFLICT),
     // EN: Questions on a lot: none such, closed lot or own lot, too many waiting, or already answered.
     // VI: Hỏi đáp trên lô: không có câu hỏi, lô đã đóng hoặc lô của chính mình, quá nhiều câu đang chờ, hoặc đã trả lời.
     QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND),

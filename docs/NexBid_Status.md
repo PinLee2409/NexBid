@@ -1,6 +1,6 @@
 # NexBid: hiện trạng và việc tiếp theo
 
-Cập nhật: 14/11/2026. Lịch sử chi tiết từng đợt nằm trong [NexBid_Backlog.md](NexBid_Backlog.md).
+Cập nhật: 14/11/2026 (đợt 17: rà soát và sửa 6 lỗi ngầm). Lịch sử chi tiết từng đợt nằm trong [NexBid_Backlog.md](NexBid_Backlog.md).
 
 ## 1. Web đã tới đâu
 
@@ -8,7 +8,7 @@ Cập nhật: 14/11/2026. Lịch sử chi tiết từng đợt nằm trong [NexB
 - Duyệt, tìm kiếm, lọc lô theo danh mục; trang lô cập nhật giá trực tiếp qua WebSocket, đồng hồ đếm ngược, chống bắn tỉa (gia hạn phút cuối).
 - Trả giá, tự động trả giá (auto-bid), mua ngay, theo dõi lô.
 - Hỏi đáp công khai trên trang lô: người mua hỏi, người bán trả lời ngay dưới câu hỏi; mỗi người tối đa 3 câu đang chờ trên một lô.
-- Lưu tìm kiếm và theo dõi người bán: có lô mới khớp thì nhận thông báo ngay, và email tổng hợp mỗi ngày lúc 8:00 *(mới, chưa commit)*.
+- Lưu tìm kiếm và theo dõi người bán: có lô mới khớp thì nhận thông báo ngay, và email tổng hợp mỗi ngày lúc 8:00.
 - Giá sàn ẩn: người mua chỉ thấy "chưa đạt / đã đạt giá sàn".
 - Thanh toán qua VNPay (bản demo đã bỏ). Phải có địa chỉ nhận hàng trước khi thanh toán.
 - Đơn hàng: theo dõi mã vận đơn, xác nhận đã nhận, đánh giá người bán (1–5 sao).
@@ -29,6 +29,7 @@ Cập nhật: 14/11/2026. Lịch sử chi tiết từng đợt nằm trong [NexB
 - Đơn hàng: hoàn tiền bằng chuyển khoản thủ công vào tài khoản người mua đã cho, kèm mã giao dịch.
 - Khiếu nại: hoàn tiền cho người mua hoặc giữ giao dịch, kèm ghi chú.
 - Chi trả cho người bán: danh sách người bán đang chờ tiền, ghi nhận chuyển khoản kèm mã giao dịch.
+- Khoản VNPay thu thừa (trễ hạn hoặc trả hai lần): hiện ở trang Đơn hàng để chuyển khoản trả lại *(mới, chưa commit)*.
 - Nhật ký hệ thống, thống kê hoạt động.
 
 ### Hệ thống

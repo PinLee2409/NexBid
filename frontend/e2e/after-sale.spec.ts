@@ -1,6 +1,16 @@
 import type { Page } from "@playwright/test";
 
-import { buyOutright, completeSale, createLot, grantRoles, login, payAndShip, register } from "./support/stack";
+import {
+  buyOutright,
+  chargeTwice,
+  completeSale,
+  createLot,
+  grantRoles,
+  login,
+  payAndShip,
+  register,
+  saveBankAccount,
+} from "./support/stack";
 import { data, expect, newLot, signIn, test, unique, type Lot } from "./support/test";
 
 /**
@@ -159,4 +169,33 @@ test("a seller adds a payout account and an admin records the transfer", async (
   await expect(page.getByText(reference)).toBeVisible();
   await page.goto("/notifications");
   await expect(page.getByText("Payout sent").first()).toBeVisible();
+});
+
+test("an admin sends back a charge VNPay took twice", async ({ page, openContext }) => {
+  const buyer = await freshBuyer("stray-buyer");
+  const lot = await shippedTo(buyer, "Charged twice");
+  await saveBankAccount(await login(buyer), "Fresh Buyer");
+  chargeTwice(lot.id);
+
+  const admin = await openContext();
+  await signIn(admin, data.users.admin);
+  const orders = await admin.newPage();
+  await orders.goto("/admin/orders");
+  const panel = orders.getByRole("region", { name: /VNPay charges? to send back/ });
+  const charge = panel.locator("li").filter({ hasText: lot.name });
+  await expect(charge.getByText("paid twice")).toBeVisible();
+  await charge.getByRole("button", { name: "Refund" }).click();
+
+  const dialog = orders.getByRole("dialog");
+  await expect(dialog.getByText("190355551234")).toBeVisible();
+  const reference = `FT${Date.now()}`;
+  await dialog.getByLabel("Bank reference").fill(reference);
+  await dialog.getByRole("button", { name: "Refund" }).click();
+  await expect(orders.getByText("Charge refunded")).toBeVisible();
+  await expect(charge).toHaveCount(0);
+
+  await signIn(page.context(), buyer);
+  await page.goto("/notifications");
+  await expect(page.getByText("Extra charge refunded")).toBeVisible();
+  await expect(page.getByText(reference)).toBeVisible();
 });

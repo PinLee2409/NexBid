@@ -111,12 +111,27 @@ public class Mailer {
 
     private void store(UserAccount account, MailKind kind, UUID auctionId, MailTemplates.Rendered mail, Instant now,
             String oneClick) {
-        String status = properties.sending() ? "PENDING" : "SKIPPED";
+        boolean reachable = !reservedDomain(account.email());
+        String status = properties.sending() && reachable ? "PENDING" : "SKIPPED";
         outbox.insert(account.id(), account.email(), account.fullName(), kind, auctionId, mail, status, now,
                 oneClick);
         if (!properties.sending()) {
             log.info("Email not sent (no NEXBID_BREVO_API_KEY): {} to {} — {}", kind, account.email(), mail.subject());
+        } else if (!reachable) {
+            log.info("Email not sent (reserved test domain): {} to {} — {}", kind, account.email(), mail.subject());
         }
+    }
+
+    /**
+     * EN: Seed and test accounts live under .test, a domain that can never receive mail (RFC 2606). Sending there only
+     *     bounces, and bounces hurt the sender's standing with Brevo.
+     * VI: Tài khoản seed và test nằm dưới .test, tên miền không bao giờ nhận được mail (RFC 2606). Gửi tới đó chỉ bị trả
+     *     về, mà mail bị trả về làm giảm uy tín người gửi trên Brevo.
+     */
+    static boolean reservedDomain(String email) {
+        String lower = email == null ? "" : email.trim().toLowerCase(java.util.Locale.ROOT);
+        return lower.endsWith(".test") || lower.endsWith(".invalid") || lower.endsWith(".example")
+                || lower.endsWith(".localhost");
     }
 
     private String siteUrl() {

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -462,6 +463,71 @@ class PaymentApiTest {
                         won.paymentId())).movePointRight(2).toBigInteger().toString());
         // EN: The test signs the same fields on its own and must get the same hash. / VI: Test tự ký cùng các trường và phải ra cùng hash.
         assertThat(VnpayTestSupport.signed(sent).get("vnp_SecureHash")).isEqualTo(sent.get("vnp_SecureHash"));
+    }
+
+    @Test
+    void moneyNoPaymentCanUseWaitsForAnAdminToSendItBack() throws Exception {
+        Won twice = wonLot("stray");
+        String admin = tokenFor("pay.admin.stray@nexbid.com", "Admin stray", RoleName.ADMIN);
+        UUID buyerId = idOf(twice.winner());
+
+        // EN: Two checkouts, both paid: the second charge is a duplicate. / VI: Hai lần thanh toán, đều trả: lần thứ hai là thu trùng.
+        Map<String, String> first = VnpayTestSupport.reply(checkoutUrl(twice), VnpayTestSupport.PAID);
+        Map<String, String> second = VnpayTestSupport.reply(checkoutUrl(twice), VnpayTestSupport.PAID);
+        ipn(first).andExpect(jsonPath("$.RspCode").value("00"));
+        ipn(second).andExpect(jsonPath("$.RspCode").value("00"));
+        ipn(second).andExpect(jsonPath("$.RspCode").value("02"));
+
+        // EN: A charge confirmed after the deadline is late. / VI: Khoản được xác nhận sau hạn chót là trễ hạn.
+        Won late = wonLot("stray-late");
+        Map<String, String> tooLate = VnpayTestSupport.reply(checkoutUrl(late), VnpayTestSupport.PAID);
+        makeOverdue(late.paymentId());
+        ipn(tooLate).andExpect(jsonPath("$.RspCode").value("00"));
+        assertThat(stored(late.paymentId())).isEqualTo("PENDING");
+
+        assertThat(jdbc.queryForList("SELECT reason FROM stray_charges WHERE payment_id IN (?::uuid, ?::uuid) ORDER BY reason",
+                String.class, twice.paymentId(), late.paymentId())).containsExactly("DUPLICATE", "LATE");
+        assertThat(notices(buyerId, "STRAY_CHARGE")).isEqualTo(1);
+        assertThat(jdbc.queryForList("SELECT kind FROM email_outbox WHERE user_id = ?", String.class, buyerId))
+                .contains("STRAY_CHARGE");
+
+        String strayId = jdbc.queryForObject("SELECT id::text FROM stray_charges WHERE payment_id = ?::uuid",
+                String.class, twice.paymentId());
+        mockMvc.perform(get("/api/admin/stray-charges").header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.id == '" + strayId + "')].reason").value("DUPLICATE"))
+                .andExpect(jsonPath("$.data[?(@.id == '" + strayId + "')].auction.product.name").value("Lot stray"));
+        mockMvc.perform(get("/api/admin/stray-charges").header("Authorization", "Bearer " + twice.winner()))
+                .andExpect(status().isForbidden());
+
+        String refund = "{\"reference\":\"FT2611140009\"}";
+        mockMvc.perform(post("/api/admin/stray-charges/" + strayId + "/refund").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content(refund))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("REFUND_ACCOUNT_REQUIRED"));
+        mockMvc.perform(put("/api/users/me/bank-account").header("Authorization", "Bearer " + twice.winner())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"bankName\":\"Vietcombank\",\"accountNumber\":\"0123456789\",\"accountHolder\":\"NGUYEN VAN A\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/admin/stray-charges/" + strayId + "/refund").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content(refund))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/admin/stray-charges/" + strayId + "/refund").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content(refund))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("STRAY_CHARGE_REFUNDED"));
+        mockMvc.perform(post("/api/admin/stray-charges/" + UUID.randomUUID() + "/refund")
+                        .header("Authorization", "Bearer " + admin).contentType(MediaType.APPLICATION_JSON).content(refund))
+                .andExpect(status().isNotFound());
+
+        assertThat(jdbc.queryForObject("SELECT reference || ' ' || account_number FROM stray_charges WHERE id = ?::uuid",
+                String.class, strayId)).isEqualTo("FT2611140009 0123456789");
+        // EN: The paid payment itself stays paid. / VI: Bản thân khoản đã trả vẫn là đã trả.
+        assertThat(stored(twice.paymentId())).isEqualTo("SUCCESS");
+        assertThat(jdbc.queryForList("SELECT kind FROM email_outbox WHERE user_id = ?", String.class, buyerId))
+                .contains("STRAY_REFUNDED");
+        assertThat(jdbc.queryForList("SELECT action FROM audit_logs WHERE entity_id = ?::uuid", String.class, strayId))
+                .containsExactly("STRAY_CHARGE_REFUNDED");
     }
 
     @Test

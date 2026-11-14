@@ -285,12 +285,13 @@ public class OrderService {
         // EN: Refunding a disputed order settles its dispute too. / VI: Hoàn tiền một đơn đang khiếu nại cũng là chốt khiếu nại đó.
         java.util.Optional<DisputeBook.Row> open = disputes.openFor(orderId);
         cancelAndRefund(order, adminId, reference);
-        open.ifPresent(dispute -> {
-            Instant now = Instant.now();
+        Instant now = Instant.now();
+        open.ifPresentOrElse(dispute -> {
             disputes.resolve(dispute.id(), DisputeBook.Status.REFUNDED, null, adminId, now);
             events.publishEvent(new OrderEvents.DisputeResolved(dispute.id(), order.getId(), order.getAuctionId(),
                     order.getBuyerId(), order.getSellerId(), true, null, adminId, now));
-        });
+        }, () -> events.publishEvent(new OrderEvents.SaleRefunded(order.getId(), order.getAuctionId(),
+                order.getSellerId(), adminId, now)));
         return views(List.of(order), payments.detailsOf(List.of(order.getPaymentId()))).getFirst();
     }
 
@@ -301,6 +302,8 @@ public class OrderService {
         order.moveTo(OrderStatus.CANCELLED);
         orders.save(order);
         payments.refund(order.getPaymentId(), adminId, reference.trim(), account);
+        // EN: The sale is undone, so the seller may list the product again. / VI: Giao dịch bị huỷ, nên người bán được đăng bán lại sản phẩm.
+        auctions.releaseRefundedProduct(order.getAuctionId());
     }
 
     private void move(Order order, OrderStatus from, OrderStatus to, String refusal) {

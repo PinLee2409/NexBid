@@ -163,7 +163,7 @@ function PayDialog({
     }
     startTransition(async () => {
       try {
-        await recordPayout(row.sellerId, reference);
+        await recordPayout(row.sellerId, reference, row.balance);
       } catch (failure) {
         setError(errorMessage(failure));
         return;

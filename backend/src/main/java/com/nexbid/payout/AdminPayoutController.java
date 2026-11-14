@@ -45,6 +45,6 @@ public class AdminPayoutController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<PayoutService.Payout> payOut(
             @AuthenticationPrincipal CurrentUser admin, @Valid @RequestBody PayoutRequest request) {
-        return ApiResponse.of(payouts.payOut(admin.id(), request.sellerId(), request.reference()), "Payout recorded");
+        return ApiResponse.of(payouts.payOut(admin.id(), request.sellerId(), request.reference(), request.amount()), "Payout recorded");
     }
 }

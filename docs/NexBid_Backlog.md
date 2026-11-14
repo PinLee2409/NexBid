@@ -288,3 +288,26 @@ Hiện không còn mục nào đang chờ.
 - **Kiểm chứng:** backend 452 test (độ phủ 95.4% dòng, 81.4% nhánh), frontend 146 unit test, E2E 46/46 trên stack Docker
   riêng (test mới: khách thấy link đăng nhập, lưu tìm kiếm, nhận thông báo khi lô khớp được duyệt, theo dõi người bán, quản
   lý ở trang Báo lô mới).
+
+## Đã làm (14/11/2026) — đợt 17: rà soát hệ thống, sửa 6 lỗi ngầm
+
+Rà soát các luồng chính (trả giá, đóng lô, thanh toán, đơn hàng, hoàn tiền, chi trả, email, khoá tài khoản, bảo mật).
+Phần khoá dòng, chống trùng và chạy nhiều máy đã chắc; sửa 6 lỗi:
+
+1. **Tiền VNPay thu thừa không ai thấy.** Lần trả được xác nhận sau hạn chót, hoặc trả lần hai cho lô đã trả, trước đây
+   chỉ ghi log. Giờ ghi vào bảng `stray_charges` (V32), người mua nhận thông báo `STRAY_CHARGE` và email; trang Đơn hàng
+   của admin hiện khung "khoản VNPay cần trả lại" để chuyển khoản trả kèm mã giao dịch (`/api/admin/stray-charges`);
+   người mua được báo khi tiền đã trả (email `STRAY_REFUNDED`); nhật ký ghi `STRAY_CHARGE_REFUNDED`.
+2. **Ghi nhận chi trả có thể lớn hơn số đã chuyển.** Giờ admin gửi kèm số tiền đã thấy; số dư đổi trong lúc đó thì bị từ
+   chối (`PAYOUT_AMOUNT_CHANGED`).
+3. **Admin hoàn tiền từ trang Đơn hàng không báo người bán.** Giờ người bán nhận thông báo `SALE_REFUNDED` và email.
+4. **Hoàn tiền xong sản phẩm vẫn "Đã bán".** Giờ sản phẩm trở lại `AVAILABLE`, người bán đăng bán lại được.
+5. **Tài khoản bị khoá vẫn tự trả giá.** Khoá tài khoản giờ tắt mọi auto-bid của họ, và họ không được mời "cơ hội thứ hai".
+6. **Gửi email không có giới hạn thời gian và gửi tới địa chỉ test.** Mỗi lần gọi Brevo giờ dừng sau 15 giây; địa chỉ
+   thuộc tên miền dành cho test (`.test`, `.invalid`, `.example`, `.localhost`) không bao giờ được gửi.
+
+- **E2E phát hiện thêm:** `MailSender` có hai constructor nên Spring không tạo được bean khi scheduler bật (test backend tắt
+  scheduler nên không thấy); đã đánh dấu constructor chính.
+- **Kiểm chứng:** test backend mới cho từng lỗi (IPN thu trùng và trễ hạn, hoàn tiền trực tiếp, chi trả sai số tiền, khoá
+  tài khoản có auto-bid, Brevo treo, tên miền test); frontend 148 unit test; backend 459 test (độ phủ 95.7% dòng, 81.7% nhánh), E2E 47/47 (test mới: admin trả lại khoản
+  VNPay thu hai lần).

@@ -11,6 +11,7 @@ import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { OrderRow } from "@/components/common/order-row";
 import { PageHeader } from "@/components/layout/page-header";
 import { RefundTransfer, useRefundAccount } from "@/components/payment/refund-transfer";
+import { StrayChargesPanel } from "@/components/payment/stray-charges-panel";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -50,6 +51,7 @@ export default function AdminOrdersPage() {
   return (
     <>
       <PageHeader title={t("ordersTitle")} description={t("ordersSubtitle")} />
+      <StrayChargesPanel />
 
       <Tabs value={tab} onValueChange={(value) => setTab(value as OrderTab)} className="mt-6 block">
         <TabsList>

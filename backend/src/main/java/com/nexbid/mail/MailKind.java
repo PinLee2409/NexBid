@@ -48,5 +48,11 @@ public enum MailKind {
     /** EN: To the asker: the seller answered. / VI: Gửi người hỏi: người bán đã trả lời. */
     QUESTION_ANSWERED,
     // EN: The daily list of new lots for saved searches and followed sellers. / VI: Danh sách lô mới hằng ngày cho bộ lọc đã lưu và người bán đang theo dõi.
-    LOT_DIGEST
+    LOT_DIGEST,
+    // EN: To the buyer: VNPay charged money no payment could use; NexBid will send it back. / VI: Gửi người mua: VNPay đã thu tiền không dùng được; NexBid sẽ chuyển trả lại.
+    STRAY_CHARGE,
+    // EN: To the buyer: that money was sent back. / VI: Gửi người mua: khoản tiền đó đã được chuyển trả.
+    STRAY_REFUNDED,
+    // EN: To the seller: NexBid refunded the buyer outside a dispute and cancelled the sale. / VI: Gửi người bán: NexBid đã hoàn tiền cho người mua ngoài khiếu nại và huỷ giao dịch.
+    SALE_REFUNDED
 }

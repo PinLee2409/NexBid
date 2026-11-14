@@ -359,7 +359,7 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | Payment | `POST /api/payments/{id}/vnpay` (signed VNPay checkout link), `GET /api/payments/vnpay/ipn` and `GET /api/payments/vnpay/return` (VNPay's callbacks, public, checked by signature) |
 | Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders` (`…/{id}/received`, `…/{id}/dispute`), `…/me/bank-account` (payouts and refunds go here), `…/me/watchlist`, `…/me/offers` (`…/{id}/accept`, `…/{id}/decline`), `…/me/orders/{id}/review`, `…/me/seller-application`, `/api/notifications`, `GET /api/sellers/{id}/reviews` (public) |
 | Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions`, `/api/seller/auctions/{id}/second-chance`, `/api/seller/auctions/{id}/reserve-decision`, `/api/seller/second-chances`, `/api/seller/orders` (`…/{id}/ship`), `/api/seller/earnings`, `/api/seller/questions/{id}/answer` |
-| Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users`, `/api/admin/users/{id}/block`, `/api/admin/seller-applications` (`…/{id}/approve`, `…/{id}/reject`), `/api/admin/orders` (`…/{id}/refund-account`, `…/{id}/refund` with the bank transfer's reference), `/api/admin/disputes` (`…/{id}/resolve`), `/api/admin/payouts` (`…/due`), `/api/admin/analytics`, `/api/admin/audit-logs` |
+| Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users`, `/api/admin/users/{id}/block`, `/api/admin/seller-applications` (`…/{id}/approve`, `…/{id}/reject`), `/api/admin/orders` (`…/{id}/refund-account`, `…/{id}/refund` with the bank transfer's reference), `/api/admin/disputes` (`…/{id}/resolve`), `/api/admin/payouts` (`…/due`; recording one sends the amount the admin transferred and is refused if the balance moved), `/api/admin/stray-charges` (`…/{id}/refund`: VNPay charges no payment could use), `/api/admin/analytics`, `/api/admin/audit-logs` |
 | Realtime | STOMP at `/ws`: `/topic/auctions/{id}` for everyone, `/user/queue/notifications` for the signed-in user |
 
 `/api/admin/**` needs the ADMIN role and `/api/seller/**` needs SELLER. The frontend hides those menus
@@ -486,12 +486,15 @@ to `https://<tunnel>/api/payments/vnpay/ipn`. The `prod` profile refuses to star
 - seller request approved or rejected
 - order shipped
 - outbid: at most one email per person per lot every 30 minutes, but every time in a lot's final 15 minutes
+- extra VNPay charges (confirmed after the deadline, or a lot paid twice): the buyer is told at once and again
+  when an admin has sent the money back; a seller whose sale an admin refunded is told too
 - new lots: once a day (08:00 Vietnam time, `NEXBID_ALERT_DIGEST_CRON`), the lots approved since the last digest that
   fit a saved search or come from a followed seller and are still open. Each match is also an in-app notification
   as soon as the lot is approved. Like outbid emails, it can be turned off in the profile or by the one-click link.
 
 Emails are written to `email_outbox` in the same transaction as their event and sent by a background job with
-retries. Set `NEXBID_BREVO_API_KEY` and a sender address verified in Brevo (`NEXBID_MAIL_SENDER_EMAIL`,
+retries; each call to Brevo gives up after 15 seconds. Addresses under the reserved test domains (`.test`, `.invalid`,
+`.example`, `.localhost`), like the seed and E2E accounts, are never sent to. Set `NEXBID_BREVO_API_KEY` and a sender address verified in Brevo (`NEXBID_MAIL_SENDER_EMAIL`,
 `NEXBID_MAIL_SENDER_NAME`), plus `NEXBID_SITE_URL` for the links. Without a key nothing is sent: each email is
 logged and kept as `SKIPPED`.
 

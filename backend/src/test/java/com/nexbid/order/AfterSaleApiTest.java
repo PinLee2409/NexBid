@@ -265,7 +265,7 @@ class AfterSaleApiTest {
         assertThat(mailsTo(sale.buyerId())).contains("PAYMENT_REFUNDED");
         assertThat(mailsTo(sale.sellerId())).contains("DISPUTE_SELLER_REFUNDED");
         assertThat(noticesTo(sale.buyerId())).contains("ORDER_REFUNDED").doesNotContain("DISPUTE_RESOLVED");
-        assertThat(noticesTo(sale.sellerId())).contains("DISPUTE_OPENED", "DISPUTE_SELLER_RESOLVED");
+        assertThat(noticesTo(sale.sellerId())).contains("DISPUTE_OPENED", "DISPUTE_SELLER_RESOLVED").doesNotContain("SALE_REFUNDED");
         assertThat(auditOf(sale.buyerId().toString())).contains("BANK_ACCOUNT_CHANGED - -> Vietcombank ••••6789");
         assertThat(auditOf(disputeIdOf(sale))).contains("DISPUTE_REFUNDED OPEN -> REFUNDED: Seller unreachable.");
     }
@@ -342,7 +342,7 @@ class AfterSaleApiTest {
         mockMvc.perform(get("/api/seller/earnings").header("Authorization", "Bearer " + sale.buyer()))
                 .andExpect(status().isForbidden());
 
-        String pay = "{\"sellerId\":\"%s\",\"reference\":\"FT2611130001\"}".formatted(sale.sellerId());
+        String pay = "{\"sellerId\":\"%s\",\"reference\":\"FT2611130001\",\"amount\":11400000}".formatted(sale.sellerId());
         mockMvc.perform(post("/api/admin/payouts").header("Authorization", "Bearer " + sale.admin())
                         .contentType(MediaType.APPLICATION_JSON).content(pay))
                 .andExpect(status().isConflict())
@@ -360,6 +360,11 @@ class AfterSaleApiTest {
                 .andExpect(jsonPath("$.data[?(@.sellerId == '" + sale.sellerId() + "')].balance", hasItem(11400000.0)))
                 .andExpect(jsonPath("$.data[?(@.sellerId == '" + sale.sellerId() + "')].account.bankName").value("Vietcombank"));
 
+        // EN: A balance that moved since the admin read it is refused. / VI: Số dư đã đổi kể từ lúc admin xem thì bị từ chối.
+        mockMvc.perform(post("/api/admin/payouts").header("Authorization", "Bearer " + sale.admin())
+                        .contentType(MediaType.APPLICATION_JSON).content(pay.replace("11400000", "9000000")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PAYOUT_AMOUNT_CHANGED"));
         mockMvc.perform(post("/api/admin/payouts").header("Authorization", "Bearer " + sale.admin())
                         .contentType(MediaType.APPLICATION_JSON).content(pay))
                 .andExpect(status().isCreated())

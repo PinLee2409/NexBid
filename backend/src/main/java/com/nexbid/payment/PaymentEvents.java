@@ -42,4 +42,17 @@ public final class PaymentEvents {
     public record Refunded(UUID paymentId, UUID auctionId, UUID userId, BigDecimal amount, String reference,
             String account, UUID actorId, Instant at) {
     }
+
+    /**
+     * EN: VNPay took money no payment could use (LATE or DUPLICATE); it waits for an admin to transfer it back.
+     * VI: VNPay đã thu tiền mà không khoản thanh toán nào dùng được (LATE hoặc DUPLICATE); chờ admin chuyển trả lại.
+     */
+    public record StrayCharged(UUID strayId, UUID paymentId, UUID auctionId, UUID userId, BigDecimal amount,
+            String reason, Instant at) {
+    }
+
+    /** EN: An admin transferred a stray charge back. / VI: Admin đã chuyển trả lại một khoản thu thừa. */
+    public record StrayRefunded(UUID strayId, UUID paymentId, UUID auctionId, UUID userId, BigDecimal amount,
+            String reference, String account, UUID actorId, Instant at) {
+    }
 }

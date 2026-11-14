@@ -148,6 +148,47 @@ class AccountNotices {
     }
 
     /**
+     * EN: VNPay took money no payment could use; the buyer hears it will come back, and where it will be sent.
+     * VI: VNPay đã thu tiền không dùng được; người mua được báo tiền sẽ được trả lại, và trả về đâu.
+     */
+    @EventListener
+    void onStrayCharged(PaymentEvents.StrayCharged event) {
+        String title = auctions.lotTitleOf(event.auctionId());
+        String why = "LATE".equals(event.reason()) ? "after the payment deadline" : "after the lot was already paid for";
+        notifications.notify(event.userId(), NotificationType.STRAY_CHARGE, "Extra charge to be refunded",
+                clip(title + ": VNPay confirmed " + java.text.NumberFormat.getIntegerInstance(java.util.Locale.US)
+                        .format(event.amount()) + " VND " + why + ". NexBid will transfer it back to your refund account."),
+                event.auctionId(), event.at());
+        mailer.send(event.userId(), MailKind.STRAY_CHARGE,
+                MailFacts.lot(event.auctionId(), title, event.amount()).withReason(event.reason()));
+    }
+
+    /** EN: The buyer hears the extra charge was sent back. / VI: Người mua được báo khoản thừa đã được trả lại. */
+    @EventListener
+    void onStrayRefunded(PaymentEvents.StrayRefunded event) {
+        String title = auctions.lotTitleOf(event.auctionId());
+        notifications.notify(event.userId(), NotificationType.ORDER_REFUNDED, "Extra charge refunded",
+                clip(title + ": " + java.text.NumberFormat.getIntegerInstance(java.util.Locale.US).format(event.amount())
+                        + " VND was transferred to " + event.account() + ". Reference: " + event.reference() + "."),
+                event.auctionId(), event.at());
+        mailer.send(event.userId(), MailKind.STRAY_REFUNDED, MailFacts.lot(event.auctionId(), title, event.amount())
+                .withReason(event.reference()));
+    }
+
+    /**
+     * EN: The seller hears an admin refunded the buyer and cancelled the sale (a dispute's refund has its own notice).
+     * VI: Người bán được báo admin đã hoàn tiền cho người mua và huỷ giao dịch (hoàn tiền qua khiếu nại có thông báo riêng).
+     */
+    @EventListener
+    void onSaleRefunded(OrderEvents.SaleRefunded event) {
+        String title = auctions.lotTitleOf(event.auctionId());
+        notifications.notify(event.sellerId(), NotificationType.SALE_REFUNDED, "Sale refunded",
+                clip(title + ": NexBid refunded the buyer and cancelled the order. You can list the product again."),
+                event.auctionId(), event.at());
+        mailer.send(event.sellerId(), MailKind.SALE_REFUNDED, MailFacts.lot(event.auctionId(), title, null));
+    }
+
+    /**
      * EN: The buyer hears their order is on its way — by email only; the order page already shows the new status.
      * VI: Người mua được báo đơn hàng đang trên đường tới — chỉ qua email; trang đơn hàng vốn đã hiện trạng thái mới.
      */

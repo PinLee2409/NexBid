@@ -66,5 +66,9 @@ public enum NotificationType {
     /** EN: To the asker: the seller answered. / VI: Gửi người hỏi: người bán đã trả lời. */
     QUESTION_ANSWERED,
     /** EN: A new lot fits a saved search or comes from a followed seller. / VI: Lô mới khớp bộ lọc đã lưu hoặc từ người bán đang theo dõi. */
-    LOT_ALERT
+    LOT_ALERT,
+    /** EN: To the buyer: VNPay charged money no payment could use; it will be sent back. / VI: Gửi người mua: VNPay đã thu tiền không dùng được; tiền sẽ được trả lại. */
+    STRAY_CHARGE,
+    /** EN: To the seller: NexBid refunded the buyer and cancelled the sale. / VI: Gửi người bán: NexBid đã hoàn tiền cho người mua và huỷ giao dịch. */
+    SALE_REFUNDED
 }
