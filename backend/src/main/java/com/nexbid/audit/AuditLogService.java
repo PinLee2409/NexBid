@@ -64,6 +64,7 @@ public class AuditLogService {
             case CREATED -> AuditAction.AUCTION_CREATED;
             case APPROVED -> AuditAction.AUCTION_APPROVED;
             case REJECTED -> AuditAction.AUCTION_REJECTED;
+            case REMOVED -> AuditAction.AUCTION_REMOVED;
         };
         record(event.actorId(), action, "Auction", event.auctionId(),
                 event.before() == null ? null : event.before().name(), event.after().name());

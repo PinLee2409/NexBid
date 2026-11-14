@@ -1,6 +1,6 @@
 # NexBid: hiện trạng và việc tiếp theo
 
-Cập nhật: 14/11/2026 (đợt 17: rà soát và sửa 6 lỗi ngầm). Lịch sử chi tiết từng đợt nằm trong [NexBid_Backlog.md](NexBid_Backlog.md).
+Cập nhật: 14/11/2026 (đợt 18: báo cáo lô, đánh giá người mua, trang Email của admin). Lịch sử chi tiết từng đợt nằm trong [NexBid_Backlog.md](NexBid_Backlog.md).
 
 ## 1. Web đã tới đâu
 
@@ -21,6 +21,7 @@ Cập nhật: 14/11/2026 (đợt 17: rà soát và sửa 6 lỗi ngầm). Lịch
 - Gửi yêu cầu bán hàng, admin duyệt.
 - Đăng sản phẩm kèm ảnh, tạo phiên đấu giá (giá khởi điểm, bước giá, giá sàn, giá mua ngay).
 - Quyết định bán khi lô đóng dưới giá sàn (trong 24 giờ).
+- Đánh giá người mua sau mỗi đơn hoàn tất, xem hồ sơ người mua cạnh đơn bán *(mới, chưa commit)*.
 - Đơn bán: xem địa chỉ giao, nhập đơn vị vận chuyển và mã vận đơn.
 - Thu nhập: số tiền chờ chi trả, đã nhận, phí sàn 5%, tài khoản ngân hàng nhận tiền.
 
@@ -29,7 +30,8 @@ Cập nhật: 14/11/2026 (đợt 17: rà soát và sửa 6 lỗi ngầm). Lịch
 - Đơn hàng: hoàn tiền bằng chuyển khoản thủ công vào tài khoản người mua đã cho, kèm mã giao dịch.
 - Khiếu nại: hoàn tiền cho người mua hoặc giữ giao dịch, kèm ghi chú.
 - Chi trả cho người bán: danh sách người bán đang chờ tiền, ghi nhận chuyển khoản kèm mã giao dịch.
-- Khoản VNPay thu thừa (trễ hạn hoặc trả hai lần): hiện ở trang Đơn hàng để chuyển khoản trả lại *(mới, chưa commit)*.
+- Khoản VNPay thu thừa (trễ hạn hoặc trả hai lần): hiện ở trang Đơn hàng để chuyển khoản trả lại.
+- Báo cáo lô vi phạm: bỏ qua hoặc gỡ lô; trang Email để gửi lại email thất bại *(mới, chưa commit)*.
 - Nhật ký hệ thống, thống kê hoạt động.
 
 ### Hệ thống
@@ -74,8 +76,7 @@ mục `nexbid-backend` của `.claude/launch.json` nạp file này; chạy bằn
      rồi nhập **mã giao dịch ngân hàng**. Người mua chưa có tài khoản thì nút bị khoá.
   3. Đơn huỷ, khoản thanh toán `REFUNDED`, `payment_refunds` lưu mã giao dịch và bản sao tài khoản; người mua nhận email
      và thông báo kèm mã giao dịch; nhật ký ghi lại.
-- **Lưu ý:** trang `/payments/vnpay-return` cần đăng nhập. Nếu người mua hết phiên, xác nhận chỉ chạy sau khi đăng nhập
-  lại (link quay về giữ nguyên tham số VNPay). Trên staging thì IPN lo phần này.
+- Trang `/payments/vnpay-return` không cần đăng nhập (từ đợt 18).
 - Giao dịch test 15736604 (2.000.000 ₫) vẫn ở `PAID` trên database dev; tiền sandbox không phải tiền thật nên không cần
   hoàn trong trang VNPay.
 
@@ -93,12 +94,10 @@ mục `nexbid-backend` của `.claude/launch.json` nạp file này; chạy bằn
 ### Nên làm trước
 
 1. **Đặt cọc trước khi đấu giá lô giá trị cao.** Với lô từ một mức giá cấu hình được (ví dụ 20 triệu), người mua phải cọc qua VNPay khoảng 5–10% mới được trả giá. Thắng mà không trả tiền thì mất cọc; thua thì được hoàn cọc tự động. Giải quyết vấn đề lớn nhất của sàn đấu giá: người thắng bỏ không trả tiền.
-   *Lưu ý (14/11/2026): hoàn tiền giờ là chuyển khoản tay, nên trước khi làm cần chọn cách hoàn cọc: số dư ví trên NexBid, hoặc chờ VNPay bật API hoàn tiền.*
-2. **Báo cáo lô vi phạm** (hàng giả, mô tả sai), kèm hàng chờ duyệt cho admin.
+   *Tạm dừng (14/11/2026): giữ số dư (ví) cho người dùng cần giấy phép của Ngân hàng Nhà nước, nên không làm ví. Nếu làm, thu cọc qua VNPay và hoàn bằng chuyển khoản tay như hoàn tiền hiện nay. Đợt 18 đã có giải pháp nhẹ hơn: người bỏ không trả 2 lần không được trả giá từ 20 triệu.*
 
 ### Làm sau
 
-4. **Tích hợp GHN hoặc GHTK:** tính phí ship theo tỉnh lúc thanh toán, tự lấy trạng thái vận đơn, đơn tự hoàn tất khi đơn vị vận chuyển báo đã giao.
-5. **Nhắn tin giữa người mua và người bán** sau khi thắng, để hẹn giao hàng hoặc hỏi về kiện hàng.
-6. **Người bán đánh giá người mua**, để biết người mua nào hay bỏ đơn.
-7. **Huy hiệu người bán đã xác minh** (đã xác minh giấy tờ), hiện trên trang lô.
+2. **Tích hợp GHN hoặc GHTK:** tính phí ship theo tỉnh lúc thanh toán, tự lấy trạng thái vận đơn, đơn tự hoàn tất khi đơn vị vận chuyển báo đã giao.
+3. **Nhắn tin giữa người mua và người bán** sau khi thắng, để hẹn giao hàng hoặc hỏi về kiện hàng.
+4. **Huy hiệu người bán đã xác minh** (đã xác minh giấy tờ), hiện trên trang lô.

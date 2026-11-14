@@ -70,5 +70,9 @@ public enum NotificationType {
     /** EN: To the buyer: VNPay charged money no payment could use; it will be sent back. / VI: Gửi người mua: VNPay đã thu tiền không dùng được; tiền sẽ được trả lại. */
     STRAY_CHARGE,
     /** EN: To the seller: NexBid refunded the buyer and cancelled the sale. / VI: Gửi người bán: NexBid đã hoàn tiền cho người mua và huỷ giao dịch. */
-    SALE_REFUNDED
+    SALE_REFUNDED,
+    /** EN: To the seller: an admin took the lot down. / VI: Gửi người bán: admin đã gỡ lô. */
+    LOT_REMOVED,
+    /** EN: To the reporter: the report was decided. / VI: Gửi người báo cáo: báo cáo đã được xử lý. */
+    REPORT_RESOLVED
 }

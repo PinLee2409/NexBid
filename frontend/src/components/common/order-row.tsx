@@ -27,7 +27,7 @@ const STATUS_TONE: Record<OrderStatus, string | undefined> = {
  * VI: Một đơn hàng dạng một dòng — lô, ngày đặt, tổng tiền và trạng thái — chừa chỗ bên phải cho việc người
  *     đang xem có thể làm tiếp. Dùng chung cho danh sách của người mua, người bán và admin.
  */
-export function OrderRow({ entry, action }: { entry: OrderEntry; action?: ReactNode }) {
+export function OrderRow({ entry, action, extra }: { entry: OrderEntry; action?: ReactNode; extra?: ReactNode }) {
   const money = useMoney();
   const t = useTranslations("account");
   const tc = useTranslations("common");
@@ -98,6 +98,7 @@ export function OrderRow({ entry, action }: { entry: OrderEntry; action?: ReactN
             ) : null}
           </div>
         ) : null}
+        {extra}
       </div>
 
       <div className="shrink-0">

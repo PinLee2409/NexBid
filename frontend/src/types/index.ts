@@ -69,6 +69,17 @@ export const ERROR_CODES = [
   "STRAY_CHARGE_NOT_FOUND",
   "STRAY_CHARGE_REFUNDED",
   "PAYOUT_AMOUNT_CHANGED",
+  "EMAIL_NOT_FOUND",
+  "EMAIL_NOT_RETRYABLE",
+  "REFERENCE_USED",
+  "AUCTION_NOT_REMOVABLE",
+  "REPORT_NOT_FOUND",
+  "REPORT_CLOSED",
+  "REPORT_NOT_ALLOWED",
+  "REPORT_DUPLICATE",
+  "REPORT_LIMIT",
+  "BUYER_REVIEW_NOT_ALLOWED",
+  "BIDDER_RESTRICTED",
   "QUESTION_NOT_FOUND",
   "QUESTION_NOT_ALLOWED",
   "QUESTION_LIMIT",
@@ -252,7 +263,8 @@ export type AuctionStatus =
   | "ENDED"
   | "COMPLETED"
   | "REJECTED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "REMOVED";
 
 interface AntiSnipingConfig {
   enabled: boolean;
@@ -441,6 +453,11 @@ export type AuctionEvent =
       serverTime: IsoDateString;
     }
   | {
+      type: "AUCTION_REMOVED";
+      auctionId: Id;
+      serverTime: IsoDateString;
+    }
+  | {
       type: "VIEWERS_CHANGED";
       auctionId: Id;
       viewerCount: number;
@@ -495,7 +512,9 @@ export type NotificationType =
   | "QUESTION_ANSWERED"
   | "LOT_ALERT"
   | "STRAY_CHARGE"
-  | "SALE_REFUNDED";
+  | "SALE_REFUNDED"
+  | "LOT_REMOVED"
+  | "REPORT_RESOLVED";
 
 export interface AppNotification {
   id: Id;
@@ -622,7 +641,8 @@ export type AuditAction =
   | "DISPUTE_REJECTED"
   | "PAYOUT_RECORDED"
   | "BANK_ACCOUNT_CHANGED"
-  | "STRAY_CHARGE_REFUNDED";
+  | "STRAY_CHARGE_REFUNDED"
+  | "AUCTION_REMOVED";
 
 export interface AuditLog {
   id: Id;

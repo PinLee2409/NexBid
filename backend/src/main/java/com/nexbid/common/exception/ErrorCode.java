@@ -99,6 +99,23 @@ public enum ErrorCode {
     STRAY_CHARGE_REFUNDED(HttpStatus.CONFLICT),
     // EN: The seller's balance changed after the admin read it. / VI: Số dư của người bán đã đổi sau khi admin xem.
     PAYOUT_AMOUNT_CHANGED(HttpStatus.CONFLICT),
+    // EN: The email outbox: no such email, or one that has not failed. / VI: Hàng chờ email: không có email này, hoặc email chưa hỏng.
+    EMAIL_NOT_FOUND(HttpStatus.NOT_FOUND),
+    EMAIL_NOT_RETRYABLE(HttpStatus.CONFLICT),
+    // EN: A bank reference already recorded for another transfer. / VI: Mã giao dịch ngân hàng đã được ghi cho lần chuyển khác.
+    REFERENCE_USED(HttpStatus.CONFLICT),
+    // EN: Only a scheduled or live lot can be taken down. / VI: Chỉ gỡ được lô đang chờ mở hoặc đang mở.
+    AUCTION_NOT_REMOVABLE(HttpStatus.CONFLICT),
+    // EN: Lot reports: none such, already decided, not allowed (own or closed lot), already reported, too many waiting.
+    // VI: Báo cáo lô: không có, đã xử lý, không được phép (lô của mình hoặc đã đóng), đã báo rồi, quá nhiều báo cáo chờ.
+    REPORT_NOT_FOUND(HttpStatus.NOT_FOUND),
+    REPORT_CLOSED(HttpStatus.CONFLICT),
+    REPORT_NOT_ALLOWED(HttpStatus.CONFLICT),
+    REPORT_DUPLICATE(HttpStatus.CONFLICT),
+    REPORT_LIMIT(HttpStatus.TOO_MANY_REQUESTS),
+    // EN: Buyer reviews and the unpaid-win limit. / VI: Đánh giá người mua và giới hạn với người hay bỏ không trả.
+    BUYER_REVIEW_NOT_ALLOWED(HttpStatus.CONFLICT),
+    BIDDER_RESTRICTED(HttpStatus.FORBIDDEN),
     // EN: Questions on a lot: none such, closed lot or own lot, too many waiting, or already answered.
     // VI: Hỏi đáp trên lô: không có câu hỏi, lô đã đóng hoặc lô của chính mình, quá nhiều câu đang chờ, hoặc đã trả lời.
     QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND),

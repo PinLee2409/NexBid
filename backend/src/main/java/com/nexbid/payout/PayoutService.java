@@ -47,9 +47,12 @@ public class PayoutService {
     private final ApplicationEventPublisher events;
     private final BigDecimal feePercent;
     private final BankAccounts bankAccounts;
+    private final com.nexbid.common.BankReferences references;
 
     PayoutService(JdbcTemplate jdbc, AuctionService auctions, UserService users, ApplicationEventPublisher events,
-            @Value("${nexbid.payout.fee-percent}") BigDecimal feePercent, BankAccounts bankAccounts) {
+            @Value("${nexbid.payout.fee-percent}") BigDecimal feePercent, BankAccounts bankAccounts,
+            com.nexbid.common.BankReferences references) {
+        this.references = references;
         this.jdbc = jdbc;
         this.auctions = auctions;
         this.users = users;
@@ -168,6 +171,7 @@ public class PayoutService {
                             + "; reload and check the transfer before recording it");
         }
 
+        references.claim(reference, "PAYOUT");
         UUID id = UUID.randomUUID();
         Instant now = Instant.now();
         jdbc.update("""

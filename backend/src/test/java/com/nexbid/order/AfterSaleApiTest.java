@@ -387,4 +387,86 @@ class AfterSaleApiTest {
                         .contentType(MediaType.APPLICATION_JSON).content(pay))
                 .andExpect(status().isForbidden());
     }
+
+    private ResultActions rateBuyer(String token, String orderId, String body) throws Exception {
+        return mockMvc.perform(post("/api/seller/orders/" + orderId + "/buyer-review")
+                .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(body));
+    }
+
+    @Test
+    void aSellerRatesTheBuyerOnceAndSeesTheirRecord() throws Exception {
+        Sale sale = paidSale("rate-buyer");
+        String otherSeller = tokenFor("as.seller.rate-other@nexbid.com", "Other Rater", RoleName.SELLER);
+
+        rateBuyer(sale.seller(), sale.orderId(), "{\"rating\":4}").andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("BUYER_REVIEW_NOT_ALLOWED"));
+        ship(sale).andExpect(status().isOk());
+        mockMvc.perform(post("/api/users/me/orders/" + sale.orderId() + "/received")
+                .header("Authorization", "Bearer " + sale.buyer())).andExpect(status().isOk());
+
+        rateBuyer(sale.seller(), sale.orderId(), "{\"rating\":0}").andExpect(status().isBadRequest());
+        rateBuyer(otherSeller, sale.orderId(), "{\"rating\":4}").andExpect(status().isNotFound());
+        rateBuyer(sale.buyer(), sale.orderId(), "{\"rating\":4}").andExpect(status().isForbidden());
+        rateBuyer(sale.seller(), sale.orderId(), "{\"rating\":4,\"comment\":\" Paid fast, kind messages. \"}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.rating").value(4))
+                .andExpect(jsonPath("$.data.comment").value("Paid fast, kind messages."));
+        rateBuyer(sale.seller(), sale.orderId(), "{\"rating\":5}").andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("REVIEW_EXISTS"));
+
+        String mine = "$.data[?(@.order.id == '" + sale.orderId() + "')]";
+        mockMvc.perform(get("/api/seller/orders").header("Authorization", "Bearer " + sale.seller()))
+                .andExpect(jsonPath(mine + ".buyer.review.rating", hasItem(4)))
+                .andExpect(jsonPath(mine + ".buyer.record.completed", hasItem(1)))
+                .andExpect(jsonPath(mine + ".buyer.record.unpaidWins", hasItem(0)))
+                .andExpect(jsonPath(mine + ".buyer.record.averageRating", hasItem(4.0)));
+        // EN: The buyer never sees how sellers rated them. / VI: Người mua không bao giờ thấy người bán đánh giá mình ra sao.
+        mockMvc.perform(get("/api/users/me/orders").header("Authorization", "Bearer " + sale.buyer()))
+                .andExpect(jsonPath("$.data[0].buyer").doesNotExist());
+    }
+
+    @Test
+    void aBuyerWhoLeftTwoWinsUnpaidCannotBidHigh() throws Exception {
+        Sale sale = paidSale("restricted");
+        String categories = mockMvc.perform(get("/api/categories")).andReturn().getResponse().getContentAsString();
+        String categoryId = objectMapper.readTree(categories).get("data").get(0).get("id").asString();
+        String productBody = mockMvc.perform(post("/api/seller/products").header("Authorization", "Bearer " + sale.seller())
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"name":"Costly lot","description":"A long description of the item.",
+                                 "categoryId":"%s","condition":"LIKE_NEW","publishNow":true}
+                                """.formatted(categoryId)))
+                .andReturn().getResponse().getContentAsString();
+        String productId = objectMapper.readTree(productBody).get("data").get("id").asString();
+        String auctionBody = mockMvc.perform(post("/api/seller/auctions").header("Authorization", "Bearer " + sale.seller())
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"productId":"%s","startingPrice":10000000,"minimumIncrement":500000,
+                                 "startTime":"%s","endTime":"%s"}
+                                """.formatted(productId, Instant.now().plus(Duration.ofMinutes(30)),
+                                Instant.now().plus(Duration.ofHours(4)))))
+                .andReturn().getResponse().getContentAsString();
+        String auctionId = objectMapper.readTree(auctionBody).get("data").get("id").asString();
+        mockMvc.perform(post("/api/seller/auctions/" + auctionId + "/submit").header("Authorization", "Bearer " + sale.seller()));
+        mockMvc.perform(post("/api/admin/auctions/" + auctionId + "/approve").header("Authorization", "Bearer " + sale.admin()));
+        jdbc.update("UPDATE auctions SET status = 'ACTIVE', start_time = now() - interval '1 hour' WHERE id = ?::uuid",
+                auctionId);
+        jdbc.update("UPDATE users SET unpaid_wins = 2 WHERE id = ?", sale.buyerId());
+
+        String bid = "/api/auctions/" + auctionId + "/bids";
+        mockMvc.perform(post(bid).header("Authorization", "Bearer " + sale.buyer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":25000000}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("BIDDER_RESTRICTED"));
+        mockMvc.perform(post("/api/auctions/" + auctionId + "/auto-bid").header("Authorization", "Bearer " + sale.buyer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"maxAmount\":30000000}"))
+                .andExpect(status().isForbidden());
+        // EN: Below the line they still bid. / VI: Dưới ngưỡng thì vẫn trả giá được.
+        mockMvc.perform(post(bid).header("Authorization", "Bearer " + sale.buyer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":10000000}"))
+                .andExpect(status().isCreated());
+
+        jdbc.update("UPDATE users SET unpaid_wins = 1 WHERE id = ?", sale.buyerId());
+        mockMvc.perform(post(bid).header("Authorization", "Bearer " + sale.buyer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":25000000}"))
+                .andExpect(status().isCreated());
+    }
 }

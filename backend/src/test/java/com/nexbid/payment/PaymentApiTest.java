@@ -328,6 +328,9 @@ class PaymentApiTest {
         assertThat(payments.expireOverdue(Instant.now(), 200)).isEqualTo(1);
 
         assertThat(stored(won.paymentId())).isEqualTo("EXPIRED");
+        // EN: The win left unpaid counts against the buyer. / VI: Lần thắng bỏ không trả được tính vào người mua.
+        assertThat(jdbc.queryForObject("SELECT unpaid_wins FROM users WHERE id = ?", Integer.class, idOf(won.winner())))
+                .isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT status FROM auctions WHERE id = ?::uuid", String.class, won.auctionId()))
                 .isEqualTo("CANCELLED");
         assertThat(jdbc.queryForObject("SELECT status FROM products WHERE id = ?::uuid", String.class, won.productId()))
@@ -522,6 +525,23 @@ class PaymentApiTest {
 
         assertThat(jdbc.queryForObject("SELECT reference || ' ' || account_number FROM stray_charges WHERE id = ?::uuid",
                 String.class, strayId)).isEqualTo("FT2611140009 0123456789");
+
+        // EN: A bank reference is used once, whatever its case or spacing. / VI: Mã giao dịch chỉ dùng một lần, bất kể hoa thường hay khoảng trắng.
+        mockMvc.perform(put("/api/users/me/bank-account").header("Authorization", "Bearer " + late.winner())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"bankName\":\"ACB\",\"accountNumber\":\"99887766\",\"accountHolder\":\"LATE PAYER\"}"))
+                .andExpect(status().isOk());
+        String lateId = jdbc.queryForObject("SELECT id::text FROM stray_charges WHERE payment_id = ?::uuid",
+                String.class, late.paymentId());
+        mockMvc.perform(post("/api/admin/stray-charges/" + lateId + "/refund").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reference\":\" ft 2611140009 \"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("REFERENCE_USED"));
+        assertThat(jdbc.queryForObject("SELECT refunded_at IS NULL FROM stray_charges WHERE id = ?::uuid", Boolean.class,
+                lateId)).isTrue();
+        mockMvc.perform(post("/api/admin/stray-charges/" + lateId + "/refund").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reference\":\"FT2611140010\"}"))
+                .andExpect(status().isOk());
         // EN: The paid payment itself stays paid. / VI: Bản thân khoản đã trả vẫn là đã trả.
         assertThat(stored(twice.paymentId())).isEqualTo("SUCCESS");
         assertThat(jdbc.queryForList("SELECT kind FROM email_outbox WHERE user_id = ?", String.class, buyerId))

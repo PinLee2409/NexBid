@@ -235,6 +235,13 @@ nexbid:
     # VI: Người thắng chưa trả được nhắc (PAYMENT_REQUIRED) trước hạn thanh toán bao lâu.
     payment-reminder: ${NEXBID_PAYMENT_REMINDER:12h}
 
+  bid:
+    restriction:
+      # EN: Who has won and not paid this many times cannot bid from-amount (VND) or more.
+      # VI: Ai đã thắng mà không trả tiền từng này lần thì không được trả giá từ from-amount (VND) trở lên.
+      unpaid-wins: ${NEXBID_RESTRICT_UNPAID_WINS:2}
+      from-amount: ${NEXBID_RESTRICT_FROM_AMOUNT:20000000}
+
   alert:
     # EN: When the daily email of new lots matching saved searches and followed sellers goes out (Vietnam time).
     # VI: Lúc gửi email hằng ngày về lô mới khớp bộ lọc đã lưu và người bán đang theo dõi (giờ Việt Nam).

@@ -10,6 +10,7 @@ import { StarRating } from "@/components/common/star-rating";
 import { AuctionRoomView } from "@/components/nexbid/auction-room";
 import { AuctionCatalogueItem } from "@/components/nexbid/catalogue-item";
 import { FollowSellerButton } from "@/components/nexbid/follow-seller-button";
+import { ReportLotButton } from "@/components/nexbid/report-lot-button";
 import { LotQuestions } from "@/components/nexbid/lot-questions";
 import { ProductStage } from "@/components/nexbid/product-stage";
 import { SectionHead } from "@/components/nexbid/section-head";
@@ -190,6 +191,10 @@ export default async function AuctionDetailPage(
                 status={auction.status}
                 initial={questions}
               />
+
+              <div className="mt-10">
+                <ReportLotButton auctionId={auction.id} sellerId={auction.seller.id} status={auction.status} />
+              </div>
             </div>
           </div>
 

@@ -968,6 +968,44 @@ public class AuctionService {
     }
 
     /**
+     * EN: An admin takes down a scheduled or live lot (a report upheld, or its seller blocked). Bidding stops at once,
+     *     no sale is made, and the product goes back to the seller; listing it again needs a new approval. Returns the
+     *     bidders, who are told along with the seller.
+     * VI: Admin gỡ một lô đang chờ mở hoặc đang mở (báo cáo được chấp nhận, hoặc người bán bị khoá). Việc trả giá dừng
+     *     ngay, không có giao dịch nào, và sản phẩm trở về với người bán; đăng lại cần được duyệt lại.
+     */
+    @Transactional
+    public AuctionView remove(UUID auctionId, UUID adminId, String reason) {
+        Auction auction = auctions.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+        AuctionStatus before = auction.getStatus();
+        if (before != AuctionStatus.SCHEDULED && before != AuctionStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.AUCTION_NOT_REMOVABLE,
+                    "Only a scheduled or live lot can be taken down");
+        }
+        auction.setStatus(AuctionStatus.REMOVED);
+        auction.setRejectionReason(reason.trim());
+        products.markAuctionState(auction.getProductId(), ProductStatus.AVAILABLE);
+        Auction saved = auctions.save(auction);
+
+        Instant now = Instant.now();
+        events.publishEvent(new AuctionAuditEvent(AuctionAuditEvent.Action.REMOVED, auctionId, adminId, before,
+                AuctionStatus.REMOVED));
+        events.publishEvent(AuctionLifecycleEvent.removed(saved));
+        events.publishEvent(new AuctionRemovedEvent(auctionId, saved.getSellerId(), adminId, reason.trim(), now));
+        return toView(saved);
+    }
+
+    /** EN: The seller's lots still scheduled or live, e.g. to take them down when the seller is blocked. / VI: Các lô của người bán còn đang chờ mở hoặc đang mở. */
+    public List<UUID> openLotsOf(UUID sellerId) {
+        return auctions.findBySellerIdOrderByCreatedAtDesc(sellerId).stream()
+                .filter(lot -> lot.getStatus() == AuctionStatus.SCHEDULED || lot.getStatus() == AuctionStatus.ACTIVE)
+                .map(Auction::getId)
+                .toList();
+    }
+
+    /**
      * EN: Refuses a lot with a reason (guide §17). The product stays free, so the seller can fix what was
      *     wrong and list it again.
      * VI: Từ chối một lô kèm lý do (guide §17). Sản phẩm vẫn tự do, nên người bán sửa chỗ sai rồi đăng lại được.

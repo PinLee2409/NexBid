@@ -19,6 +19,14 @@ export interface OrderEntry {
   auction: AuctionSummary | null;
   /** EN: The buyer's review of this sale, once written. / VI: Đánh giá của người mua cho giao dịch này, khi đã viết. */
   review: SellerReview | null;
+  /** EN: For sellers and admins: their rating of the buyer and the buyer's record. / VI: Cho người bán và admin: đánh giá người mua và hồ sơ của họ. */
+  buyer: BuyerSide | null;
+}
+
+/** EN: The seller's rating of this buyer, and the buyer's record across all sellers. / VI: Đánh giá của người bán về người mua, và hồ sơ của người mua trên mọi người bán. */
+interface BuyerSide {
+  review: { rating: number; comment: string | null; createdAt: string } | null;
+  record: { completed: number; unpaidWins: number; averageRating: number | null; ratings: number } | null;
 }
 
 export function toEntry(view: ApiOrder): OrderEntry {
@@ -27,6 +35,18 @@ export function toEntry(view: ApiOrder): OrderEntry {
     payment: view.payment ? toPayment(view.payment) : null,
     auction: view.auction ? toSummary(view.auction) : null,
     review: view.review ? toReview(view.review) : null,
+    buyer: view.buyer
+      ? {
+          review: view.buyer.review ?? null,
+          record: view.buyer.record
+            ? {
+                ...view.buyer.record,
+                averageRating:
+                  view.buyer.record.averageRating === null ? null : Number(view.buyer.record.averageRating),
+              }
+            : null,
+        }
+      : null,
   };
 }
 

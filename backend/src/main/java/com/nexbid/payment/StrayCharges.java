@@ -54,9 +54,11 @@ public class StrayCharges {
     private final UserService users;
     private final BankAccounts bankAccounts;
     private final ApplicationEventPublisher events;
+    private final com.nexbid.common.BankReferences references;
 
     StrayCharges(JdbcTemplate jdbc, PaymentRepository payments, AuctionService auctions, UserService users,
-            BankAccounts bankAccounts, ApplicationEventPublisher events) {
+            BankAccounts bankAccounts, ApplicationEventPublisher events, com.nexbid.common.BankReferences references) {
+        this.references = references;
         this.jdbc = jdbc;
         this.payments = payments;
         this.auctions = auctions;
@@ -133,6 +135,7 @@ public class StrayCharges {
 
         Instant now = Instant.now();
         String ref = reference.trim();
+        references.claim(ref, "STRAY");
         jdbc.update("""
                 UPDATE stray_charges SET refunded_at = ?, reference = ?, bank_name = ?, account_number = ?,
                        account_holder = ?, refunded_by = ? WHERE id = ?

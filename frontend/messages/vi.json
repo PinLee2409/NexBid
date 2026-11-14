@@ -101,7 +101,9 @@
     "earnings": "Thu nhập",
     "disputes": "Khiếu nại",
     "payouts": "Chi trả",
-    "alerts": "Báo lô mới"
+    "alerts": "Báo lô mới",
+    "reports": "Báo cáo",
+    "emails": "Email"
   },
   "footer": {
     "marketplace": "Sàn đấu giá",
@@ -248,7 +250,26 @@
     "followingSeller": "Đang theo dõi",
     "followSignIn": "Đăng nhập để theo dõi",
     "followed": "Bạn sẽ được báo khi người bán này đăng lô mới.",
-    "unfollowed": "Đã bỏ theo dõi người bán này."
+    "unfollowed": "Đã bỏ theo dõi người bán này.",
+    "reportLot": "Báo cáo lô này",
+    "reportSignIn": "Đăng nhập để báo cáo lô này",
+    "reportTitle": "Báo cáo lô này",
+    "reportBody": "Cho NexBid biết có vấn đề gì. Báo cáo là riêng tư: người bán không biết ai đã gửi.",
+    "reportReasonLabel": "Vấn đề",
+    "reportReasonPlaceholder": "Chọn vấn đề",
+    "reportReason": {
+      "COUNTERFEIT": "Hàng giả, hàng nhái",
+      "NOT_AS_DESCRIBED": "Ảnh hoặc mô tả sai sự thật",
+      "PROHIBITED": "Hàng không được phép bán",
+      "OTHER": "Vấn đề khác"
+    },
+    "reportDetailsLabel": "Bạn thấy gì",
+    "reportDetailsHint": "Ít nhất 10 ký tự. Kèm link hoặc chi tiết giúp kiểm tra nhanh hơn.",
+    "reportReasonRequired": "Hãy chọn vấn đề.",
+    "reportDetailsShort": "Hãy nói thêm một chút (ít nhất 10 ký tự).",
+    "reportSend": "Gửi báo cáo",
+    "reportSent": "Đã gửi báo cáo",
+    "reportSentBody": "NexBid sẽ xem xét. Bạn sẽ được báo kết quả."
   },
   "bidErrors": {
     "NOT_AUTHENTICATED": "Đăng nhập để đặt giá.",
@@ -686,7 +707,20 @@
     "bankSave": "Lưu tài khoản",
     "bankSaved": "Đã lưu tài khoản nhận tiền",
     "bankEdit": "Đổi tài khoản",
-    "payoutHistory": "Lịch sử nhận tiền"
+    "payoutHistory": "Lịch sử nhận tiền",
+    "buyerRecord": "Người mua:",
+    "buyerCompleted": "{count, plural, =0 {chưa có đơn hoàn tất} other {# đơn hoàn tất}}",
+    "buyerUnpaid": "{count, plural, =0 {chưa từng bỏ không trả} other {# lần thắng bỏ không trả}}",
+    "buyerRating": "{rating}★ từ {count} đánh giá của người bán",
+    "yourBuyerRating": "Bạn đánh giá người mua",
+    "rateBuyer": "Đánh giá người mua",
+    "rateBuyerTitle": "Đánh giá người mua",
+    "rateBuyerBody": "Bán {name} cho người mua này thế nào? Chỉ người bán thấy, cạnh các đơn sau của người mua.",
+    "rateBuyerStars": "Số sao",
+    "rateBuyerStarsRequired": "Chọn từ 1 đến 5 sao.",
+    "rateBuyerComment": "Nhận xét (không bắt buộc)",
+    "rateBuyerSend": "Lưu đánh giá",
+    "rateBuyerSaved": "Đã lưu đánh giá"
   },
   "admin": {
     "console": "Bảng quản trị",
@@ -856,7 +890,40 @@
     "strayDuplicate": "trả hai lần",
     "strayRefundTitle": "Trả lại khoản thu thừa",
     "strayRefundBody": "Chuyển số tiền này của {name} vào tài khoản nhận hoàn tiền của người mua, rồi nhập mã giao dịch ngân hàng.",
-    "strayRefunded": "Đã trả lại. Người mua đã được báo."
+    "strayRefunded": "Đã trả lại. Người mua đã được báo.",
+    "reportsTitle": "Báo cáo",
+    "reportsSubtitle": "Các lô bị báo là hàng giả, sai mô tả hoặc hàng cấm. Bỏ qua báo cáo, hoặc gỡ lô: việc trả giá dừng, người bán được báo lý do, và mọi báo cáo đang mở của lô được đóng lại.",
+    "reportStatus": {
+      "OPEN": "Đang mở",
+      "REMOVED": "Đã gỡ lô",
+      "DISMISSED": "Đã bỏ qua"
+    },
+    "reportsEmptyTitle": "Không có gì",
+    "reportsEmptyBody": "Danh sách này chưa có báo cáo nào.",
+    "reportNote": "Quyết định:",
+    "reportDismiss": "Bỏ qua",
+    "reportTakeDown": "Gỡ lô",
+    "reportTakenDown": "Đã gỡ lô. Người bán và người trả giá đã được báo.",
+    "reportDismissed": "Đã bỏ qua báo cáo",
+    "reportTakeDownTitle": "Gỡ lô",
+    "reportTakeDownBody": "{name} sẽ bị gỡ và việc trả giá dừng lại. Không có giao dịch nào. Lý do bên dưới được hiện cho người bán.",
+    "reportDismissTitle": "Bỏ qua báo cáo",
+    "reportDismissBody": "Lô vẫn được giữ. Người báo cáo được báo là đã xem xét.",
+    "reportTakeDownReason": "Lý do gửi người bán",
+    "reportDismissNote": "Ghi chú cho người báo cáo (không bắt buộc)",
+    "emailsTitle": "Email",
+    "emailsSubtitle": "Mọi email NexBid đã xếp hàng. Email bị Brevo từ chối liên tục sẽ thành Thất bại sau 6 lần thử; sửa nguyên nhân rồi gửi lại.",
+    "emailStatus": {
+      "FAILED": "Thất bại",
+      "PENDING": "Đang chờ",
+      "SENT": "Đã gửi",
+      "SKIPPED": "Không gửi"
+    },
+    "emailsEmptyTitle": "Không có gì",
+    "emailsEmptyBody": "Danh sách này chưa có email nào.",
+    "emailsAttempts": "{count} lần thử",
+    "emailsRetry": "Gửi lại",
+    "emailsRetried": "Đã xếp hàng lại. Email sẽ đi trong vài giây."
   },
   "howItWorks": {
     "title": "NexBid hoạt động thế nào",
@@ -915,7 +982,8 @@
       "ENDED": "Đã kết thúc",
       "COMPLETED": "Hoàn tất",
       "REJECTED": "Bị từ chối",
-      "CANCELLED": "Đã huỷ"
+      "CANCELLED": "Đã huỷ",
+      "REMOVED": "Đã gỡ"
     },
     "condition": {
       "NEW": "Mới",
@@ -974,7 +1042,9 @@
       "QUESTION_ANSWERED": "Đã có câu trả lời",
       "LOT_ALERT": "Lô mới cho bạn",
       "STRAY_CHARGE": "Khoản thu thừa",
-      "SALE_REFUNDED": "Giao dịch đã hoàn tiền"
+      "SALE_REFUNDED": "Giao dịch đã hoàn tiền",
+      "LOT_REMOVED": "Lô bị gỡ",
+      "REPORT_RESOLVED": "Báo cáo đã xử lý"
     },
     "auditAction": {
       "USER_LOGIN": "Người dùng đăng nhập",
@@ -1006,7 +1076,8 @@
       "DISPUTE_REJECTED": "Bác khiếu nại",
       "PAYOUT_RECORDED": "Ghi nhận chi trả",
       "BANK_ACCOUNT_CHANGED": "Đổi tài khoản nhận tiền",
-      "STRAY_CHARGE_REFUNDED": "Trả lại khoản VNPay thu thừa"
+      "STRAY_CHARGE_REFUNDED": "Trả lại khoản VNPay thu thừa",
+      "AUCTION_REMOVED": "Gỡ lô"
     },
     "role": {
       "BUYER": "Người mua",
@@ -1265,6 +1336,17 @@
     "FOLLOW_NOT_ALLOWED": "Bạn không thể tự theo dõi mình.",
     "STRAY_CHARGE_NOT_FOUND": "Khoản thu này không còn nữa.",
     "STRAY_CHARGE_REFUNDED": "Khoản thu này đã được trả lại rồi.",
-    "PAYOUT_AMOUNT_CHANGED": "Số dư của người bán đã thay đổi kể từ lúc bạn mở. Tải lại trang và kiểm tra số tiền trước khi ghi nhận chuyển khoản."
+    "PAYOUT_AMOUNT_CHANGED": "Số dư của người bán đã thay đổi kể từ lúc bạn mở. Tải lại trang và kiểm tra số tiền trước khi ghi nhận chuyển khoản.",
+    "EMAIL_NOT_FOUND": "Email này không còn nữa.",
+    "EMAIL_NOT_RETRYABLE": "Chỉ gửi lại được email đã thất bại.",
+    "REFERENCE_USED": "Mã giao dịch này đã được ghi cho một lần chuyển khác. Hãy kiểm tra để không ghi trùng một lần chuyển.",
+    "AUCTION_NOT_REMOVABLE": "Chỉ gỡ được lô đang chờ mở hoặc đang mở.",
+    "REPORT_NOT_FOUND": "Báo cáo này không còn nữa.",
+    "REPORT_CLOSED": "Báo cáo này đã được xử lý.",
+    "REPORT_NOT_ALLOWED": "Không báo cáo được lô này: lô của bạn, hoặc lô đã đóng.",
+    "REPORT_DUPLICATE": "Bạn đã báo cáo lô này rồi. NexBid sẽ xem xét.",
+    "REPORT_LIMIT": "Bạn có 10 báo cáo đang chờ xử lý. Hãy đợi một số được xử lý xong.",
+    "BUYER_REVIEW_NOT_ALLOWED": "Bạn đánh giá người mua được khi đơn đã hoàn tất.",
+    "BIDDER_RESTRICTED": "Bạn đã bỏ không trả tiền 2 lô thắng trở lên, nên tạm thời không được trả giá từ 20.000.000 ₫ trở lên."
   }
 }

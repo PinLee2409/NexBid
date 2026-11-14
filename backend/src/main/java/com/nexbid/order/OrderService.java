@@ -47,6 +47,7 @@ public class OrderService {
     private final DisputeBook disputes;
     private final Duration autoCompleteAfter;
     private final BankAccounts bankAccounts;
+    private final BuyerReviews buyerReviews;
 
     public OrderService(
             OrderRepository orders,
@@ -56,7 +57,9 @@ public class OrderService {
             ApplicationEventPublisher events,
             DisputeBook disputes,
             @Value("${nexbid.order.auto-complete-after}") Duration autoCompleteAfter,
-            BankAccounts bankAccounts) {
+            BankAccounts bankAccounts,
+            BuyerReviews buyerReviews) {
+        this.buyerReviews = buyerReviews;
         this.bankAccounts = bankAccounts;
         this.orders = orders;
         this.payments = payments;
@@ -104,7 +107,7 @@ public class OrderService {
     @Transactional(readOnly = true)
     public List<OrderView> listForSeller(UUID sellerId) {
         List<Order> sold = orders.findBySellerIdOrderByCreatedAtDesc(sellerId);
-        return views(sold, payments.detailsOf(paymentIdsOf(sold)));
+        return withBuyers(views(sold, payments.detailsOf(paymentIdsOf(sold))));
     }
 
     /**
@@ -117,7 +120,7 @@ public class OrderService {
         Page<Order> found = orders.findByStatusIn(wanted, PageRequest.of(
                 Math.max(0, page - 1), Math.clamp(size, 1, 100), Sort.by(Sort.Direction.DESC, "updatedAt")));
 
-        Map<UUID, OrderView> byId = views(found.getContent(), payments.detailsOf(paymentIdsOf(found.getContent())))
+        Map<UUID, OrderView> byId = withBuyers(views(found.getContent(), payments.detailsOf(paymentIdsOf(found.getContent()))))
                 .stream()
                 .collect(Collectors.toMap(view -> view.order().id(), Function.identity()));
         return PageView.of(found, order -> byId.get(order.getId()));
@@ -342,7 +345,19 @@ public class OrderService {
                                 disputed.containsKey(order.getId()) ? disputed.get(order.getId()).view() : null),
                         paid.get(order.getPaymentId()),
                         lots.get(order.getAuctionId()),
-                        reviewed.get(order.getId())))
+                        reviewed.get(order.getId()),
+                        null))
+                .toList();
+    }
+
+    /** EN: Adds the buyer's side, for the seller's and the admin's lists. / VI: Thêm phần người mua, cho danh sách của người bán và admin. */
+    private List<OrderView> withBuyers(List<OrderView> list) {
+        Map<UUID, OrderView.BuyerReview> rated = buyerReviews.forOrders(list.stream().map(view -> view.order().id()).toList());
+        Map<UUID, OrderView.BuyerRecord> records = buyerReviews.recordsOf(
+                list.stream().map(view -> view.order().buyerId()).toList());
+        return list.stream()
+                .map(view -> new OrderView(view.order(), view.payment(), view.auction(), view.review(),
+                        new OrderView.BuyerSide(rated.get(view.order().id()), records.get(view.order().buyerId()))))
                 .toList();
     }
 

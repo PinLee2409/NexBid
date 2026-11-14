@@ -28,7 +28,11 @@ public class AutoBidService {
     private final AuctionService auctions;
     private final ProxyBidding proxies;
 
-    AutoBidService(AutoBidRepository autoBids, AuctionService auctions, ProxyBidding proxies) {
+    private final BidderRestriction restriction;
+
+    AutoBidService(AutoBidRepository autoBids, AuctionService auctions, ProxyBidding proxies,
+            BidderRestriction restriction) {
+        this.restriction = restriction;
         this.autoBids = autoBids;
         this.auctions = auctions;
         this.proxies = proxies;
@@ -36,6 +40,7 @@ public class AutoBidService {
 
     @Transactional
     public AutoBidView create(UUID userId, UUID auctionId, BigDecimal maxAmount) {
+        restriction.check(userId, maxAmount);
         Instant now = Instant.now();
         BiddingState lot = requireBiddable(auctionId, userId, now);
 
@@ -60,6 +65,7 @@ public class AutoBidService {
 
     @Transactional
     public AutoBidView update(UUID userId, UUID auctionId, BigDecimal maxAmount) {
+        restriction.check(userId, maxAmount);
         Instant now = Instant.now();
         BiddingState lot = requireBiddable(auctionId, userId, now);
 

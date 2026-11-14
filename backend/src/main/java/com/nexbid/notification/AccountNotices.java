@@ -188,6 +188,19 @@ class AccountNotices {
         mailer.send(event.sellerId(), MailKind.SALE_REFUNDED, MailFacts.lot(event.auctionId(), title, null));
     }
 
+    /** EN: The reporter hears what came of their report. / VI: Người báo cáo được báo kết quả báo cáo của mình. */
+    @EventListener
+    void onReportResolved(com.nexbid.report.ReportEvents.Resolved event) {
+        String title = auctions.lotTitleOf(event.auctionId());
+        boolean removed = "REMOVED".equals(event.outcome());
+        notifications.notify(event.reporterId(), NotificationType.REPORT_RESOLVED,
+                removed ? "Report upheld" : "Report reviewed",
+                clip(title + (removed ? ": thanks to your report, NexBid took this lot down."
+                        : ": NexBid reviewed your report and the lot stays up.")
+                        + (event.note() == null || removed ? "" : " Note: " + event.note())),
+                event.auctionId(), event.at());
+    }
+
     /**
      * EN: The buyer hears their order is on its way — by email only; the order page already shows the new status.
      * VI: Người mua được báo đơn hàng đang trên đường tới — chỉ qua email; trang đơn hàng vốn đã hiện trạng thái mới.

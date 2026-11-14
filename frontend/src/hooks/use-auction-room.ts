@@ -72,6 +72,10 @@ function reducer(state: AuctionRoomState, action: RoomAction): AuctionRoomState 
         case "AUCTION_STARTED":
           return state.status === "SCHEDULED" ? { ...state, status: "ACTIVE" } : state;
 
+        case "AUCTION_REMOVED":
+          // EN: Taken down by an admin: bidding stops here and now. / VI: Bị admin gỡ: việc trả giá dừng ngay tại đây.
+          return { ...state, ended: true, status: "REMOVED" };
+
         case "VIEWERS_CHANGED":
           return { ...state, viewerCount: event.viewerCount };
 

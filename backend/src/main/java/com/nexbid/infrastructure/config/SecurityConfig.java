@@ -86,6 +86,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auctions/*/bids").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/auctions/*/buy-now").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/auctions/*/questions").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/auctions/*/reports").authenticated()
                         .requestMatchers("/api/auctions/*/watch").authenticated()
                         .requestMatchers("/api/auctions/*/auto-bid").authenticated()
                         // EN: A seller's reviews are shown on public lot pages. / VI: Đánh giá người bán hiện trên trang lô công khai.

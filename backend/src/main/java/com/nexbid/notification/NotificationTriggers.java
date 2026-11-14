@@ -173,6 +173,28 @@ class NotificationTriggers {
      * EN: The payer hears the window closed (spec §18), and the sale is cancelled for both sides of it.
      * VI: Người trả được báo đã quá hạn (spec §18), và giao dịch bị huỷ được báo cho cả hai bên.
      */
+    /**
+     * EN: A lot was taken down: the seller hears why (and by email); its bidders and watchers hear it is gone.
+     * VI: Một lô bị gỡ: người bán được báo lý do (kèm email); người trả giá và người theo dõi được báo lô không còn nữa.
+     */
+    @org.springframework.context.event.EventListener
+    void onRemoved(com.nexbid.auction.AuctionRemovedEvent event) {
+        UUID auctionId = event.auctionId();
+        String title = auctions.lotTitleOf(auctionId);
+        String reason = event.reason().length() > 300 ? event.reason().substring(0, 299) + "…" : event.reason();
+        notifications.notify(event.sellerId(), NotificationType.LOT_REMOVED, "Lot taken down",
+                title + ": NexBid took this lot down. Reason: " + reason, auctionId, event.at());
+        mailer.send(event.sellerId(), MailKind.LOT_REMOVED, MailFacts.lot(auctionId, title, null).withReason(event.reason()));
+
+        Set<UUID> told = new LinkedHashSet<>(bids.biddersOf(auctionId));
+        told.addAll(watchlist.watchersOf(auctionId));
+        told.remove(event.sellerId());
+        for (UUID person : told) {
+            notifications.notify(person, NotificationType.AUCTION_CANCELLED, "Lot withdrawn",
+                    title + ": NexBid took this lot down, so it will not be sold.", auctionId, event.at());
+        }
+    }
+
     @Transactional
     void onPaymentExpired(PaymentEvents.Expired event) {
         UUID auctionId = event.auctionId();

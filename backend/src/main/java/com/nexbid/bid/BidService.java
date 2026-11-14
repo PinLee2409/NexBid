@@ -36,13 +36,17 @@ public class BidService {
     private final UserService users;
     private final BidRecorder recorder;
     private final ProxyBidding proxies;
+    private final BidderRestriction restriction;
 
     BidService(
             BidRepository bids,
             AuctionService auctions,
             UserService users,
             BidRecorder recorder,
-            ProxyBidding proxies) {
+            ProxyBidding proxies,
+            BidderRestriction restriction) {
+
+        this.restriction = restriction;
 
         this.bids = bids;
         this.auctions = auctions;
@@ -78,6 +82,7 @@ public class BidService {
      */
     @Transactional
     public PlacedBidView place(UUID auctionId, UUID bidderId, BigDecimal amount) {
+        restriction.check(bidderId, amount);
         LeadTracker leads = new LeadTracker();
         PlacedBidView mine = recorder.record(auctionId, bidderId, amount, leads);
 
@@ -103,6 +108,9 @@ public class BidService {
     @Transactional
     public PlacedBidView buyNow(UUID auctionId, UUID buyerId) {
         AuctionService.AcceptedBid accepted = auctions.buyNow(auctionId, buyerId);
+        // EN: The price is known only once the lot is locked; refusing here rolls the purchase back.
+        // VI: Chỉ biết giá khi đã khoá lô; từ chối ở đây sẽ huỷ luôn lần mua.
+        restriction.check(buyerId, accepted.currentPrice());
         PlacedBidView placed = recorder.recordAccepted(accepted, buyerId);
         auctions.closeBoughtNow(auctionId, buyerId, accepted.acceptedAt());
         return new PlacedBidView(placed.bid(), placed.currentPrice(), placed.bidCount(), placed.minimumNextBid(),

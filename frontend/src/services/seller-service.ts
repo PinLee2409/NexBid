@@ -295,3 +295,11 @@ export async function decideReserve(auctionId: string, accept: boolean): Promise
     await api<ApiAuction>(`/api/seller/auctions/${auctionId}/reserve-decision`, { method: "POST", body: { accept } }),
   );
 }
+
+/** `POST /api/seller/orders/{id}/buyer-review` — rates the buyer of a completed order, once. Only sellers see it. */
+export async function rateBuyer(orderId: string, rating: number, comment: string): Promise<void> {
+  await api(`/api/seller/orders/${orderId}/buyer-review`, {
+    method: "POST",
+    body: { rating, comment: comment.trim() || null },
+  });
+}

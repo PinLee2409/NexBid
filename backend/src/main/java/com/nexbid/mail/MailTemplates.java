@@ -379,6 +379,18 @@ final class MailTemplates {
                                     + " stars</b>. Reviews show on all your lots and help future buyers trust you.",
                             "See the review"));
             case LOT_DIGEST -> digestBody(List.of(), 0);
+            case LOT_REMOVED -> build(kind, facts, "Lô đã bị gỡ: " + lot, "Lot taken down: " + lot,
+                    siteUrl + "/seller/auctions",
+                    new Half("NexBid đã gỡ lô của bạn",
+                            "Lô <b>" + lot + "</b> đã bị gỡ khỏi sàn, các lượt trả giá đã dừng và không có giao dịch nào."
+                                    + (reason.isEmpty() ? "" : "<br>Lý do: <i>" + reason + "</i>")
+                                    + "<br>Sản phẩm vẫn là của bạn; sửa lại rồi đăng lô mới để được duyệt lại.",
+                            "Xem lô của bạn"),
+                    new Half("NexBid took your lot down",
+                            "<b>" + lot + "</b> was removed from the marketplace; bidding stopped and nothing was sold."
+                                    + (reason.isEmpty() ? "" : "<br>Reason: <i>" + reason + "</i>")
+                                    + "<br>The product is still yours; fix it and list a new lot for approval.",
+                            "View your lots"));
             case STRAY_CHARGE -> build(kind, facts, "Khoản thanh toán thừa sẽ được hoàn: " + lot,
                     "Extra charge to be refunded: " + lot, siteUrl + "/profile#bank-account",
                     new Half("VNPay đã thu một khoản NexBid không dùng được",
@@ -503,6 +515,7 @@ final class MailTemplates {
             case LOT_QUESTION -> new Tag("Câu hỏi · Question", false);
             case QUESTION_ANSWERED -> new Tag("Đã trả lời · Answered", false);
             case LOT_DIGEST -> new Tag("Lô mới · New lots", false);
+            case LOT_REMOVED -> new Tag("Lô bị gỡ · Lot removed", true);
             case STRAY_CHARGE -> new Tag("Thu thừa · Extra charge", true);
             case STRAY_REFUNDED -> new Tag("Hoàn tiền · Refund", false);
             case SALE_REFUNDED -> new Tag("Đã hoàn tiền · Refunded", true);

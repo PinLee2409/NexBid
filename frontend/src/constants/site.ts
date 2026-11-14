@@ -3,6 +3,8 @@ import {
   Banknote,
   Bell,
   BellRing,
+  Flag,
+  Mail,
   Gavel,
   Heart,
   LayoutDashboard,
@@ -67,7 +69,9 @@ export const ADMIN_NAV: AccountNavItem[] = [
   { labelKey: "sellerRequests", href: "/admin/sellers", icon: Store },
   { labelKey: "orders", href: "/admin/orders", icon: Receipt },
   { labelKey: "disputes", href: "/admin/disputes", icon: ShieldAlert },
+  { labelKey: "reports", href: "/admin/reports", icon: Flag },
   { labelKey: "payouts", href: "/admin/payouts", icon: Banknote },
+  { labelKey: "emails", href: "/admin/emails", icon: Mail },
   { labelKey: "auditLogs", href: "/admin/audit-logs", icon: ListChecks },
 ];
 

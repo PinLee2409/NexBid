@@ -170,6 +170,11 @@ function hrefFor(notification: ApiNotification): string | undefined {
       return "/payments";
     case "SALE_REFUNDED":
       return "/seller/orders";
+    case "LOT_REMOVED":
+      return "/seller/auctions";
+    case "REPORT_RESOLVED":
+      // EN: A lot taken down has no public page any more. / VI: Lô bị gỡ không còn trang công khai.
+      return undefined;
     case "PAYOUT_SENT":
       return "/seller/earnings";
     case "AUCTION_CANCELLED":

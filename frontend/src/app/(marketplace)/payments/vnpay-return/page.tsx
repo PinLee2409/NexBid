@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { ApiErrorState } from "@/components/common/api-error-state";
 import { EmptyState } from "@/components/common/empty-state";
+import { Container } from "@/components/layout/container";
 import { useMoney } from "@/hooks/use-money";
 import { confirmVnpayReturn } from "@/services/payment-service";
 import type { Payment } from "@/types";
@@ -23,8 +24,23 @@ type Result =
  *     settles the attempt — the IPN may already have done so, which is fine — and this page says how it went.
  * VI: Nơi VNPay đưa người mua quay lại. Thanh địa chỉ mang phản hồi có chữ ký của VNPay; server kiểm và chốt lần
  *     thử — IPN có thể đã làm trước, không sao — và trang này cho biết kết quả.
+ *
+ * EN: It needs no sign-in: the signature is the proof, and a buyer whose session ran out while paying must still see
+ *     that the money went through.
+ * VI: Trang không cần đăng nhập: chữ ký là bằng chứng, và người mua hết phiên trong lúc trả tiền vẫn phải thấy được tiền
+ *     đã qua.
  */
 export default function VnpayReturnPage() {
+  return (
+    <Container className="py-12 lg:py-20">
+      <div className="mx-auto max-w-xl">
+        <VnpayResult />
+      </div>
+    </Container>
+  );
+}
+
+function VnpayResult() {
   const t = useTranslations("account");
   const money = useMoney();
   const [result, setResult] = useState<Result>({ status: "checking" });

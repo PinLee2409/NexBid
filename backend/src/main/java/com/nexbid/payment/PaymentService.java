@@ -38,13 +38,17 @@ public class PaymentService {
     private final ApplicationEventPublisher events;
     private final Duration window;
     private final JdbcTemplate jdbc;
+    private final com.nexbid.common.BankReferences references;
 
     PaymentService(
             PaymentRepository payments,
             AuctionService auctions,
             ApplicationEventPublisher events,
             @Value("${nexbid.payment.window}") Duration window,
-            JdbcTemplate jdbc) {
+            JdbcTemplate jdbc,
+            com.nexbid.common.BankReferences references) {
+
+        this.references = references;
 
         this.payments = payments;
         this.auctions = auctions;
@@ -121,6 +125,7 @@ public class PaymentService {
         if (payment.getStatus() != PaymentStatus.SUCCESS) {
             throw new IllegalStateException("Only a paid payment can be refunded, not " + payment.getStatus());
         }
+        references.claim(reference, "REFUND");
 
         jdbc.update("""
                 INSERT INTO payment_refunds (id, payment_id, amount, reference, bank_name, account_number,

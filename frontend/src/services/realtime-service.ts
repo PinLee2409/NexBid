@@ -88,6 +88,8 @@ function toEvent(message: ApiAuctionMessage): AuctionEvent | null {
         endTime: message.endTime,
         serverTime: message.serverTime,
       };
+    case "AUCTION_REMOVED":
+      return { type: "AUCTION_REMOVED", auctionId: message.auctionId, serverTime: message.serverTime };
     case "VIEWER_COUNT":
       return { type: "VIEWERS_CHANGED", auctionId: message.auctionId, viewerCount: message.viewerCount, serverTime: new Date().toISOString() };
     default:

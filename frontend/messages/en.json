@@ -101,7 +101,9 @@
     "earnings": "Earnings",
     "disputes": "Disputes",
     "payouts": "Payouts",
-    "alerts": "Alerts"
+    "alerts": "Alerts",
+    "reports": "Reports",
+    "emails": "Emails"
   },
   "footer": {
     "marketplace": "Marketplace",
@@ -248,7 +250,26 @@
     "followingSeller": "Following",
     "followSignIn": "Sign in to follow",
     "followed": "You'll hear when this seller lists something new.",
-    "unfollowed": "You no longer follow this seller."
+    "unfollowed": "You no longer follow this seller.",
+    "reportLot": "Report this lot",
+    "reportSignIn": "Sign in to report this lot",
+    "reportTitle": "Report this lot",
+    "reportBody": "Tell NexBid what is wrong. Reports are private: the seller does not see who sent them.",
+    "reportReasonLabel": "Problem",
+    "reportReasonPlaceholder": "Choose a problem",
+    "reportReason": {
+      "COUNTERFEIT": "Counterfeit or fake",
+      "NOT_AS_DESCRIBED": "Photos or description are misleading",
+      "PROHIBITED": "Item not allowed to be sold",
+      "OTHER": "Something else"
+    },
+    "reportDetailsLabel": "What you noticed",
+    "reportDetailsHint": "At least 10 characters. Links or details help us check faster.",
+    "reportReasonRequired": "Choose the problem.",
+    "reportDetailsShort": "Tell us a little more (at least 10 characters).",
+    "reportSend": "Send report",
+    "reportSent": "Report sent",
+    "reportSentBody": "NexBid will review it. You will be notified of the outcome."
   },
   "bidErrors": {
     "NOT_AUTHENTICATED": "Sign in to place a bid.",
@@ -686,7 +707,20 @@
     "bankSave": "Save account",
     "bankSaved": "Payout account saved",
     "bankEdit": "Change account",
-    "payoutHistory": "Payout history"
+    "payoutHistory": "Payout history",
+    "buyerRecord": "Buyer:",
+    "buyerCompleted": "{count, plural, =0 {no completed orders} one {# completed order} other {# completed orders}}",
+    "buyerUnpaid": "{count, plural, =0 {never left a win unpaid} one {# win left unpaid} other {# wins left unpaid}}",
+    "buyerRating": "{rating}★ from {count, plural, one {# seller rating} other {# seller ratings}}",
+    "yourBuyerRating": "Your rating of the buyer",
+    "rateBuyer": "Rate buyer",
+    "rateBuyerTitle": "Rate the buyer",
+    "rateBuyerBody": "How was selling {name} to this buyer? Only sellers see this, next to the buyer’s future orders.",
+    "rateBuyerStars": "Rating",
+    "rateBuyerStarsRequired": "Choose 1 to 5 stars.",
+    "rateBuyerComment": "Comment (optional)",
+    "rateBuyerSend": "Save rating",
+    "rateBuyerSaved": "Rating saved"
   },
   "admin": {
     "console": "Admin console",
@@ -856,7 +890,40 @@
     "strayDuplicate": "paid twice",
     "strayRefundTitle": "Send the charge back",
     "strayRefundBody": "Transfer this amount for {name} to the buyer's refund account, then enter the bank's reference.",
-    "strayRefunded": "Charge refunded. The buyer has been told."
+    "strayRefunded": "Charge refunded. The buyer has been told.",
+    "reportsTitle": "Reports",
+    "reportsSubtitle": "Lots people flagged as counterfeit, misleading or not allowed. Dismiss a report, or take the lot down: bidding stops, the seller is told why, and every open report on it closes.",
+    "reportStatus": {
+      "OPEN": "Open",
+      "REMOVED": "Taken down",
+      "DISMISSED": "Dismissed"
+    },
+    "reportsEmptyTitle": "Nothing here",
+    "reportsEmptyBody": "No reports in this list.",
+    "reportNote": "Decision:",
+    "reportDismiss": "Dismiss",
+    "reportTakeDown": "Take lot down",
+    "reportTakenDown": "Lot taken down. The seller and bidders have been told.",
+    "reportDismissed": "Report dismissed",
+    "reportTakeDownTitle": "Take the lot down",
+    "reportTakeDownBody": "{name} will be removed and bidding stops. No sale is made. The reason below is shown to the seller.",
+    "reportDismissTitle": "Dismiss the report",
+    "reportDismissBody": "The lot stays up. The person who reported it is told it was reviewed.",
+    "reportTakeDownReason": "Reason for the seller",
+    "reportDismissNote": "Note for the reporter (optional)",
+    "emailsTitle": "Emails",
+    "emailsSubtitle": "Every email NexBid queued. One Brevo keeps refusing becomes Failed after 6 tries; fix the cause, then send it again.",
+    "emailStatus": {
+      "FAILED": "Failed",
+      "PENDING": "Waiting",
+      "SENT": "Sent",
+      "SKIPPED": "Not sent"
+    },
+    "emailsEmptyTitle": "Nothing here",
+    "emailsEmptyBody": "No emails in this list.",
+    "emailsAttempts": "{count, plural, one {# try} other {# tries}}",
+    "emailsRetry": "Send again",
+    "emailsRetried": "Queued again. It goes out within a few seconds."
   },
   "howItWorks": {
     "title": "How NexBid works",
@@ -915,7 +982,8 @@
       "ENDED": "Ended",
       "COMPLETED": "Completed",
       "REJECTED": "Rejected",
-      "CANCELLED": "Cancelled"
+      "CANCELLED": "Cancelled",
+      "REMOVED": "Taken down"
     },
     "condition": {
       "NEW": "New",
@@ -974,7 +1042,9 @@
       "QUESTION_ANSWERED": "Question answered",
       "LOT_ALERT": "New lot for you",
       "STRAY_CHARGE": "Extra charge",
-      "SALE_REFUNDED": "Sale refunded"
+      "SALE_REFUNDED": "Sale refunded",
+      "LOT_REMOVED": "Lot taken down",
+      "REPORT_RESOLVED": "Report reviewed"
     },
     "auditAction": {
       "USER_LOGIN": "User signed in",
@@ -1006,7 +1076,8 @@
       "DISPUTE_REJECTED": "Dispute rejected",
       "PAYOUT_RECORDED": "Payout recorded",
       "BANK_ACCOUNT_CHANGED": "Payout bank account changed",
-      "STRAY_CHARGE_REFUNDED": "Extra VNPay charge sent back"
+      "STRAY_CHARGE_REFUNDED": "Extra VNPay charge sent back",
+      "AUCTION_REMOVED": "Lot taken down"
     },
     "role": {
       "BUYER": "Buyer",
@@ -1265,6 +1336,17 @@
     "FOLLOW_NOT_ALLOWED": "You cannot follow yourself.",
     "STRAY_CHARGE_NOT_FOUND": "That charge no longer exists.",
     "STRAY_CHARGE_REFUNDED": "This charge has already been sent back.",
-    "PAYOUT_AMOUNT_CHANGED": "The seller's balance changed since you opened this. Reload the page and check the amount before recording the transfer."
+    "PAYOUT_AMOUNT_CHANGED": "The seller's balance changed since you opened this. Reload the page and check the amount before recording the transfer.",
+    "EMAIL_NOT_FOUND": "That email no longer exists.",
+    "EMAIL_NOT_RETRYABLE": "Only a failed email can be sent again.",
+    "REFERENCE_USED": "This bank reference was already recorded for another transfer. Check you are not recording the same transfer twice.",
+    "AUCTION_NOT_REMOVABLE": "Only a scheduled or live lot can be taken down.",
+    "REPORT_NOT_FOUND": "That report no longer exists.",
+    "REPORT_CLOSED": "This report has already been decided.",
+    "REPORT_NOT_ALLOWED": "This lot cannot be reported: it is yours, or it has already closed.",
+    "REPORT_DUPLICATE": "You have already reported this lot. NexBid will look into it.",
+    "REPORT_LIMIT": "You have 10 reports waiting for review. Wait until some are decided.",
+    "BUYER_REVIEW_NOT_ALLOWED": "You can rate the buyer once the order is completed.",
+    "BIDDER_RESTRICTED": "You left 2 or more won lots unpaid, so you cannot bid 20,000,000 ₫ or more for now."
   }
 }

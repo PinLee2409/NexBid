@@ -54,5 +54,7 @@ public enum MailKind {
     // EN: To the buyer: that money was sent back. / VI: Gửi người mua: khoản tiền đó đã được chuyển trả.
     STRAY_REFUNDED,
     // EN: To the seller: NexBid refunded the buyer outside a dispute and cancelled the sale. / VI: Gửi người bán: NexBid đã hoàn tiền cho người mua ngoài khiếu nại và huỷ giao dịch.
-    SALE_REFUNDED
+    SALE_REFUNDED,
+    // EN: To the seller: an admin took the lot down, with the reason. / VI: Gửi người bán: admin đã gỡ lô, kèm lý do.
+    LOT_REMOVED
 }

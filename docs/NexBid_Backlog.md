@@ -311,3 +311,26 @@ Phần khoá dòng, chống trùng và chạy nhiều máy đã chắc; sửa 6 
 - **Kiểm chứng:** test backend mới cho từng lỗi (IPN thu trùng và trễ hạn, hoàn tiền trực tiếp, chi trả sai số tiền, khoá
   tài khoản có auto-bid, Brevo treo, tên miền test); frontend 148 unit test; backend 459 test (độ phủ 95.7% dòng, 81.7% nhánh), E2E 47/47 (test mới: admin trả lại khoản
   VNPay thu hai lần).
+
+## Đã làm (14/11/2026) — đợt 18: báo cáo lô, đánh giá người mua, và các việc nhỏ
+
+- **Báo cáo lô vi phạm:** người đã đăng nhập (trừ người bán) báo cáo lô đang chờ mở hoặc đang mở: hàng giả, sai mô tả,
+  hàng cấm, khác (10–1000 ký tự). Mỗi người một báo cáo đang mở trên một lô, tối đa 10 báo cáo đang chờ. Trang admin
+  **Báo cáo**: bỏ qua (kèm ghi chú) hoặc **gỡ lô** (kèm lý do). Gỡ lô: trạng thái mới `REMOVED`, việc trả giá dừng ngay
+  (trang lô đang mở nhận `AUCTION_REMOVED` qua WebSocket), sản phẩm trở về người bán, mọi báo cáo đang mở của lô đóng lại;
+  người bán nhận thông báo `LOT_REMOVED` và email kèm lý do, người trả giá và người theo dõi được báo, người báo cáo nhận
+  `REPORT_RESOLVED`. Module `report`, migration V34.
+- **Khoá người bán thì gỡ các lô đang mở của họ** (cùng cơ chế gỡ lô).
+- **Người bán đánh giá người mua** (1–5 sao, một lần mỗi đơn hoàn tất, chỉ người bán thấy). Cạnh mỗi đơn bán có **hồ sơ
+  người mua**: số đơn hoàn tất, số lần thắng bỏ không trả, điểm trung bình.
+- **Giới hạn người hay bỏ không trả:** ai đã thắng mà không trả tiền từ 2 lần trở lên (cột `users.unpaid_wins`, đếm khi
+  khoản thanh toán hết hạn, có tính các lần cũ) thì không được trả giá, mua ngay hay đặt auto-bid từ 20.000.000 ₫ trở lên
+  (`BIDDER_RESTRICTED`; chỉnh bằng `NEXBID_RESTRICT_UNPAID_WINS` và `NEXBID_RESTRICT_FROM_AMOUNT`).
+- **Trang admin Email:** xem hàng chờ theo trạng thái, **gửi lại** email thất bại.
+- **Mã giao dịch ngân hàng chỉ dùng một lần** cho hoàn tiền, trả lại khoản thu thừa và chi trả (bảng `bank_references`,
+  V33; so sánh không phân biệt hoa thường và khoảng trắng; `REFERENCE_USED`).
+- **Trang `/payments/vnpay-return` không cần đăng nhập nữa:** người mua hết phiên trong lúc trả tiền vẫn thấy kết quả.
+- **`backend/.env.example`:** mẫu các biến môi trường cần đặt.
+- **Kiểm chứng:** backend 465 test (độ phủ 95.8% dòng, 81.2% nhánh); test mới (báo cáo và gỡ lô, khoá người bán, đánh giá người mua, giới hạn trả giá, email admin, mã
+  giao dịch trùng); frontend 149 unit test; E2E 50/50 (test mới: báo cáo rồi gỡ lô, đánh giá người mua, trang VNPay không
+  cần đăng nhập và trang Email của admin).
