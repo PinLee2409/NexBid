@@ -32,6 +32,7 @@ public record AuctionLifecycleEvent(
     public static final String STARTED = "AUCTION_STARTED";
     public static final String ENDED = "AUCTION_ENDED";
     public static final String EXTENDED = "AUCTION_EXTENDED";
+    public static final String REMOVED = "AUCTION_REMOVED";
 
     static AuctionLifecycleEvent started(Auction auction) {
         return of(STARTED, auction);
@@ -39,6 +40,10 @@ public record AuctionLifecycleEvent(
 
     static AuctionLifecycleEvent ended(Auction auction) {
         return of(ENDED, auction);
+    }
+
+    static AuctionLifecycleEvent removed(Auction auction) {
+        return of(REMOVED, auction);
     }
 
     static AuctionLifecycleEvent extended(Auction auction) {

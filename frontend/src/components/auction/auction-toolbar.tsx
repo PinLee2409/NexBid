@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
 import { SearchBar } from "@/components/common/search-bar";
+import { SaveSearchButton } from "@/components/nexbid/save-search-button";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -175,6 +176,8 @@ export function AuctionToolbar({
             {tc("clearAll")}
           </Button>
         ) : null}
+
+        <SaveSearchButton query={query} />
       </div>
     </div>
   );

@@ -10,10 +10,11 @@ import { EmptyState } from "@/components/common/empty-state";
 import { FormField } from "@/components/common/form-field";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { OrderRow } from "@/components/common/order-row";
-import { StarRating } from "@/components/common/star-rating";
+import { StarInput, StarRating } from "@/components/common/star-rating";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,7 @@ import {
   listSecondChances,
   listSoldOrders,
   offerToRunnerUp,
+  rateBuyer,
   shipOrder,
   type SecondChance,
 } from "@/services/seller-service";
@@ -109,11 +111,17 @@ function SalesList({
           <OrderRow
             key={entry.order.id}
             entry={entry}
+            extra={<BuyerRecordLine entry={entry} />}
             action={
               entry.order.status === "PAID" ? (
                 <ShipButton entry={entry} onShipped={onChanged} />
               ) : chance ? (
                 <SecondChanceAction entry={entry} chance={chance} onOffered={onChanged} />
+              ) : entry.order.status === "COMPLETED" ? (
+                <div className="flex shrink-0 flex-col items-start gap-3">
+                  {entry.review ? <BuyerReview rating={entry.review.rating} comment={entry.review.comment} /> : null}
+                  <RateBuyer entry={entry} onRated={onChanged} />
+                </div>
               ) : entry.review ? (
                 <BuyerReview rating={entry.review.rating} comment={entry.review.comment} />
               ) : null
@@ -317,6 +325,129 @@ function ShipButton({ entry, onShipped }: { entry: OrderEntry; onShipped: () => 
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+/**
+ * EN: The buyer's record across NexBid, so the seller knows who they are dealing with: purchases completed, wins left
+ *     unpaid, and what sellers rated them.
+ * VI: Hồ sơ của người mua trên NexBid, để người bán biết mình đang giao dịch với ai: số đơn đã hoàn tất, số lần thắng bỏ
+ *     không trả, và điểm người bán đã cho.
+ */
+function BuyerRecordLine({ entry }: { entry: OrderEntry }) {
+  const t = useTranslations("seller");
+  const format = useFormatter();
+  const record = entry.buyer?.record;
+  if (!record) return null;
+  return (
+    <p className="text-muted-foreground mt-2 text-xs">
+      <span className="label-sm text-dim">{t("buyerRecord")}</span>{" "}
+      {t("buyerCompleted", { count: record.completed })}
+      {" · "}
+      <span className={record.unpaidWins > 0 ? "text-danger-text" : undefined}>
+        {t("buyerUnpaid", { count: record.unpaidWins })}
+      </span>
+      {record.averageRating !== null ? (
+        <>
+          {" · "}
+          {t("buyerRating", {
+            rating: format.number(record.averageRating, { minimumFractionDigits: 1 }),
+            count: record.ratings,
+          })}
+        </>
+      ) : null}
+    </p>
+  );
+}
+
+/** EN: The seller's own 1–5 rating of the buyer, once per completed order. / VI: Người bán chấm người mua 1–5, một lần mỗi đơn hoàn tất. */
+function RateBuyer({ entry, onRated }: { entry: OrderEntry; onRated: () => void }) {
+  const t = useTranslations("seller");
+  const tc = useTranslations("common");
+  const errorMessage = useApiErrorMessage();
+  const [open, setOpen] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const mine = entry.buyer?.review;
+  if (mine) {
+    return (
+      <div className="max-w-[16rem]">
+        <p className="label-sm text-dim mb-1">{t("yourBuyerRating")}</p>
+        <StarRating rating={mine.rating} />
+        {mine.comment ? <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">{mine.comment}</p> : null}
+      </div>
+    );
+  }
+
+  function send() {
+    if (rating === 0) {
+      setError(t("rateBuyerStarsRequired"));
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await rateBuyer(entry.order.id, rating, comment);
+      } catch (failure) {
+        setError(errorMessage(failure));
+        return;
+      }
+      setOpen(false);
+      toast.success(t("rateBuyerSaved"));
+      onRated();
+    });
+  }
+
+  const labelId = `rate-buyer-${entry.order.id}`;
+  return (
+    <>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+        {t("rateBuyer")}
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("rateBuyerTitle")}</DialogTitle>
+            <DialogDescription>{t("rateBuyerBody", { name: entry.auction?.product.name ?? "—" })}</DialogDescription>
+          </DialogHeader>
+          <p id={labelId} className="label-sm text-dim">
+            {t("rateBuyerStars")}
+          </p>
+          <StarInput
+            name={labelId}
+            value={rating}
+            labelledBy={labelId}
+            onChange={(value) => {
+              setRating(value);
+              setError(null);
+            }}
+          />
+          <FormField label={t("rateBuyerComment")} error={error ?? undefined}>
+            {(field) => (
+              <Textarea
+                {...field}
+                value={comment}
+                maxLength={500}
+                rows={3}
+                disabled={isPending}
+                onChange={(event) => setComment(event.target.value)}
+              />
+            )}
+          </FormField>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
+              {tc("cancel")}
+            </Button>
+            <Button onClick={send} disabled={isPending}>
+              {isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+              {t("rateBuyerSend")}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

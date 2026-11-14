@@ -65,6 +65,32 @@ export const ERROR_CODES = [
   "ADDRESS_REQUIRED",
   "ORDER_NOT_FOUND",
   "ORDER_STATUS_INVALID",
+  "REFUND_ACCOUNT_REQUIRED",
+  "STRAY_CHARGE_NOT_FOUND",
+  "STRAY_CHARGE_REFUNDED",
+  "PAYOUT_AMOUNT_CHANGED",
+  "EMAIL_NOT_FOUND",
+  "EMAIL_NOT_RETRYABLE",
+  "REFERENCE_USED",
+  "AUCTION_NOT_REMOVABLE",
+  "REPORT_NOT_FOUND",
+  "REPORT_CLOSED",
+  "REPORT_NOT_ALLOWED",
+  "REPORT_DUPLICATE",
+  "REPORT_LIMIT",
+  "BUYER_REVIEW_NOT_ALLOWED",
+  "BIDDER_RESTRICTED",
+  "QUESTION_NOT_FOUND",
+  "QUESTION_NOT_ALLOWED",
+  "QUESTION_LIMIT",
+  "QUESTION_ANSWERED",
+  "SAVED_SEARCH_NOT_FOUND",
+  "SAVED_SEARCH_LIMIT",
+  "FOLLOW_NOT_ALLOWED",
+  "DISPUTE_NOT_FOUND",
+  "DISPUTE_CLOSED",
+  "BANK_ACCOUNT_REQUIRED",
+  "NOTHING_TO_PAY_OUT",
   "SECOND_CHANCE_UNAVAILABLE",
   "NO_RUNNER_UP",
   "OFFER_ALREADY_MADE",
@@ -237,7 +263,8 @@ export type AuctionStatus =
   | "ENDED"
   | "COMPLETED"
   | "REJECTED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "REMOVED";
 
 interface AntiSnipingConfig {
   enabled: boolean;
@@ -426,6 +453,11 @@ export type AuctionEvent =
       serverTime: IsoDateString;
     }
   | {
+      type: "AUCTION_REMOVED";
+      auctionId: Id;
+      serverTime: IsoDateString;
+    }
+  | {
       type: "VIEWERS_CHANGED";
       auctionId: Id;
       viewerCount: number;
@@ -469,7 +501,20 @@ export type NotificationType =
   | "SECOND_CHANCE_ACCEPTED"
   | "SECOND_CHANCE_DECLINED"
   | "NEW_REVIEW"
-  | "RESERVE_NOT_MET";
+  | "RESERVE_NOT_MET"
+  | "DISPUTE_OPENED"
+  | "DISPUTE_RESOLVED"
+  | "DISPUTE_SELLER_RESOLVED"
+  | "PAYOUT_SENT"
+  | "ORDER_COMPLETING"
+  | "ORDER_REFUNDED"
+  | "NEW_QUESTION"
+  | "QUESTION_ANSWERED"
+  | "LOT_ALERT"
+  | "STRAY_CHARGE"
+  | "SALE_REFUNDED"
+  | "LOT_REMOVED"
+  | "REPORT_RESOLVED";
 
 export interface AppNotification {
   id: Id;
@@ -508,7 +553,22 @@ export type OrderStatus =
   | "PAID"
   | "PROCESSING"
   | "COMPLETED"
+  | "DISPUTED"
   | "CANCELLED";
+
+export type DisputeReason = "NOT_RECEIVED" | "NOT_AS_DESCRIBED" | "DAMAGED" | "OTHER";
+export type DisputeStatus = "OPEN" | "REFUNDED" | "REJECTED";
+
+/** EN: The newest complaint about an order. / VI: Khiếu nại mới nhất về một đơn. */
+export interface OrderDispute {
+  id: Id;
+  reason: DisputeReason;
+  details: string;
+  status: DisputeStatus;
+  resolutionNote: string | null;
+  createdAt: IsoDateString;
+  resolvedAt: IsoDateString | null;
+}
 
 export interface Order {
   id: Id;
@@ -525,6 +585,10 @@ export interface Order {
   carrier: string | null;
   trackingNumber: string | null;
   shippedAt: IsoDateString | null;
+  completedAt: IsoDateString | null;
+  /** EN: Completed because the buyer stayed silent past the wait. / VI: Hoàn tất vì người mua im lặng quá thời gian chờ. */
+  autoCompleted: boolean;
+  dispute: OrderDispute | null;
 }
 
 interface OrderShipping {
@@ -571,7 +635,14 @@ export type AuditAction =
   | "RESERVE_ACCEPTED"
   | "RESERVE_REFUSED"
   | "RESERVE_LAPSED"
-  | "BOUGHT_NOW";
+  | "BOUGHT_NOW"
+  | "DISPUTE_OPENED"
+  | "DISPUTE_REFUNDED"
+  | "DISPUTE_REJECTED"
+  | "PAYOUT_RECORDED"
+  | "BANK_ACCOUNT_CHANGED"
+  | "STRAY_CHARGE_REFUNDED"
+  | "AUCTION_REMOVED";
 
 export interface AuditLog {
   id: Id;

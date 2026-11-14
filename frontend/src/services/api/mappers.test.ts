@@ -171,6 +171,18 @@ describe("where a notification leads", () => {
     ["SECOND_CHANCE_ACCEPTED", "/seller/orders"],
     ["SECOND_CHANCE_DECLINED", "/seller/orders"],
     ["NEW_REVIEW", "/seller/orders"],
+    ["DISPUTE_OPENED", "/seller/orders"],
+    ["DISPUTE_SELLER_RESOLVED", "/seller/orders"],
+    ["DISPUTE_RESOLVED", "/orders"],
+    ["ORDER_COMPLETING", "/orders"],
+    ["PAYOUT_SENT", "/seller/earnings"],
+    ["ORDER_REFUNDED", "/payments"],
+    ["NEW_QUESTION", "/auctions/a1#questions"],
+    ["QUESTION_ANSWERED", "/auctions/a1#questions"],
+    ["LOT_ALERT", "/auctions/a1"],
+    ["STRAY_CHARGE", "/payments"],
+    ["SALE_REFUNDED", "/seller/orders"],
+    ["LOT_REMOVED", "/seller/auctions"],
   ] as const)("%s opens %s", (type, href) => {
     expect(toNotification(notice(type), "u1").href).toBe(href);
   });

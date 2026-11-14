@@ -127,7 +127,7 @@ class MailerIntegrationTest {
         try {
             MailProperties properties = new MailProperties("test-key",
                     "http://127.0.0.1:" + brevo.getAddress().getPort() + "/v3/smtp/email",
-                    "no-reply@nexbid.test", "NexBid", "http://localhost:3000", 50, 3,
+                    "no-reply@nexbid.test", "NexBid", "http://localhost:3000", "", 50, 3,
                     Duration.ofMinutes(30), Duration.ofMinutes(15));
             MailSender sender = new MailSender(outbox, properties, tx);
             jdbc.update("UPDATE email_outbox SET status = 'SKIPPED' WHERE status = 'PENDING'");
@@ -160,5 +160,52 @@ class MailerIntegrationTest {
         } finally {
             brevo.stop(0);
         }
+    }
+
+    @Test
+    void aBrevoThatHangsIsGivenUpOnAndRetriedLater() throws IOException {
+        HttpServer brevo = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        brevo.createContext("/v3/smtp/email", exchange -> {
+            try {
+                Thread.sleep(3_000);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+            exchange.close();
+        });
+        brevo.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
+        brevo.start();
+        try {
+            MailProperties properties = new MailProperties("test-key",
+                    "http://127.0.0.1:" + brevo.getAddress().getPort() + "/v3/smtp/email",
+                    "no-reply@nexbid.test", "NexBid", "http://localhost:3000", "", 50, 3,
+                    Duration.ofMinutes(30), Duration.ofMinutes(15));
+            MailSender sender = new MailSender(outbox, properties, tx, Duration.ofMillis(300));
+            jdbc.update("UPDATE email_outbox SET status = 'SKIPPED' WHERE status = 'PENDING'");
+
+            UUID person = person("Slow Brevo");
+            MailTemplates.Rendered mail = new MailTemplates("http://localhost:3000")
+                    .render(MailKind.WELCOME, "Slow Brevo", MailFacts.none());
+            Instant now = Instant.now();
+            tx.executeWithoutResult(status -> outbox.insert(person, "slow@nexbid.com", "Slow Brevo", MailKind.WELCOME,
+                    null, mail, "PENDING", now));
+
+            long started = System.nanoTime();
+            assertThat(sendDue(sender, now)).isZero();
+            assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofSeconds(2));
+            assertThat(jdbc.queryForObject("SELECT status || ':' || attempts FROM email_outbox WHERE user_id = ?",
+                    String.class, person)).isEqualTo("PENDING:1");
+        } finally {
+            brevo.stop(0);
+        }
+    }
+
+    @Test
+    void reservedTestDomainsAreNeverMailed() {
+        assertThat(Mailer.reservedDomain("alex@e2e.nexbid.test")).isTrue();
+        assertThat(Mailer.reservedDomain(" Seller@NEXBID.TEST ")).isTrue();
+        assertThat(Mailer.reservedDomain("x@example.invalid")).isTrue();
+        assertThat(Mailer.reservedDomain("pin@gmail.com")).isFalse();
+        assertThat(Mailer.reservedDomain("someone@test.com")).isFalse();
     }
 }

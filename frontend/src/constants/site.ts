@@ -1,12 +1,17 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Banknote,
   Bell,
+  BellRing,
+  Flag,
+  Mail,
   Gavel,
   Heart,
   LayoutDashboard,
   ListChecks,
   Package,
   Receipt,
+  ShieldAlert,
   Store,
   Tags,
   Trophy,
@@ -40,6 +45,7 @@ export const BUYER_NAV: AccountNavItem[] = [
   { labelKey: "myBids", href: "/my-bids", icon: Gavel },
   { labelKey: "myWins", href: "/my-wins", icon: Trophy },
   { labelKey: "watchlist", href: "/watchlist", icon: Heart },
+  { labelKey: "alerts", href: "/alerts", icon: BellRing },
   { labelKey: "notifications", href: "/notifications", icon: Bell },
   { labelKey: "payments", href: "/payments", icon: Wallet },
   { labelKey: "orders", href: "/orders", icon: Receipt },
@@ -51,6 +57,7 @@ export const SELLER_NAV: AccountNavItem[] = [
   { labelKey: "products", href: "/seller/products", icon: Package },
   { labelKey: "auctions", href: "/seller/auctions", icon: Gavel },
   { labelKey: "orders", href: "/seller/orders", icon: Receipt },
+  { labelKey: "earnings", href: "/seller/earnings", icon: Wallet },
 ];
 
 /** Admin console (spec §36). */
@@ -61,6 +68,10 @@ export const ADMIN_NAV: AccountNavItem[] = [
   { labelKey: "users", href: "/admin/users", icon: UserRound },
   { labelKey: "sellerRequests", href: "/admin/sellers", icon: Store },
   { labelKey: "orders", href: "/admin/orders", icon: Receipt },
+  { labelKey: "disputes", href: "/admin/disputes", icon: ShieldAlert },
+  { labelKey: "reports", href: "/admin/reports", icon: Flag },
+  { labelKey: "payouts", href: "/admin/payouts", icon: Banknote },
+  { labelKey: "emails", href: "/admin/emails", icon: Mail },
   { labelKey: "auditLogs", href: "/admin/audit-logs", icon: ListChecks },
 ];
 

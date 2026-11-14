@@ -36,9 +36,23 @@ public final class PaymentEvents {
     }
 
     /**
-     * EN: An admin gave a payment back. Kept inside the server: the audit log is its only listener.
-     * VI: Admin đã hoàn lại một khoản thanh toán. Chỉ dùng trong server: audit log là listener duy nhất.
+     * EN: An admin transferred a payment back to the buyer. {@code account} is masked ("VCB ••••1234").
+     * VI: Admin đã chuyển trả một khoản thanh toán cho người mua. {@code account} đã che bớt ("VCB ••••1234").
      */
-    public record Refunded(UUID paymentId, UUID auctionId, UUID userId, BigDecimal amount, UUID actorId, Instant at) {
+    public record Refunded(UUID paymentId, UUID auctionId, UUID userId, BigDecimal amount, String reference,
+            String account, UUID actorId, Instant at) {
+    }
+
+    /**
+     * EN: VNPay took money no payment could use (LATE or DUPLICATE); it waits for an admin to transfer it back.
+     * VI: VNPay đã thu tiền mà không khoản thanh toán nào dùng được (LATE hoặc DUPLICATE); chờ admin chuyển trả lại.
+     */
+    public record StrayCharged(UUID strayId, UUID paymentId, UUID auctionId, UUID userId, BigDecimal amount,
+            String reason, Instant at) {
+    }
+
+    /** EN: An admin transferred a stray charge back. / VI: Admin đã chuyển trả lại một khoản thu thừa. */
+    public record StrayRefunded(UUID strayId, UUID paymentId, UUID auctionId, UUID userId, BigDecimal amount,
+            String reference, String account, UUID actorId, Instant at) {
     }
 }

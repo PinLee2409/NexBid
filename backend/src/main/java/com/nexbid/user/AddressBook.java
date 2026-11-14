@@ -58,4 +58,16 @@ public class AddressBook {
     public void setOutbidEmails(UUID userId, boolean wanted) {
         jdbc.update("UPDATE users SET outbid_emails = ? WHERE id = ?", wanted, userId);
     }
+
+    /** EN: Whether this account wants the daily new-lot email. / VI: Tài khoản này có muốn email lô mới hằng ngày không. */
+    public boolean wantsDigestEmails(UUID userId) {
+        Boolean wants = jdbc.query("SELECT digest_emails FROM users WHERE id = ?",
+                rs -> rs.next() ? rs.getBoolean(1) : Boolean.FALSE, userId);
+        return Boolean.TRUE.equals(wants);
+    }
+
+    @Transactional
+    public void setDigestEmails(UUID userId, boolean wanted) {
+        jdbc.update("UPDATE users SET digest_emails = ? WHERE id = ?", wanted, userId);
+    }
 }

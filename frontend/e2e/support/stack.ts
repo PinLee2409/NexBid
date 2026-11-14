@@ -184,6 +184,15 @@ export async function buyOutright(auctionId: string, buyer: Session): Promise<vo
  * VI: Đưa một lô đã thắng qua trọn giao dịch: người mua trả tiền, người bán gửi hàng, người mua xác nhận đã nhận.
  */
 export async function completeSale(auctionId: string, buyer: Session, seller: Session): Promise<void> {
+  const orderId = await payAndShip(auctionId, buyer, seller);
+  await call("POST", `/api/users/me/orders/${orderId}/received`, { token: buyer.token });
+}
+
+/**
+ * EN: The buyer pays and the seller ships; the order then waits for the buyer. Returns the order's id.
+ * VI: Người mua trả tiền và người bán gửi hàng; đơn sau đó chờ người mua. Trả về id của đơn.
+ */
+export async function payAndShip(auctionId: string, buyer: Session, seller: Session): Promise<string> {
   const payments = await call<Array<{ payment: { id: string; auctionId: string } }>>("GET", "/api/users/me/payments", {
     token: buyer.token,
   });
@@ -193,8 +202,11 @@ export async function completeSale(auctionId: string, buyer: Session, seller: Se
     token: seller.token,
   });
   const order = orders.find((entry) => entry.order.auctionId === auctionId)!.order;
-  await call("POST", `/api/seller/orders/${order.id}/ship`, { token: seller.token });
-  await call("POST", `/api/users/me/orders/${order.id}/received`, { token: buyer.token });
+  await call("POST", `/api/seller/orders/${order.id}/ship`, {
+    token: seller.token,
+    body: { carrier: "GHN", trackingNumber: "E2E" + Date.now() },
+  });
+  return order.id;
 }
 
 /** EN: Java's URLEncoder, which VNPay's signature is defined over: spaces as "+", and !'()~ escaped. / VI: Giống URLEncoder của Java. */
@@ -242,4 +254,23 @@ async function payThroughVnpay(paymentId: string, token: string): Promise<void> 
   if (answer.RspCode !== "00") {
     throw new Error(`VNPay IPN for payment ${paymentId} answered ${JSON.stringify(answer)}`);
   }
+}
+
+/** EN: Saves a refund account for the session's user. / VI: Lưu tài khoản nhận hoàn tiền cho người dùng của phiên. */
+export async function saveBankAccount(session: Session, holder: string): Promise<void> {
+  await call("PUT", "/api/users/me/bank-account", {
+    token: session.token,
+    body: { bankName: "Techcombank", accountNumber: "1903 5555 1234", accountHolder: holder },
+  });
+}
+
+/**
+ * EN: Records a second VNPay charge on a paid lot, as the IPN does when a buyer pays twice (the backend tests drive the
+ *     IPN itself).
+ * VI: Ghi một lần VNPay thu thêm cho lô đã trả, như IPN làm khi người mua trả hai lần (test backend chạy chính IPN).
+ */
+export function chargeTwice(auctionId: string): void {
+  sql(`INSERT INTO stray_charges (id, payment_id, txn_ref, amount, reason, created_at)
+       SELECT gen_random_uuid(), id, 'E2E' || floor(random() * 1e12)::text, amount, 'DUPLICATE', now()
+       FROM payments WHERE auction_id = '${auctionId}' AND status = 'SUCCESS'`);
 }

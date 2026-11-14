@@ -65,6 +65,12 @@ public class Order {
     @Column(name = "shipped_at")
     private Instant shippedAt;
 
+    @Column(name = "completed_at")
+    private Instant completedAt;
+
+    @Column(name = "auto_completed", nullable = false)
+    private boolean autoCompleted;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -169,5 +175,23 @@ public class Order {
 
     public Instant getShippedAt() {
         return shippedAt;
+    }
+
+    /**
+     * EN: The sale is done: the buyer confirmed it, an admin closed a dispute, or the wait ran out.
+     * VI: Giao dịch đã xong: người mua xác nhận, admin đóng khiếu nại, hoặc đã hết thời gian chờ.
+     */
+    public void complete(Instant at, boolean automatic) {
+        this.status = com.nexbid.order.OrderStatus.COMPLETED;
+        this.completedAt = at;
+        this.autoCompleted = automatic;
+    }
+
+    public Instant getCompletedAt() {
+        return completedAt;
+    }
+
+    public boolean isAutoCompleted() {
+        return autoCompleted;
     }
 }

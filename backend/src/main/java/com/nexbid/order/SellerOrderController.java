@@ -22,9 +22,11 @@ import com.nexbid.common.security.CurrentUser;
 public class SellerOrderController {
 
     private final OrderService orders;
+    private final BuyerReviews buyerReviews;
 
-    public SellerOrderController(OrderService orders) {
+    public SellerOrderController(OrderService orders, BuyerReviews buyerReviews) {
         this.orders = orders;
+        this.buyerReviews = buyerReviews;
     }
 
     @GetMapping
@@ -47,5 +49,16 @@ public class SellerOrderController {
         return ApiResponse.of(orders.ship(me.id(), id,
                 request == null ? null : request.carrier(),
                 request == null ? null : request.trackingNumber()), "Order marked as shipped");
+    }
+
+    /**
+     * EN: Rates the buyer of a completed order, once. Same shape as a buyer's review of the seller.
+     * VI: Đánh giá người mua của một đơn đã hoàn tất, một lần. Cùng dạng với đánh giá người mua dành cho người bán.
+     */
+    @PostMapping("/{id}/buyer-review")
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.CREATED)
+    public ApiResponse<OrderView.BuyerReview> rateBuyer(@AuthenticationPrincipal CurrentUser me, @PathVariable UUID id,
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody com.nexbid.order.dto.ReviewRequest request) {
+        return ApiResponse.of(buyerReviews.review(me.id(), id, request.rating(), request.comment()), "Buyer rated");
     }
 }

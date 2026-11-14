@@ -25,6 +25,7 @@ const STATUS_STYLES: Record<AuctionStatus, string> = {
   PENDING_APPROVAL: "text-warning",
   REJECTED: "text-danger-text",
   CANCELLED: "text-dim",
+  REMOVED: "text-danger-text",
 };
 
 /** One treatment for every auction state (spec §5.1). */

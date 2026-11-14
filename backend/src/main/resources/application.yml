@@ -235,6 +235,18 @@ nexbid:
     # VI: Người thắng chưa trả được nhắc (PAYMENT_REQUIRED) trước hạn thanh toán bao lâu.
     payment-reminder: ${NEXBID_PAYMENT_REMINDER:12h}
 
+  bid:
+    restriction:
+      # EN: Who has won and not paid this many times cannot bid from-amount (VND) or more.
+      # VI: Ai đã thắng mà không trả tiền từng này lần thì không được trả giá từ from-amount (VND) trở lên.
+      unpaid-wins: ${NEXBID_RESTRICT_UNPAID_WINS:2}
+      from-amount: ${NEXBID_RESTRICT_FROM_AMOUNT:20000000}
+
+  alert:
+    # EN: When the daily email of new lots matching saved searches and followed sellers goes out (Vietnam time).
+    # VI: Lúc gửi email hằng ngày về lô mới khớp bộ lọc đã lưu và người bán đang theo dõi (giờ Việt Nam).
+    digest-cron: ${NEXBID_ALERT_DIGEST_CRON:0 0 8 * * *}
+
   payment:
     # EN: How long a winner has to pay, counted from the close. Matches the frontend's demo data.
     # VI: Người thắng có bao lâu để trả, tính từ lúc đóng phiên. Khớp với dữ liệu demo của frontend.
@@ -261,6 +273,19 @@ nexbid:
       # VI: Link thanh toán còn hiệu lực bao lâu; không bao giờ quá hạn chót của chính khoản thanh toán.
       timeout: ${NEXBID_VNPAY_TIMEOUT:15m}
 
+  order:
+    # EN: A shipped order the buyer neither confirms nor disputes completes on its own after this long.
+    # VI: Đơn đã gửi mà người mua không xác nhận cũng không khiếu nại sẽ tự hoàn tất sau khoảng này.
+    auto-complete-after: ${NEXBID_ORDER_AUTO_COMPLETE_AFTER:7d}
+    auto-complete-interval: ${NEXBID_ORDER_AUTO_COMPLETE_INTERVAL_MS:300000}
+    # EN: How long before that the buyer is reminded to confirm or dispute (ORDER_COMPLETING). Sent by the heads-up job.
+    # VI: Người mua được nhắc xác nhận hoặc khiếu nại trước lúc đó bao lâu (ORDER_COMPLETING). Do job heads-up gửi.
+    auto-complete-reminder: ${NEXBID_ORDER_AUTO_COMPLETE_REMINDER:2d}
+
+  payout:
+    # EN: The platform's cut of each completed sale, in percent. / VI: Phần sàn giữ lại trên mỗi giao dịch hoàn tất, tính theo phần trăm.
+    fee-percent: ${NEXBID_PAYOUT_FEE_PERCENT:5}
+
   mail:
     # EN: Transactional email through Brevo (https://developers.brevo.com/). Without an API key nothing is sent: each
     #     email is written to the log and kept in email_outbox as SKIPPED.
@@ -272,6 +297,11 @@ nexbid:
     sender-name: ${NEXBID_MAIL_SENDER_NAME:NexBid}
     # EN: Links in emails point here. / VI: Link trong email trỏ về đây.
     site-url: ${NEXBID_SITE_URL:http://localhost:3000}
+    # EN: Where mail clients fetch the logo (/nexbid-wordmark.png). Empty: the site itself, unless that is localhost,
+    #     which no inbox can reach; then the header shows the name as text.
+    # VI: Nơi trình đọc mail tải logo (/nexbid-wordmark.png). Để trống: chính site, trừ khi đó là localhost, nơi không
+    #     hộp thư nào tới được; khi đó đầu thư hiện tên dạng chữ.
+    asset-url: ${NEXBID_MAIL_ASSET_URL:}
     send-interval: ${NEXBID_MAIL_SEND_INTERVAL_MS:5000}
     batch-size: 50
     max-attempts: 6

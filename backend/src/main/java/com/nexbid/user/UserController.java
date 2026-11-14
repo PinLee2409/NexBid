@@ -28,10 +28,12 @@ public class UserController {
 
     private final UserService users;
     private final AddressBook addresses;
+    private final BankAccounts bankAccounts;
 
-    public UserController(UserService users, AddressBook addresses) {
+    public UserController(UserService users, AddressBook addresses, BankAccounts bankAccounts) {
         this.users = users;
         this.addresses = addresses;
+        this.bankAccounts = bankAccounts;
     }
 
     @GetMapping("/me")
@@ -62,20 +64,45 @@ public class UserController {
         return ApiResponse.of(addresses.save(caller.id(), request), "Address saved");
     }
 
+    /**
+     * EN: Where NexBid sends this person money — payouts for a seller, refunds for a buyer — or null before the first one.
+     * VI: Nơi NexBid chuyển tiền cho người này — tiền bán hàng của người bán, tiền hoàn của người mua — hoặc null khi chưa có.
+     */
+    @GetMapping("/me/bank-account")
+    public ApiResponse<BankAccount> bankAccount(@AuthenticationPrincipal CurrentUser caller) {
+        return ApiResponse.of(bankAccounts.of(caller.id()).orElse(null));
+    }
+
+    @PutMapping("/me/bank-account")
+    public ApiResponse<BankAccount> saveBankAccount(
+            @AuthenticationPrincipal CurrentUser caller,
+            @jakarta.validation.Valid @RequestBody BankAccount request) {
+        return ApiResponse.of(bankAccounts.save(caller.id(), request), "Bank account saved");
+    }
+
     /** EN: The optional emails. Payment, order and account emails cannot be turned off. / VI: Các email có thể tắt. Email về thanh toán, đơn hàng và tài khoản thì không tắt được. */
-    public record EmailPreferences(boolean outbid) {
+    /**
+     * EN: {@code digest} is the daily new-lot email; a client that does not send it leaves it as it was.
+     * VI: {@code digest} là email lô mới hằng ngày; client không gửi trường này thì giữ nguyên giá trị cũ.
+     */
+    public record EmailPreferences(boolean outbid, Boolean digest) {
     }
 
     @GetMapping("/me/email-preferences")
     public ApiResponse<EmailPreferences> emailPreferences(@AuthenticationPrincipal CurrentUser caller) {
-        return ApiResponse.of(new EmailPreferences(addresses.wantsOutbidEmails(caller.id())));
+        return ApiResponse.of(new EmailPreferences(addresses.wantsOutbidEmails(caller.id()),
+                addresses.wantsDigestEmails(caller.id())));
     }
 
     @PutMapping("/me/email-preferences")
     public ApiResponse<EmailPreferences> saveEmailPreferences(
             @AuthenticationPrincipal CurrentUser caller, @RequestBody EmailPreferences request) {
         addresses.setOutbidEmails(caller.id(), request.outbid());
-        return ApiResponse.of(request, "Email preferences saved");
+        if (request.digest() != null) {
+            addresses.setDigestEmails(caller.id(), request.digest());
+        }
+        return ApiResponse.of(new EmailPreferences(request.outbid(), addresses.wantsDigestEmails(caller.id())),
+                "Email preferences saved");
     }
 
     /**

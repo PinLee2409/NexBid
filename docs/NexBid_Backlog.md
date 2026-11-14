@@ -232,3 +232,105 @@ Hiện không còn mục nào đang chờ.
   sửa menu đổi ngôn ngữ không mở được khi đang cuộn, sửa khung lượt trả giá đè lên khung đặt giá.
 - **Staging**: `deploy/staging/` chạy cả stack sau Caddy với HTTPS tự động trên domain riêng.
 - **Dữ liệu demo**: `docs/demo/enrich.mjs` thêm người bán, người mua và khoảng ba mươi lô ở mọi danh mục.
+
+## Đã làm (13/11/2026) — đợt 14: sau thanh toán
+
+- **Khiếu nại đơn hàng:** người mua báo vấn đề (chưa nhận, sai mô tả, hư hỏng, khác) với đơn đã trả, đã gửi hay chưa.
+  Đơn chờ ở `DISPUTED` và không tự hoàn tất. Admin hoàn tiền (đơn huỷ) hoặc giữ giao dịch (đơn đã gửi thì hoàn tất,
+  chưa gửi thì quay lại chờ người bán), kèm ghi chú cho cả hai bên.
+- **Tự hoàn tất:** đơn đã gửi mà người mua không xác nhận và không khiếu nại sẽ hoàn tất sau 7 ngày. Người mua được
+  nhắc một lần (trong app và email) 2 ngày trước đó (`NEXBID_ORDER_AUTO_COMPLETE_REMINDER`).
+- **Chi trả cho người bán:** mỗi đơn hoàn tất thành khoản sàn nợ người bán (giá bán trừ phí 5%). Người bán nhập tài
+  khoản ngân hàng; admin chuyển khoản rồi ghi nhận kèm mã giao dịch, chốt toàn bộ số dư một lần.
+- **Hoàn tiền bằng chuyển khoản thủ công** (bỏ API hoàn tiền của VNPay, vì sandbox luôn trả lỗi 99): người mua lưu
+  tài khoản nhận hoàn tiền trong hồ sơ hoặc ngay trong hộp khiếu nại; admin bấm hoàn tiền, thấy tài khoản để chép,
+  tự chuyển khoản rồi nhập mã giao dịch. Hệ thống huỷ đơn, ghi `payment_refunds` kèm mã và bản sao tài khoản, báo
+  người mua (email + thông báo `ORDER_REFUNDED`). Tài khoản ngân hàng dùng chung cho chi trả và hoàn tiền
+  (`bank_accounts`, `/api/users/me/bank-account`), migration V29.
+- **Thông báo:** email và thông báo trong app cho khiếu nại mở, kết quả khiếu nại (cả hai bên), tiền đã chuyển, và
+  đơn sắp tự hoàn tất.
+- **Nhật ký hệ thống:** mở khiếu nại, hoàn tiền / bác khiếu nại (kèm ghi chú), ghi nhận chi trả (số tiền, mã giao
+  dịch), đổi tài khoản nhận tiền (chỉ lưu tên ngân hàng và 4 số cuối). Đơn hoàn tất sau khi bác khiếu nại giờ ghi đúng
+  `DISPUTED → COMPLETED`.
+- **E2E:** khiếu nại → admin giữ giao dịch; khiếu nại kèm tài khoản → admin hoàn tiền bằng chuyển khoản; người bán
+  thêm tài khoản → admin ghi nhận chuyển khoản.
+- **Sửa:** hộp thoại cao hơn màn hình không cuộn được nên nút cuối bị che (giờ giới hạn chiều cao và cuộn).
+- **Sửa:** trạng thái đơn `DISPUTED` thiếu nhãn tiếng Việt / tiếng Anh, làm trang đơn hàng báo `MISSING_MESSAGE`.
+- **Kiểm chứng:** backend 445 test (độ phủ 95.3% dòng, 81.7% nhánh), frontend 143 unit test, E2E 45/45 trên stack
+  Docker riêng.
+
+## Đã làm (14/11/2026) — đợt 15: hỏi đáp trên trang lô
+
+- **Hỏi đáp công khai:** trên trang lô, người mua đã đăng nhập hỏi khi lô sắp mở hoặc đang mở (5–500 ký tự); người bán
+  của lô trả lời một lần, ngay dưới câu hỏi. Ai cũng đọc được, tên người hỏi được che như lịch sử trả giá. Người bán
+  không tự hỏi lô của mình; mỗi người tối đa 3 câu đang chờ trên một lô (`QUESTION_LIMIT`); lô đã đóng thì không nhận
+  câu hỏi. Bảng `lot_questions`, migration V30, module `question`.
+- **Thông báo:** người bán nhận email `LOT_QUESTION` và thông báo `NEW_QUESTION`; người hỏi nhận email
+  `QUESTION_ANSWERED` và thông báo cùng tên. Bấm thông báo mở thẳng phần hỏi đáp của lô.
+- **E2E:** khách thấy link đăng nhập; người mua hỏi; người bán trả lời; người mua thấy câu trả lời và thông báo.
+- **Kiểm chứng:** backend 449 test (độ phủ 95.4% dòng, 81.9% nhánh), frontend 145 unit test, E2E 45/45 trên stack Docker
+  riêng.
+
+## Đã làm (14/11/2026) — đợt 16: lưu tìm kiếm và theo dõi người bán
+
+- **Lưu tìm kiếm:** trên trang danh mục, khi đã tìm hoặc lọc (từ khoá, danh mục, tình trạng, khoảng giá), nút
+  **Lưu tìm kiếm này** lưu bộ lọc (khách được đưa đi đăng nhập rồi quay lại đúng bộ lọc). Tối đa 10 bộ lọc mỗi người
+  (`SAVED_SEARCH_LIMIT`); lưu trùng thì trả về bộ lọc cũ. Trạng thái, sắp xếp và "sắp đóng" không được lưu.
+- **Theo dõi người bán:** nút **Theo dõi người bán** cạnh tên người bán trên trang lô; người bán không tự theo dõi mình.
+- **Báo lô mới:** khi admin duyệt một lô, ai có bộ lọc khớp (giá so với giá hiện tại của lô) hoặc đang theo dõi người bán
+  của lô nhận ngay một thông báo `LOT_ALERT`, mỗi người mỗi lô một lần (bảng `lot_alerts`). Bộ lọc của chính người bán
+  không báo lô của họ.
+- **Email tổng hợp hằng ngày** `LOT_DIGEST` lúc 8:00 giờ Việt Nam (`NEXBID_ALERT_DIGEST_CRON`): các lô được ghi từ lần
+  trước mà vẫn còn mở, tối đa 20 lô một email. Tắt được trong Hồ sơ (cột `users.digest_emails`) hoặc bằng link một chạm
+  trong email (`/unsubscribe?…&list=digest`).
+- **Trang Báo lô mới** (`/alerts`) trong tài khoản: danh sách bộ lọc (xem kết quả, xoá) và người bán đang theo dõi (bỏ
+  theo dõi). Module `alert`, migration V31.
+- **Kiểm chứng:** backend 452 test (độ phủ 95.4% dòng, 81.4% nhánh), frontend 146 unit test, E2E 46/46 trên stack Docker
+  riêng (test mới: khách thấy link đăng nhập, lưu tìm kiếm, nhận thông báo khi lô khớp được duyệt, theo dõi người bán, quản
+  lý ở trang Báo lô mới).
+
+## Đã làm (14/11/2026) — đợt 17: rà soát hệ thống, sửa 6 lỗi ngầm
+
+Rà soát các luồng chính (trả giá, đóng lô, thanh toán, đơn hàng, hoàn tiền, chi trả, email, khoá tài khoản, bảo mật).
+Phần khoá dòng, chống trùng và chạy nhiều máy đã chắc; sửa 6 lỗi:
+
+1. **Tiền VNPay thu thừa không ai thấy.** Lần trả được xác nhận sau hạn chót, hoặc trả lần hai cho lô đã trả, trước đây
+   chỉ ghi log. Giờ ghi vào bảng `stray_charges` (V32), người mua nhận thông báo `STRAY_CHARGE` và email; trang Đơn hàng
+   của admin hiện khung "khoản VNPay cần trả lại" để chuyển khoản trả kèm mã giao dịch (`/api/admin/stray-charges`);
+   người mua được báo khi tiền đã trả (email `STRAY_REFUNDED`); nhật ký ghi `STRAY_CHARGE_REFUNDED`.
+2. **Ghi nhận chi trả có thể lớn hơn số đã chuyển.** Giờ admin gửi kèm số tiền đã thấy; số dư đổi trong lúc đó thì bị từ
+   chối (`PAYOUT_AMOUNT_CHANGED`).
+3. **Admin hoàn tiền từ trang Đơn hàng không báo người bán.** Giờ người bán nhận thông báo `SALE_REFUNDED` và email.
+4. **Hoàn tiền xong sản phẩm vẫn "Đã bán".** Giờ sản phẩm trở lại `AVAILABLE`, người bán đăng bán lại được.
+5. **Tài khoản bị khoá vẫn tự trả giá.** Khoá tài khoản giờ tắt mọi auto-bid của họ, và họ không được mời "cơ hội thứ hai".
+6. **Gửi email không có giới hạn thời gian và gửi tới địa chỉ test.** Mỗi lần gọi Brevo giờ dừng sau 15 giây; địa chỉ
+   thuộc tên miền dành cho test (`.test`, `.invalid`, `.example`, `.localhost`) không bao giờ được gửi.
+
+- **E2E phát hiện thêm:** `MailSender` có hai constructor nên Spring không tạo được bean khi scheduler bật (test backend tắt
+  scheduler nên không thấy); đã đánh dấu constructor chính.
+- **Kiểm chứng:** test backend mới cho từng lỗi (IPN thu trùng và trễ hạn, hoàn tiền trực tiếp, chi trả sai số tiền, khoá
+  tài khoản có auto-bid, Brevo treo, tên miền test); frontend 148 unit test; backend 459 test (độ phủ 95.7% dòng, 81.7% nhánh), E2E 47/47 (test mới: admin trả lại khoản
+  VNPay thu hai lần).
+
+## Đã làm (14/11/2026) — đợt 18: báo cáo lô, đánh giá người mua, và các việc nhỏ
+
+- **Báo cáo lô vi phạm:** người đã đăng nhập (trừ người bán) báo cáo lô đang chờ mở hoặc đang mở: hàng giả, sai mô tả,
+  hàng cấm, khác (10–1000 ký tự). Mỗi người một báo cáo đang mở trên một lô, tối đa 10 báo cáo đang chờ. Trang admin
+  **Báo cáo**: bỏ qua (kèm ghi chú) hoặc **gỡ lô** (kèm lý do). Gỡ lô: trạng thái mới `REMOVED`, việc trả giá dừng ngay
+  (trang lô đang mở nhận `AUCTION_REMOVED` qua WebSocket), sản phẩm trở về người bán, mọi báo cáo đang mở của lô đóng lại;
+  người bán nhận thông báo `LOT_REMOVED` và email kèm lý do, người trả giá và người theo dõi được báo, người báo cáo nhận
+  `REPORT_RESOLVED`. Module `report`, migration V34.
+- **Khoá người bán thì gỡ các lô đang mở của họ** (cùng cơ chế gỡ lô).
+- **Người bán đánh giá người mua** (1–5 sao, một lần mỗi đơn hoàn tất, chỉ người bán thấy). Cạnh mỗi đơn bán có **hồ sơ
+  người mua**: số đơn hoàn tất, số lần thắng bỏ không trả, điểm trung bình.
+- **Giới hạn người hay bỏ không trả:** ai đã thắng mà không trả tiền từ 2 lần trở lên (cột `users.unpaid_wins`, đếm khi
+  khoản thanh toán hết hạn, có tính các lần cũ) thì không được trả giá, mua ngay hay đặt auto-bid từ 20.000.000 ₫ trở lên
+  (`BIDDER_RESTRICTED`; chỉnh bằng `NEXBID_RESTRICT_UNPAID_WINS` và `NEXBID_RESTRICT_FROM_AMOUNT`).
+- **Trang admin Email:** xem hàng chờ theo trạng thái, **gửi lại** email thất bại.
+- **Mã giao dịch ngân hàng chỉ dùng một lần** cho hoàn tiền, trả lại khoản thu thừa và chi trả (bảng `bank_references`,
+  V33; so sánh không phân biệt hoa thường và khoảng trắng; `REFERENCE_USED`).
+- **Trang `/payments/vnpay-return` không cần đăng nhập nữa:** người mua hết phiên trong lúc trả tiền vẫn thấy kết quả.
+- **`backend/.env.example`:** mẫu các biến môi trường cần đặt.
+- **Kiểm chứng:** backend 465 test (độ phủ 95.8% dòng, 81.2% nhánh); test mới (báo cáo và gỡ lô, khoá người bán, đánh giá người mua, giới hạn trả giá, email admin, mã
+  giao dịch trùng); frontend 149 unit test; E2E 50/50 (test mới: báo cáo rồi gỡ lô, đánh giá người mua, trang VNPay không
+  cần đăng nhập và trang Email của admin).

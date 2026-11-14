@@ -34,11 +34,23 @@ class MailSender {
     private final TransactionTemplate tx;
     private final RestClient brevo;
 
+    @org.springframework.beans.factory.annotation.Autowired
     MailSender(MailOutbox outbox, MailProperties properties, TransactionTemplate tx) {
+        this(outbox, properties, tx, Duration.ofSeconds(15));
+    }
+
+    MailSender(MailOutbox outbox, MailProperties properties, TransactionTemplate tx, Duration readTimeout) {
         this.outbox = outbox;
         this.properties = properties;
         this.tx = tx;
-        this.brevo = RestClient.builder().baseUrl(properties.brevoUrl()).build();
+        // EN: Each call is bounded: the batch runs inside a transaction holding its rows, so a Brevo that hangs must not
+        //     hold them (and every email behind them) forever.
+        // VI: Mỗi lần gọi có giới hạn thời gian: cả lô chạy trong một transaction đang giữ các dòng, nên Brevo bị treo không
+        //     được giữ chúng (và mọi email phía sau) mãi mãi.
+        var timeouts = new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        timeouts.setConnectTimeout(Duration.ofSeconds(5));
+        timeouts.setReadTimeout(readTimeout);
+        this.brevo = RestClient.builder().baseUrl(properties.brevoUrl()).requestFactory(timeouts).build();
     }
 
     @Scheduled(fixedDelayString = "${nexbid.mail.send-interval}")

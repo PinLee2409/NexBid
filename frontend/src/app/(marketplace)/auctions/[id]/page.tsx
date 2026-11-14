@@ -9,11 +9,15 @@ import { CategoryName } from "@/components/common/category-name";
 import { StarRating } from "@/components/common/star-rating";
 import { AuctionRoomView } from "@/components/nexbid/auction-room";
 import { AuctionCatalogueItem } from "@/components/nexbid/catalogue-item";
+import { FollowSellerButton } from "@/components/nexbid/follow-seller-button";
+import { ReportLotButton } from "@/components/nexbid/report-lot-button";
+import { LotQuestions } from "@/components/nexbid/lot-questions";
 import { ProductStage } from "@/components/nexbid/product-stage";
 import { SectionHead } from "@/components/nexbid/section-head";
 import type { Locale } from "@/i18n/config";
 import { formatCurrency } from "@/lib/format";
 import { getAuction, getSellerReputation, listAuctions } from "@/services/auction-service";
+import { listQuestions } from "@/services/question-service";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +46,7 @@ export default async function AuctionDetailPage(
 
   if (!auction) notFound();
 
-  const [locale, t, tf, format, related, reputation] = await Promise.all([
+  const [locale, t, tf, format, related, reputation, questions] = await Promise.all([
     getLocale() as Promise<Locale>,
     getTranslations("auction"),
     getTranslations("focus"),
@@ -53,6 +57,7 @@ export default async function AuctionDetailPage(
       pageSize: 5,
     }),
     getSellerReputation(auction.seller.id),
+    listQuestions(auction.id),
   ]);
 
   const serverTime = new Date().toISOString();
@@ -149,6 +154,7 @@ export default async function AuctionDetailPage(
                     </p>
                   ) : null}
                 </div>
+                <FollowSellerButton sellerId={auction.seller.id} returnTo={`/auctions/${auction.id}`} />
               </div>
 
               {reputation && reputation.reviews.length > 0 ? (
@@ -178,6 +184,17 @@ export default async function AuctionDetailPage(
                   </ul>
                 </section>
               ) : null}
+
+              <LotQuestions
+                auctionId={auction.id}
+                sellerId={auction.seller.id}
+                status={auction.status}
+                initial={questions}
+              />
+
+              <div className="mt-10">
+                <ReportLotButton auctionId={auction.id} sellerId={auction.seller.id} status={auction.status} />
+              </div>
             </div>
           </div>
 

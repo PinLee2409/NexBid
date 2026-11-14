@@ -47,9 +47,11 @@ public class VnpayService {
     private final VnpayProperties properties;
     private final VnpaySigner signer;
     private final AddressBook addresses;
+    private final StrayCharges strays;
 
     VnpayService(PaymentService payments, PaymentTransactionRepository transactions, VnpayProperties properties,
-            AddressBook addresses) {
+            AddressBook addresses, StrayCharges strays) {
+        this.strays = strays;
         this.payments = payments;
         this.transactions = transactions;
         this.properties = properties;
@@ -157,14 +159,19 @@ public class VnpayService {
         attempt.settle(success, responseCode, fields.get("vnp_TransactionNo"), fields.get("vnp_BankCode"));
         transactions.save(attempt);
 
-        PaymentService.Settled settled = payments.settleAttempt(attempt.getPaymentId(), success, Instant.now());
+        Instant now = Instant.now();
+        PaymentService.Settled settled = payments.settleAttempt(attempt.getPaymentId(), success, now);
+        // EN: Money taken that no payment can use waits for an admin to transfer it back, and the buyer is told.
+        // VI: Tiền đã thu mà không khoản nào dùng được sẽ chờ admin chuyển trả lại, và người mua được báo.
         if (success && settled == PaymentService.Settled.TOO_LATE) {
-            log.warn("VNPay charged attempt {} for payment {} after its window closed; refund it from the VNPay portal",
+            log.warn("VNPay charged attempt {} for payment {} after its window closed; queued for a refund",
                     txnRef, attempt.getPaymentId());
+            strays.record(attempt.getPaymentId(), txnRef, attempt.getAmount(), StrayCharges.Reason.LATE, now);
         }
         if (success && settled == PaymentService.Settled.ALREADY_PAID) {
-            log.warn("VNPay charged attempt {} for payment {} that an earlier attempt had already paid; refund it",
+            log.warn("VNPay charged attempt {} for payment {} that an earlier attempt had already paid; queued for a refund",
                     txnRef, attempt.getPaymentId());
+            strays.record(attempt.getPaymentId(), txnRef, attempt.getAmount(), StrayCharges.Reason.DUPLICATE, now);
         }
         boolean paid = settled == PaymentService.Settled.PAID || settled == PaymentService.Settled.ALREADY_PAID;
         return new Confirmation(Outcome.CONFIRMED, attempt.getPaymentId(), paid, responseCode);

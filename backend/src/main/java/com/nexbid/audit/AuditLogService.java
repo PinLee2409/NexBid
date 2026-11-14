@@ -28,6 +28,7 @@ import com.nexbid.common.security.CurrentUser;
 import com.nexbid.order.OrderEvents;
 import com.nexbid.payment.PaymentEvents;
 import com.nexbid.payment.SecondChanceEvents;
+import com.nexbid.payout.PayoutEvents;
 import com.nexbid.user.SellerApplicationEvent;
 import com.nexbid.user.SellerApplicationStatus;
 import com.nexbid.user.UserService;
@@ -63,6 +64,7 @@ public class AuditLogService {
             case CREATED -> AuditAction.AUCTION_CREATED;
             case APPROVED -> AuditAction.AUCTION_APPROVED;
             case REJECTED -> AuditAction.AUCTION_REJECTED;
+            case REMOVED -> AuditAction.AUCTION_REMOVED;
         };
         record(event.actorId(), action, "Auction", event.auctionId(),
                 event.before() == null ? null : event.before().name(), event.after().name());
@@ -96,6 +98,13 @@ public class AuditLogService {
                 "SUCCESS", "REFUNDED");
     }
 
+    /** EN: A stray VNPay charge sent back; the payment itself is untouched. / VI: Khoản VNPay thu thừa đã được trả lại; bản thân khoản thanh toán không đổi. */
+    @EventListener
+    void onStrayRefund(PaymentEvents.StrayRefunded event) {
+        record(event.actorId(), AuditAction.STRAY_CHARGE_REFUNDED, "StrayCharge", event.strayId(), "WAITING",
+                "REFUNDED");
+    }
+
     @EventListener
     void onShipped(OrderEvents.Shipped event) {
         record(event.actorId(), AuditAction.ORDER_SHIPPED, "Order", event.orderId(), "PAID", "PROCESSING");
@@ -103,7 +112,37 @@ public class AuditLogService {
 
     @EventListener
     void onReceived(OrderEvents.Received event) {
-        record(event.actorId(), AuditAction.ORDER_COMPLETED, "Order", event.orderId(), "PROCESSING", "COMPLETED");
+        record(event.actorId(), AuditAction.ORDER_COMPLETED, "Order", event.orderId(), event.from().name(), "COMPLETED");
+    }
+
+    @EventListener
+    void onDisputed(OrderEvents.Disputed event) {
+        record(event.buyerId(), AuditAction.DISPUTE_OPENED, "Dispute", event.disputeId(), null, event.reason());
+    }
+
+    /** EN: The note is what the admin wrote to both sides. / VI: Ghi chú là điều admin viết cho cả hai bên. */
+    @EventListener
+    void onDisputeResolved(OrderEvents.DisputeResolved event) {
+        record(event.actorId(), event.refunded() ? AuditAction.DISPUTE_REFUNDED : AuditAction.DISPUTE_REJECTED,
+                "Dispute", event.disputeId(), "OPEN",
+                (event.refunded() ? "REFUNDED" : "REJECTED") + (event.note() == null ? "" : ": " + event.note()));
+    }
+
+    @EventListener
+    void onPaidOut(PayoutEvents.Paid event) {
+        record(event.actorId(), AuditAction.PAYOUT_RECORDED, "Payout", event.payoutId(),
+                null, event.amount().toPlainString() + " ref " + event.reference());
+    }
+
+    /**
+     * EN: Where a seller's money goes is worth a trail: a hijacked account would change it first. Only the bank and
+     *     the last four digits are kept.
+     * VI: Nơi tiền của người bán được chuyển tới cần có dấu vết: tài khoản bị chiếm sẽ đổi nó trước tiên. Chỉ giữ tên
+     *     ngân hàng và bốn số cuối.
+     */
+    @EventListener
+    void onBankAccountSaved(com.nexbid.user.BankAccountSavedEvent event) {
+        record(event.userId(), AuditAction.BANK_ACCOUNT_CHANGED, "User", event.userId(), event.before(), event.after());
     }
 
     @EventListener

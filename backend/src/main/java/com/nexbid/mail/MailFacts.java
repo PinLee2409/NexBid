@@ -14,29 +14,35 @@ import java.util.UUID;
  * @param until     EN: a deadline / VI: một hạn chót
  * @param reason    EN: free text, e.g. why a request was rejected / VI: văn bản tự do, ví dụ lý do yêu cầu bị từ chối
  * @param tracking  EN: carrier and tracking number of a parcel / VI: đơn vị vận chuyển và mã vận đơn của kiện hàng
+ * @param rating    EN: stars, 1 to 5, of a review / VI: số sao, từ 1 tới 5, của một đánh giá
  */
-public record MailFacts(UUID auctionId, String lotTitle, BigDecimal amount, Instant until, String reason, String tracking) {
+public record MailFacts(UUID auctionId, String lotTitle, BigDecimal amount, Instant until, String reason, String tracking,
+        Integer rating) {
 
     public static MailFacts none() {
-        return new MailFacts(null, null, null, null, null, null);
+        return new MailFacts(null, null, null, null, null, null, null);
     }
 
     public static MailFacts lot(UUID auctionId, String lotTitle, BigDecimal amount) {
-        return new MailFacts(auctionId, lotTitle, amount, null, null, null);
+        return new MailFacts(auctionId, lotTitle, amount, null, null, null, null);
     }
 
     public MailFacts withUntil(Instant deadline) {
-        return new MailFacts(auctionId, lotTitle, amount, deadline, reason, tracking);
+        return new MailFacts(auctionId, lotTitle, amount, deadline, reason, tracking, rating);
     }
 
     public MailFacts withReason(String text) {
-        return new MailFacts(auctionId, lotTitle, amount, until, text, tracking);
+        return new MailFacts(auctionId, lotTitle, amount, until, text, tracking, rating);
     }
 
     public MailFacts withTracking(String carrier, String trackingNumber) {
         String label = java.util.stream.Stream.of(carrier, trackingNumber)
                 .filter(part -> part != null && !part.isBlank())
                 .collect(java.util.stream.Collectors.joining(" · "));
-        return new MailFacts(auctionId, lotTitle, amount, until, reason, label.isEmpty() ? null : label);
+        return new MailFacts(auctionId, lotTitle, amount, until, reason, label.isEmpty() ? null : label, rating);
+    }
+
+    public MailFacts withRating(int stars) {
+        return new MailFacts(auctionId, lotTitle, amount, until, reason, tracking, stars);
     }
 }

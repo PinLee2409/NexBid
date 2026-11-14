@@ -74,4 +74,16 @@ public class AdminAuctionController {
 
         return ApiResponse.of(auctions.reject(id, admin.id(), request.reason()), "Auction rejected");
     }
+
+    /**
+     * EN: Takes down a scheduled or live lot; the reason is shown to the seller. The same request shape as a rejection.
+     * VI: Gỡ một lô đang chờ mở hoặc đang mở; lý do được hiện cho người bán. Cùng dạng request với từ chối.
+     */
+    @PostMapping("/{id}/remove")
+    public ApiResponse<AuctionView> remove(
+            @AuthenticationPrincipal CurrentUser admin,
+            @PathVariable UUID id, @Valid @RequestBody RejectAuctionRequest request) {
+
+        return ApiResponse.of(auctions.remove(id, admin.id(), request.reason()), "Lot taken down");
+    }
 }

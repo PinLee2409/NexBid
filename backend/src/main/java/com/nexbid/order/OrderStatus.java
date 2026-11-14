@@ -15,11 +15,13 @@ public enum OrderStatus {
     PROCESSING,
     /** EN: Received by the buyer. Final. / VI: Người mua đã nhận hàng. Không đổi nữa. */
     COMPLETED,
+    /** EN: The buyer reported a problem; an admin decides. / VI: Người mua báo có vấn đề; admin quyết định. */
+    DISPUTED,
     /** EN: Never paid, or refunded by an admin. Final. / VI: Không được thanh toán, hoặc đã được admin hoàn tiền. Không đổi nữa. */
     CANCELLED;
 
     /** EN: Money has changed hands and the goods have not been confirmed. / VI: Tiền đã trả và hàng chưa được xác nhận. */
     public boolean isRefundable() {
-        return this == PAID || this == PROCESSING;
+        return this == PAID || this == PROCESSING || this == DISPUTED;
     }
 }

@@ -20,7 +20,9 @@ public enum AuctionStatus {
     /** EN: An admin said no. / VI: Admin từ chối. */
     REJECTED,
     /** EN: Called off. / VI: Bị huỷ. */
-    CANCELLED;
+    CANCELLED,
+    // EN: Taken down by an admin while scheduled or live (a reported lot, a blocked seller). / VI: Bị admin gỡ khi đang chờ mở hoặc đang mở (lô bị báo cáo, người bán bị khoá).
+    REMOVED;
 
     /**
      * EN: Only a draft is the seller's to change (spec §7.4) — once it is sent for approval it is not.

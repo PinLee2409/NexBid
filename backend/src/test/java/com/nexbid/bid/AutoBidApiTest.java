@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -60,6 +61,9 @@ class AutoBidApiTest {
 
     @Autowired
     private AutoBidService autoBids;
+
+    @Autowired
+    private BidService bidService;
 
     @Autowired
     private UserService users;
@@ -497,5 +501,33 @@ class AutoBidApiTest {
                     BigDecimal.class, auction, user);
             assertThat(highest).isLessThanOrEqualTo(max);
         });
+    }
+
+    @Test
+    void blockingAnAccountStopsItsAutoBidsAndPassesItOverForSecondChances() throws Exception {
+        String seller = tokenFor("auto.block.seller@nexbid.com", "Block Seller", RoleName.SELLER);
+        String admin = tokenFor("auto.block.admin@nexbid.com", "Block Admin", RoleName.ADMIN);
+        String mallory = tokenFor("auto.block.mallory@nexbid.com", "Mallory Proxy", RoleName.BUYER);
+        String bob = tokenFor("auto.block.bob@nexbid.com", "Bob Bidder", RoleName.BUYER);
+        UUID malloryId = idOf(mallory);
+        UUID bobId = idOf(bob);
+        String auction = lot(seller, admin, "Blocked proxy", true);
+
+        setAutoBid(mallory, auction, "20000000").andExpect(status().isCreated());
+        bid(bob, auction, "10500000").andExpect(status().isCreated());
+        assertThat(price(auction)).isEqualTo("11000000");
+
+        mockMvc.perform(patch("/api/admin/users/" + malloryId + "/block").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"blocked\":true}"))
+                .andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT active FROM auto_bids WHERE auction_id = ?::uuid AND user_id = ?",
+                Boolean.class, auction, malloryId)).isFalse();
+
+        // EN: Nobody answers for the blocked account any more. / VI: Không còn ai trả giá thay tài khoản bị khoá.
+        bid(bob, auction, "11500000").andExpect(status().isCreated());
+        assertThat(price(auction)).isEqualTo("11500000");
+
+        // EN: Were Bob not to pay, the blocked account is not offered the lot. / VI: Nếu Bob không trả, tài khoản bị khoá không được mời mua.
+        assertThat(bidService.runnerUpOf(UUID.fromString(auction), bobId)).isEmpty();
     }
 }

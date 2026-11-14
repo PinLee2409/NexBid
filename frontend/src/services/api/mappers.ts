@@ -159,7 +159,24 @@ function hrefFor(notification: ApiNotification): string | undefined {
       return "/payments";
     case "PAYMENT_SUCCESS":
     case "PAYMENT_EXPIRED":
+    case "DISPUTE_RESOLVED":
+    case "ORDER_COMPLETING":
       return "/orders";
+    case "NEW_QUESTION":
+    case "QUESTION_ANSWERED":
+      return notification.auctionId ? `/auctions/${notification.auctionId}#questions` : undefined;
+    case "ORDER_REFUNDED":
+    case "STRAY_CHARGE":
+      return "/payments";
+    case "SALE_REFUNDED":
+      return "/seller/orders";
+    case "LOT_REMOVED":
+      return "/seller/auctions";
+    case "REPORT_RESOLVED":
+      // EN: A lot taken down has no public page any more. / VI: Lô bị gỡ không còn trang công khai.
+      return undefined;
+    case "PAYOUT_SENT":
+      return "/seller/earnings";
     case "AUCTION_CANCELLED":
       // EN: A cancelled lot has no public page, and seller and winner land in different places.
       // VI: Lô đã huỷ không còn trang công khai, và người bán với người thắng xem ở hai nơi khác nhau.
@@ -173,6 +190,8 @@ function hrefFor(notification: ApiNotification): string | undefined {
     case "SECOND_CHANCE_ACCEPTED":
     case "SECOND_CHANCE_DECLINED":
     case "NEW_REVIEW":
+    case "DISPUTE_OPENED":
+    case "DISPUTE_SELLER_RESOLVED":
       return "/seller/orders";
     default:
       return notification.auctionId ? `/auctions/${notification.auctionId}` : undefined;
@@ -223,6 +242,9 @@ export function toOrder(order: ApiOrder["order"]): Order {
     carrier: order.carrier ?? null,
     trackingNumber: order.trackingNumber ?? null,
     shippedAt: order.shippedAt ?? null,
+    completedAt: order.completedAt ?? null,
+    autoCompleted: order.autoCompleted ?? false,
+    dispute: order.dispute ?? null,
   };
 }
 

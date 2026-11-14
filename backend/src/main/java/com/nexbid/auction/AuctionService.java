@@ -147,6 +147,18 @@ public class AuctionService {
      * VI: Người thắng để quá hạn thanh toán (spec §17). Giao dịch không thành, nên lô bị huỷ và sản phẩm trở
      *     về tay người bán — nếu không nó sẽ bị khoá mãi cho một người mua không bao giờ trả tiền.
      */
+    /**
+     * EN: A paid sale was refunded: the lot stays in the record as it closed, but the product is the seller's to list
+     *     again.
+     * VI: Một giao dịch đã trả tiền bị hoàn: lô vẫn giữ nguyên như lúc đóng trong lịch sử, nhưng sản phẩm trở lại để người
+     *     bán đăng bán lại.
+     */
+    @Transactional
+    public void releaseRefundedProduct(UUID auctionId) {
+        auctions.findById(auctionId).ifPresent(auction ->
+                products.markAuctionState(auction.getProductId(), ProductStatus.AVAILABLE));
+    }
+
     @Transactional
     public void cancelUnpaid(UUID auctionId) {
         Auction auction = auctions.findByIdForUpdate(auctionId)
@@ -953,6 +965,44 @@ public class AuctionService {
                 AuctionAuditEvent.Action.APPROVED, auctionId, adminId,
                 AuctionStatus.PENDING_APPROVAL, saved.getStatus()));
         return toView(saved);
+    }
+
+    /**
+     * EN: An admin takes down a scheduled or live lot (a report upheld, or its seller blocked). Bidding stops at once,
+     *     no sale is made, and the product goes back to the seller; listing it again needs a new approval. Returns the
+     *     bidders, who are told along with the seller.
+     * VI: Admin gỡ một lô đang chờ mở hoặc đang mở (báo cáo được chấp nhận, hoặc người bán bị khoá). Việc trả giá dừng
+     *     ngay, không có giao dịch nào, và sản phẩm trở về với người bán; đăng lại cần được duyệt lại.
+     */
+    @Transactional
+    public AuctionView remove(UUID auctionId, UUID adminId, String reason) {
+        Auction auction = auctions.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+        AuctionStatus before = auction.getStatus();
+        if (before != AuctionStatus.SCHEDULED && before != AuctionStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.AUCTION_NOT_REMOVABLE,
+                    "Only a scheduled or live lot can be taken down");
+        }
+        auction.setStatus(AuctionStatus.REMOVED);
+        auction.setRejectionReason(reason.trim());
+        products.markAuctionState(auction.getProductId(), ProductStatus.AVAILABLE);
+        Auction saved = auctions.save(auction);
+
+        Instant now = Instant.now();
+        events.publishEvent(new AuctionAuditEvent(AuctionAuditEvent.Action.REMOVED, auctionId, adminId, before,
+                AuctionStatus.REMOVED));
+        events.publishEvent(AuctionLifecycleEvent.removed(saved));
+        events.publishEvent(new AuctionRemovedEvent(auctionId, saved.getSellerId(), adminId, reason.trim(), now));
+        return toView(saved);
+    }
+
+    /** EN: The seller's lots still scheduled or live, e.g. to take them down when the seller is blocked. / VI: Các lô của người bán còn đang chờ mở hoặc đang mở. */
+    public List<UUID> openLotsOf(UUID sellerId) {
+        return auctions.findBySellerIdOrderByCreatedAtDesc(sellerId).stream()
+                .filter(lot -> lot.getStatus() == AuctionStatus.SCHEDULED || lot.getStatus() == AuctionStatus.ACTIVE)
+                .map(Auction::getId)
+                .toList();
     }
 
     /**

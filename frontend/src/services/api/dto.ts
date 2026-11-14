@@ -6,6 +6,7 @@ import type {
   ReserveDecision,
   NotificationType,
   OfferStatus,
+  OrderDispute,
   OrderStatus,
   PaymentStatus,
   ProductCondition,
@@ -252,10 +253,18 @@ export interface ApiOrder {
     carrier?: string | null;
     trackingNumber?: string | null;
     shippedAt?: IsoDateString | null;
+    completedAt?: IsoDateString | null;
+    autoCompleted?: boolean;
+    dispute?: OrderDispute | null;
   };
   payment: ApiPaymentDetails | null;
   auction: ApiAuctionSummary | null;
   review?: ApiReview | null;
+  /** EN: Only in the seller's and the admin's lists. / VI: Chỉ có trong danh sách của người bán và admin. */
+  buyer?: {
+    review: { rating: number; comment: string | null; createdAt: IsoDateString } | null;
+    record: { completed: number; unpaidWins: number; averageRating: number | string | null; ratings: number } | null;
+  } | null;
 }
 
 export interface ApiProduct {
@@ -296,7 +305,7 @@ export type ApiAuctionMessage =
       reserveMet?: boolean | null;
     }
   | {
-      type: "AUCTION_STARTED" | "AUCTION_ENDED" | "AUCTION_EXTENDED";
+      type: "AUCTION_STARTED" | "AUCTION_ENDED" | "AUCTION_EXTENDED" | "AUCTION_REMOVED";
       auctionId: string;
       status: AuctionStatus;
       startTime: IsoDateString;

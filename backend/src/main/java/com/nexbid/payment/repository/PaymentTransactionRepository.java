@@ -21,4 +21,7 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM PaymentTransaction t WHERE t.txnRef = :txnRef")
     Optional<PaymentTransaction> findByTxnRefForUpdate(@Param("txnRef") String txnRef);
+
+    /** EN: The attempt that paid, if any. / VI: Lần thử đã trả tiền, nếu có. */
+    Optional<PaymentTransaction> findFirstByPaymentIdAndStatusOrderByUpdatedAtDesc(UUID paymentId, String status);
 }

@@ -15,6 +15,7 @@ record MailProperties(
         String senderEmail,
         String senderName,
         String siteUrl,
+        String assetUrl,
         int batchSize,
         int maxAttempts,
         Duration outbidThrottle,
