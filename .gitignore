@@ -5,3 +5,6 @@
 
 # QA notes for other projects kept on this machine only.
 docs/qa/
+
+# Local logs (e.g. a dev server writing to dev.log)
+*.log
