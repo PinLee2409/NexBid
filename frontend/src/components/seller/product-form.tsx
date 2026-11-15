@@ -22,7 +22,35 @@ import { Textarea } from "@/components/ui/textarea";
 import { PRODUCT_CONDITIONS } from "@/constants/auction";
 import { useApiErrorMessage, useCategoryLabels, useEnumLabels } from "@/hooks/use-labels";
 import { createProduct, updateProduct } from "@/services/seller-service";
-import type { Category, Product, ProductCondition } from "@/types";
+import type { Category, Parcel, Product, ProductCondition } from "@/types";
+
+type ParcelKey = keyof Parcel;
+/** EN: GHN's limits: 30 kg, 150 cm a side. / VI: Giới hạn của GHN: 30 kg, mỗi cạnh 150 cm. */
+const PARCEL_FIELDS: [ParcelKey, number][] = [
+  ["weightGrams", 30000],
+  ["lengthCm", 150],
+  ["widthCm", 150],
+  ["heightCm", 150],
+];
+const DEFAULT_PARCEL: Parcel = { weightGrams: 1000, lengthCm: 20, widthCm: 15, heightCm: 10 };
+
+/**
+ * EN: The packed size from the four fields: null when all are empty, undefined when only some are filled or one is out
+ *     of range.
+ * VI: Kích thước kiện từ bốn ô: null khi bỏ trống cả bốn, undefined khi chỉ điền một phần hoặc có ô ngoài giới hạn.
+ */
+function parcelOf(fields: Record<ParcelKey, string>): Parcel | null | undefined {
+  const filled = PARCEL_FIELDS.filter(([key]) => fields[key] !== "");
+  if (filled.length === 0) return null;
+  if (filled.length < PARCEL_FIELDS.length) return undefined;
+  const values = PARCEL_FIELDS.map(([key, max]) => {
+    const value = Number(fields[key]);
+    return value >= 1 && value <= max ? value : NaN;
+  });
+  if (values.some(Number.isNaN)) return undefined;
+  const [weightGrams, lengthCm, widthCm, heightCm] = values as [number, number, number, number];
+  return { weightGrams, lengthCm, widthCm, heightCm };
+}
 
 interface ProductFormProps {
   categories: Category[];
@@ -31,6 +59,7 @@ interface ProductFormProps {
 }
 
 interface FieldErrors {
+  parcel?: string;
   name?: string;
   description?: string;
   categoryId?: string;
@@ -54,6 +83,13 @@ export function ProductForm({ categories, product }: ProductFormProps) {
     product?.images.map((image) => image.url) ?? [],
   );
 
+  const [parcel, setParcel] = useState<Record<ParcelKey, string>>(() => ({
+    weightGrams: product?.parcel ? String(product.parcel.weightGrams) : "",
+    lengthCm: product?.parcel ? String(product.parcel.lengthCm) : "",
+    widthCm: product?.parcel ? String(product.parcel.widthCm) : "",
+    heightCm: product?.parcel ? String(product.parcel.heightCm) : "",
+  }));
+
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isPending, startTransition] = useTransition();
   const errorMessage = useApiErrorMessage();
@@ -64,6 +100,7 @@ export function ProductForm({ categories, product }: ProductFormProps) {
     if (!description.trim()) next.description = t("errors.descriptionRequired");
     if (!categoryId) next.categoryId = t("errors.categoryRequired");
     if (images.length === 0) next.images = t("errors.imagesRequired");
+    if (parcelOf(parcel) === undefined) next.parcel = t("errors.parcelInvalid");
     return next;
   }
 
@@ -81,6 +118,7 @@ export function ProductForm({ categories, product }: ProductFormProps) {
         categoryId,
         condition,
         imageUrls: images,
+        parcel: parcelOf(parcel) ?? null,
       };
 
       let saved;
@@ -217,6 +255,36 @@ export function ProductForm({ categories, product }: ProductFormProps) {
           </p>
         ) : null}
       </div>
+
+      <fieldset className="border-line border-t pt-6">
+        <legend className="label-sm text-dim pr-3">{t("parcelTitle")}</legend>
+        <p className="text-muted-foreground mt-1 text-xs leading-relaxed">{t("parcelHint")}</p>
+        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {PARCEL_FIELDS.map(([key, max]) => (
+            <FormField key={key} label={t(`parcel.${key}`)}>
+              {(field) => (
+                <Input
+                  {...field}
+                  inputMode="numeric"
+                  value={parcel[key]}
+                  aria-invalid={errors.parcel ? true : undefined}
+                  placeholder={String(DEFAULT_PARCEL[key])}
+                  onChange={(event) => {
+                    const digits = event.target.value.replace(/D/g, "").slice(0, String(max).length);
+                    setParcel((current) => ({ ...current, [key]: digits }));
+                    setErrors((current) => ({ ...current, parcel: undefined }));
+                  }}
+                />
+              )}
+            </FormField>
+          ))}
+        </div>
+        {errors.parcel ? (
+          <p role="alert" className="text-danger-text mt-2 text-xs">
+            {errors.parcel}
+          </p>
+        ) : null}
+      </fieldset>
 
       <div className="border-line flex gap-3 border-t pt-8">
         <Button type="submit" disabled={isPending}>

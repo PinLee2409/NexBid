@@ -50,7 +50,46 @@ public class AuthController {
 
         // EN: The client's own address, even behind the frontend's proxy (server.forward-headers-strategy).
         // VI: Địa chỉ của chính client, kể cả khi đứng sau proxy của frontend (server.forward-headers-strategy).
-        AuthService.Session session = authService.login(request, http.getRemoteAddr());
+        return signedIn(authService.login(request, http.getRemoteAddr()), response);
+    }
+
+    /** EN: The code step of two-step sign-in. / VI: Bước nhập mã của đăng nhập hai bước. */
+    public record TwoFactorLoginRequest(
+            @jakarta.validation.constraints.NotBlank String challenge,
+            @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 20) String code) {
+    }
+
+    @PostMapping("/login/2fa")
+    public ApiResponse<LoginResponse> loginWithCode(@Valid @RequestBody TwoFactorLoginRequest request,
+            HttpServletRequest http, HttpServletResponse response) {
+        return signedIn(authService.completeTwoFactor(request.challenge(), request.code(), http.getRemoteAddr()),
+                response);
+    }
+
+    /** EN: The ID token from Google's sign-in button. / VI: ID token từ nút đăng nhập Google. */
+    public record GoogleLoginRequest(@jakarta.validation.constraints.NotBlank String credential, Boolean rememberMe) {
+    }
+
+    @PostMapping("/google")
+    public ApiResponse<LoginResponse> google(@Valid @RequestBody GoogleLoginRequest request,
+            HttpServletResponse response) {
+        return signedIn(authService.google(request.credential(), request.rememberMe() == null || request.rememberMe()),
+                response);
+    }
+
+    /** EN: Which other ways to sign in are set up. / VI: Những cách đăng nhập khác đã được cài đặt. */
+    @org.springframework.web.bind.annotation.GetMapping("/providers")
+    public ApiResponse<java.util.Map<String, Object>> providers() {
+        java.util.Map<String, Object> found = new java.util.HashMap<>();
+        found.put("googleClientId", authService.googleClientId());
+        return ApiResponse.of(found);
+    }
+
+    /** EN: The refresh cookie only once someone is fully signed in. / VI: Cookie refresh chỉ khi đã đăng nhập xong. */
+    private ApiResponse<LoginResponse> signedIn(AuthService.Session session, HttpServletResponse response) {
+        if (session.refresh() == null) {
+            return ApiResponse.of(session.response(), "Code required");
+        }
         response.addHeader(HttpHeaders.SET_COOKIE, cookies.issue(session.refresh()).toString());
         return ApiResponse.of(session.response(), "Signed in");
     }

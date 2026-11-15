@@ -107,6 +107,42 @@ class SellerProductApiTest {
                 .andExpect(jsonPath("$.data.sellerId").value(myId));
     }
 
+    /**
+     * EN: The packed size is optional, all-or-nothing, within GHN's limits, and an update without it clears it.
+     * VI: Kích thước kiện không bắt buộc, đủ cả hoặc không có, trong giới hạn của GHN, và sửa mà bỏ trống thì xoá.
+     */
+    @Test
+    void aProductCarriesItsPackedSize() throws Exception {
+        String token = tokenFor("seller.parcel@nexbid.com", RoleName.SELLER);
+        String body = """
+                {"name":"Boxed camera","description":"In its box.","categoryId":"%s","condition":"GOOD",
+                 "parcel":%s}""";
+
+        mockMvc.perform(post("/api/seller/products").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body.formatted(anyCategoryId(), "{\"weightGrams\":0,\"lengthCm\":20,\"widthCm\":15,\"heightCm\":10}")))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/seller/products").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body.formatted(anyCategoryId(), "{\"weightGrams\":1200}")))
+                .andExpect(status().isBadRequest());
+
+        String created = mockMvc.perform(post("/api/seller/products").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body.formatted(anyCategoryId(), "{\"weightGrams\":1200,\"lengthCm\":30,\"widthCm\":20,\"heightCm\":12}")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.parcel.weightGrams").value(1200))
+                .andExpect(jsonPath("$.data.parcel.heightCm").value(12))
+                .andReturn().getResponse().getContentAsString();
+        String id = objectMapper.readTree(created).get("data").get("id").asString();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/seller/products/" + id)
+                        .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                        .content(body.formatted(anyCategoryId(), "null")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.parcel").isEmpty());
+    }
+
     @Test
     void withoutPublishNowItStartsAsADraft() throws Exception {
         String token = tokenFor("seller.draft@nexbid.com", RoleName.SELLER);

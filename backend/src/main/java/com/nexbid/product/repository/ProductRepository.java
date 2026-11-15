@@ -20,9 +20,11 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
     @Query("select p.id from Product p where p.category.id in ?1")
     List<UUID> findIdsByCategoryIdIn(java.util.Collection<UUID> categoryIds);
 
-    // EN: The pattern escapes %, _ and ! with "!", so what the user typed matches literally.
-    // VI: Mẫu tìm đã thoát %, _ và ! bằng "!", để thứ người dùng gõ được khớp đúng nguyên văn.
-    @Query("select p.id from Product p where lower(p.name) like lower(?1) escape '!'")
+    // EN: The pattern escapes %, _ and ! with "!", so what the user typed matches literally; accents and case are
+    //     ignored on both sides (V39's fold()).
+    // VI: Mẫu tìm đã thoát %, _ và ! bằng "!", để thứ người dùng gõ được khớp đúng nguyên văn; bỏ qua dấu và chữ hoa ở
+    //     cả hai phía (hàm fold() của V39).
+    @Query(value = "SELECT id FROM products WHERE fold(name) LIKE fold(?1) ESCAPE '!'", nativeQuery = true)
     List<UUID> findIdsByNameLike(String pattern);
 
     @Query("select p.id from Product p where p.condition in ?1")

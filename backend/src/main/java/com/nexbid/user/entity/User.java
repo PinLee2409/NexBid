@@ -58,6 +58,10 @@ public class User {
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new LinkedHashSet<>();
 
+    // EN: Papers checked by an admin; shown as a badge on the seller's lots. / VI: Giấy tờ đã được admin kiểm; hiện thành huy hiệu trên lô của người bán.
+    @Column(name = "seller_verified", nullable = false)
+    private boolean sellerVerified;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -121,6 +125,14 @@ public class User {
 
     public UserStatus getStatus() {
         return status;
+    }
+
+    public boolean isSellerVerified() {
+        return sellerVerified;
+    }
+
+    public void setSellerVerified(boolean sellerVerified) {
+        this.sellerVerified = sellerVerified;
     }
 
     public void setStatus(UserStatus status) {

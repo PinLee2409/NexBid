@@ -31,7 +31,7 @@ public final class OrderEvents {
      * VI: Giao dịch đã chốt và sàn nợ người bán khoản tiền. {@code automatic}: không ai xác nhận, đã hết thời gian chờ.
      */
     public record Completed(UUID orderId, UUID auctionId, UUID sellerId, UUID buyerId, BigDecimal amount,
-            boolean automatic, Instant at) {
+            boolean automatic, Instant at, BigDecimal shippingFee) {
     }
 
     /** EN: The buyer reported a problem with an order. / VI: Người mua báo có vấn đề với một đơn. */

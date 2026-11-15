@@ -44,10 +44,15 @@ class OrderBookkeeping {
     void onSucceeded(PaymentEvents.Succeeded event) {
         orders.findByPaymentId(event.paymentId()).ifPresent(order -> {
             order.moveTo(OrderStatus.PAID);
+            order.chargeShipping(event.shippingFee());
             // EN: A copy, so editing the profile later never redirects a paid parcel.
             // VI: Một bản sao, để sửa hồ sơ sau này không bao giờ đổi hướng kiện hàng đã trả tiền.
-            addresses.addressOf(order.getBuyerId()).ifPresent(address ->
-                    order.deliverTo(address.recipient(), address.phone(), address.oneLine()));
+            addresses.addressOf(order.getBuyerId()).ifPresent(address -> {
+                order.deliverTo(address.recipient(), address.phone(), address.oneLine());
+                if (address.onGhn()) {
+                    order.deliverToGhn(address.districtId(), address.wardCode());
+                }
+            });
             orders.save(order);
         });
         auctions.completeSale(event.auctionId());

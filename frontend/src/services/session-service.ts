@@ -106,27 +106,67 @@ export interface SignUpInput extends Credentials {
 /** EN: A failure carries the error itself; the form puts it in the reader's language. / VI: Lỗi mang theo chính nó; form tự diễn đạt theo ngôn ngữ người đọc. */
 export type AuthResult =
   | { ok: true; user: User }
-  | { ok: false; error: unknown };
+  | { ok: false; error: unknown }
+  /** EN: The password was right; a code from the authenticator app is next. / VI: Mật khẩu đúng; tiếp theo là mã từ ứng dụng xác thực. */
+  | { ok: "code"; challenge: string };
 
 function failure(error: unknown): AuthResult {
   return { ok: false, error };
 }
 
+/** EN: Keeps the token and loads the account, or passes the code step on. / VI: Giữ token và tải tài khoản, hoặc chuyển sang bước nhập mã. */
+async function finish(login: ApiLogin): Promise<AuthResult> {
+  if (login.twoFactorChallenge) return { ok: "code", challenge: login.twoFactorChallenge };
+  setToken(login.accessToken, login.expiresAt);
+  // EN: The login answer has no join date; the profile page shows one. / VI: Kết quả đăng nhập không có ngày tham gia; trang hồ sơ cần nó.
+  const me = await api<ApiUser>("/api/users/me");
+  const user = toUser(me);
+  sessionStore.setState({ user, hydrated: true });
+  return { ok: true, user };
+}
+
 /** `POST /api/auth/login` */
 export async function signIn({ email, password, remember = true }: Credentials): Promise<AuthResult> {
   try {
-    const login = await api<ApiLogin>("/api/auth/login", {
-      method: "POST",
-      body: { email: email.trim(), password, rememberMe: remember },
-    });
-    setToken(login.accessToken, login.expiresAt);
-    // EN: The login answer has no join date; the profile page shows one. / VI: Kết quả đăng nhập không có ngày tham gia; trang hồ sơ cần nó.
-    const me = await api<ApiUser>("/api/users/me");
-    const user = toUser(me);
-    sessionStore.setState({ user, hydrated: true });
-    return { ok: true, user };
+    return await finish(
+      await api<ApiLogin>("/api/auth/login", {
+        method: "POST",
+        body: { email: email.trim(), password, rememberMe: remember },
+      }),
+    );
   } catch (error) {
     return failure(error);
+  }
+}
+
+/** `POST /api/auth/login/2fa` — the code step, with the challenge from the password step. */
+export async function signInWithCode(challenge: string, code: string): Promise<AuthResult> {
+  try {
+    return await finish(
+      await api<ApiLogin>("/api/auth/login/2fa", { method: "POST", body: { challenge, code: code.trim() } }),
+    );
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+/** `POST /api/auth/google` — the ID token from Google's button; a new account is made for a new email. */
+export async function signInWithGoogle(credential: string, remember = true): Promise<AuthResult> {
+  try {
+    return await finish(
+      await api<ApiLogin>("/api/auth/google", { method: "POST", body: { credential, rememberMe: remember } }),
+    );
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+/** `GET /api/auth/providers` — Google's client id, or null when Google sign-in is off. */
+export async function getGoogleClientId(): Promise<string | null> {
+  try {
+    return (await api<{ googleClientId: string | null }>("/api/auth/providers")).googleClientId ?? null;
+  } catch {
+    return null;
   }
 }
 

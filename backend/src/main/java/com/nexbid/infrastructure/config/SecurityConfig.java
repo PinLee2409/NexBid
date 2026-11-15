@@ -98,6 +98,10 @@ public class SecurityConfig {
                         // EN: An email's unsubscribe link works without signing in; its token is signed.
                         // VI: Link huỷ đăng ký trong email dùng được không cần đăng nhập; token của nó có chữ ký.
                         .requestMatchers(HttpMethod.POST, "/api/email/unsubscribe").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/shipping/ghn/webhook").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/shipping/status").permitAll()
+                        // EN: A lot page counts its visitors, signed in or not. / VI: Trang lô đếm người xem, có đăng nhập hay không.
+                        .requestMatchers(HttpMethod.POST, "/api/auctions/*/views").permitAll()
                         .requestMatchers(PUBLIC_PATHS).permitAll()
                         // EN: The frontend also hides these menus, but that is decoration —
                         //     this is the line that actually stops someone typing the URL.

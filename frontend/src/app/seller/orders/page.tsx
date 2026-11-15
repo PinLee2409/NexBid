@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Receipt, RotateCcw, Truck } from "lucide-react";
+import { Loader2, PackageCheck, Printer, Receipt, RotateCcw, Truck } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { StarInput, StarRating } from "@/components/common/star-rating";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -27,6 +28,8 @@ import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage } from "@/hooks/use-labels";
 import type { OrderEntry } from "@/services/order-service";
 import {
+  bookGhn,
+  ghnLabelUrl,
   listSecondChances,
   listSoldOrders,
   offerToRunnerUp,
@@ -34,6 +37,8 @@ import {
   shipOrder,
   type SecondChance,
 } from "@/services/seller-service";
+import { CARRIERS, GHN_CARRIER, OTHER_CARRIER } from "@/lib/carriers";
+import { useGhnEnabled } from "@/services/shipping-service";
 import type { SecondChanceOffer } from "@/types";
 import { useMoney } from "@/hooks/use-money";
 
@@ -111,10 +116,16 @@ function SalesList({
           <OrderRow
             key={entry.order.id}
             entry={entry}
+            messages
             extra={<BuyerRecordLine entry={entry} />}
             action={
               entry.order.status === "PAID" ? (
-                <ShipButton entry={entry} onShipped={onChanged} />
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <BookGhnButton entry={entry} onBooked={onChanged} />
+                  <ShipButton entry={entry} onShipped={onChanged} />
+                </div>
+              ) : entry.order.ghnBooked && entry.order.status === "PROCESSING" ? (
+                <PrintLabelButton orderId={entry.order.id} />
               ) : chance ? (
                 <SecondChanceAction entry={entry} chance={chance} onOffered={onChanged} />
               ) : entry.order.status === "COMPLETED" ? (
@@ -249,14 +260,112 @@ function BuyerReview({ rating, comment }: { rating: number; comment: string | nu
   );
 }
 
+/**
+ * EN: NexBid books GHN to pick the parcel up, on NexBid's account: the seller gets a code and a label at once and does
+ *     not open GHN. NexBid pays GHN out of the buyer's shipping, so that shipping is not paid on to the seller. Shown
+ *     when GHN is on and the buyer's address came from GHN's lists.
+ * VI: NexBid đặt GHN đến lấy kiện, bằng tài khoản của NexBid: người bán có mã và phiếu ngay, không cần mở GHN. NexBid trả
+ *     tiền GHN từ phí ship người mua đã trả, nên phần phí ship đó không chuyển cho người bán. Hiện khi GHN bật và địa chỉ
+ *     người mua chọn từ danh sách GHN.
+ */
+function BookGhnButton({ entry, onBooked }: { entry: OrderEntry; onBooked: () => void }) {
+  const t = useTranslations("seller");
+  const tc = useTranslations("common");
+  const money = useMoney();
+  const errorMessage = useApiErrorMessage();
+  const [isPending, startTransition] = useTransition();
+  const [open, setOpen] = useState(false);
+  const ghnOn = useGhnEnabled();
+
+  if (!ghnOn || !entry.order.ghnAddress) return null;
+
+  function book() {
+    startTransition(async () => {
+      let booked: OrderEntry;
+      try {
+        booked = await bookGhn(entry.order.id);
+      } catch (error) {
+        toast.error(errorMessage(error));
+        return;
+      }
+      setOpen(false);
+      toast.success(t("ghnBooked"), { description: t("ghnBookedBody", { code: booked.order.trackingNumber ?? "" }) });
+      onBooked();
+    });
+  }
+
+  return (
+    <>
+      <Button size="sm" onClick={() => setOpen(true)} disabled={isPending}>
+        <PackageCheck className="size-4" />
+        {t("bookGhn")}
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("bookGhnTitle")}</DialogTitle>
+            <DialogDescription>{t("bookGhnBody")}</DialogDescription>
+          </DialogHeader>
+          {entry.payment?.shippingFee ? (
+            <p className="text-dim text-sm">
+              {t("bookGhnShipping", { fee: money.currency(entry.payment.shippingFee) })}
+            </p>
+          ) : null}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
+              {tc("cancel")}
+            </Button>
+            <Button onClick={book} disabled={isPending}>
+              {isPending ? <Loader2 className="size-4 animate-spin" /> : <PackageCheck className="size-4" />}
+              {t("bookGhnConfirm")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+/** EN: Opens GHN's printable label in a new tab. / VI: Mở phiếu in của GHN trong thẻ mới. */
+function PrintLabelButton({ orderId }: { orderId: string }) {
+  const t = useTranslations("seller");
+  const errorMessage = useApiErrorMessage();
+  const [isPending, startTransition] = useTransition();
+
+  function print() {
+    // EN: Opened before the request so the browser does not block it as a pop-up. / VI: Mở trước khi gọi để trình duyệt không chặn như cửa sổ bật lên.
+    const tab = window.open("about:blank", "_blank");
+    startTransition(async () => {
+      try {
+        const url = await ghnLabelUrl(orderId);
+        if (tab) tab.location.href = url;
+        else window.location.assign(url);
+      } catch (error) {
+        tab?.close();
+        toast.error(errorMessage(error));
+      }
+    });
+  }
+
+  return (
+    <Button size="sm" variant="outline" onClick={print} disabled={isPending}>
+      <Printer className="size-4" />
+      {t("printGhnLabel")}
+    </Button>
+  );
+}
+
 function ShipButton({ entry, onShipped }: { entry: OrderEntry; onShipped: () => void }) {
   const t = useTranslations("seller");
   const tc = useTranslations("common");
   const errorMessage = useApiErrorMessage();
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
-  const [carrier, setCarrier] = useState("");
+  const [choice, setChoice] = useState<string>("");
+  const [otherCarrier, setOtherCarrier] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
+  const ghnOn = useGhnEnabled();
+  const carrier = choice === OTHER_CARRIER ? otherCarrier.trim() : choice;
 
   function ship(event: FormEvent) {
     event.preventDefault();
@@ -298,12 +407,39 @@ function ShipButton({ entry, onShipped }: { entry: OrderEntry; onShipped: () => 
             ) : null}
 
             <div className="mt-5 space-y-4">
-              <FormField label={t("shipCarrier")} hint={t("shipCarrierHint")}>
+              <FormField label={t("shipCarrier")}>
                 {(field) => (
-                  <Input {...field} maxLength={60} value={carrier} onChange={(event) => setCarrier(event.target.value)} />
+                  <Select value={choice} onValueChange={setChoice}>
+                    <SelectTrigger id={field.id} aria-describedby={field["aria-describedby"]} className="w-full">
+                      <SelectValue placeholder={t("shipCarrierPlaceholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CARRIERS.map((name) => (
+                        <SelectItem key={name} value={name}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value={OTHER_CARRIER}>{t("shipCarrierOther")}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 )}
               </FormField>
-              <FormField label={t("shipTracking")}>
+              {choice === OTHER_CARRIER ? (
+                <FormField label={t("shipCarrierOtherName")}>
+                  {(field) => (
+                    <Input
+                      {...field}
+                      maxLength={60}
+                      value={otherCarrier}
+                      onChange={(event) => setOtherCarrier(event.target.value)}
+                    />
+                  )}
+                </FormField>
+              ) : null}
+              <FormField
+                label={t("shipTracking")}
+                hint={choice === GHN_CARRIER && ghnOn ? t("shipTrackingGhnHint") : undefined}
+              >
                 {(field) => (
                   <Input
                     {...field}

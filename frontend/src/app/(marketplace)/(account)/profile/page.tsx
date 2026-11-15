@@ -7,6 +7,7 @@ import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { DeliveryAndEmailSettings } from "@/components/account/delivery-and-email-settings";
+import { TwoFactorSettings } from "@/components/account/two-factor-settings";
 import { FormField } from "@/components/common/form-field";
 import { StatTileSkeleton } from "@/components/common/loading-skeleton";
 import { StatTile } from "@/components/common/stat-tile";
@@ -182,6 +183,8 @@ export default function ProfilePage() {
       </section>
 
       <DeliveryAndEmailSettings />
+
+      <TwoFactorSettings />
     </>
   );
 }

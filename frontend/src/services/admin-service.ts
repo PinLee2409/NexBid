@@ -106,10 +106,31 @@ export async function setUserBlocked(userId: string, blocked: boolean): Promise<
   );
 }
 
+/** `PATCH /api/admin/users/{id}/verified` — gives or takes away a seller's verified badge. */
+export async function setSellerVerified(userId: string, verified: boolean): Promise<User> {
+  return toUser(await api<ApiUser>(`/api/admin/users/${userId}/verified`, { method: "PATCH", body: { verified } }));
+}
+
 /** `GET /api/admin/orders?status=…` — every order when no status is given, most recently changed first. */
 export async function listOrders(statuses: OrderStatus[] = []): Promise<OrderEntry[]> {
   const page = await api<ApiPage<ApiOrder>>("/api/admin/orders", { query: { status: statuses, size: 100 } });
   return page.items.map(toEntry);
+}
+
+/** EN: One message of an order, as an admin reads it. / VI: Một tin nhắn của đơn, như admin đọc. */
+export interface AdminOrderMessage {
+  id: string;
+  fromBuyer: boolean;
+  /** EN: Full display name. / VI: Tên hiển thị đầy đủ. */
+  sender: string;
+  body: string;
+  createdAt: string;
+  readAt: string | null;
+}
+
+/** `GET /api/admin/orders/{id}/messages` — every read is written to the audit log. */
+export function listOrderMessages(orderId: string): Promise<AdminOrderMessage[]> {
+  return api<AdminOrderMessage[]>(`/api/admin/orders/${orderId}/messages`);
 }
 
 /** `GET /api/admin/orders/{id}/refund-account` — where to transfer a refund; null when the buyer has not said. */

@@ -80,6 +80,21 @@ export const ERROR_CODES = [
   "REPORT_LIMIT",
   "BUYER_REVIEW_NOT_ALLOWED",
   "BIDDER_RESTRICTED",
+  "NOT_A_SELLER",
+  "MESSAGES_CLOSED",
+  "MESSAGE_BLOCKED",
+  "MESSAGE_LIMIT",
+  "SHIPPING_UNAVAILABLE",
+  "TRACKING_NOT_FOUND",
+  "GHN_REFUSED",
+  "GHN_ADDRESS_REQUIRED",
+  "TWO_FACTOR_ALREADY_ON",
+  "TWO_FACTOR_NOT_SET_UP",
+  "TWO_FACTOR_CODE_INVALID",
+  "TWO_FACTOR_CHALLENGE_EXPIRED",
+  "GOOGLE_SIGN_IN_OFF",
+  "GOOGLE_SIGN_IN_FAILED",
+  "IMPORT_INVALID",
   "QUESTION_NOT_FOUND",
   "QUESTION_NOT_ALLOWED",
   "QUESTION_LIMIT",
@@ -132,6 +147,8 @@ export interface User {
   email: string;
   /** Masked handle shown in public bid history, e.g. `pin***`. */
   displayName: string;
+  /** EN: A seller whose papers an admin checked. / VI: Người bán đã được admin xác minh giấy tờ. */
+  verified?: boolean;
   avatarUrl?: string;
   roles: UserRole[];
   status: UserStatus;
@@ -237,6 +254,14 @@ export interface ProductImage {
   sortOrder: number;
 }
 
+/** EN: Weight in grams, sides in centimetres. / VI: Cân nặng tính bằng gam, các cạnh tính bằng cm. */
+export interface Parcel {
+  weightGrams: number;
+  lengthCm: number;
+  widthCm: number;
+  heightCm: number;
+}
+
 export interface Product {
   id: Id;
   sellerId: Id;
@@ -245,6 +270,8 @@ export interface Product {
   description: string;
   condition: ProductCondition;
   status: ProductStatus;
+  /** EN: Packed size for shipping quotes; null when not given. / VI: Kích thước kiện để báo phí ship; null khi chưa khai. */
+  parcel?: Parcel | null;
   images: ProductImage[];
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
@@ -514,7 +541,9 @@ export type NotificationType =
   | "STRAY_CHARGE"
   | "SALE_REFUNDED"
   | "LOT_REMOVED"
-  | "REPORT_RESOLVED";
+  | "REPORT_RESOLVED"
+  | "SELLER_VERIFIED"
+  | "NEW_MESSAGE";
 
 export interface AppNotification {
   id: Id;
@@ -545,6 +574,11 @@ export interface Payment {
   expiredAt: IsoDateString;
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
+  /** EN: Null until quoted at checkout. / VI: Null tới khi báo phí lúc thanh toán. */
+  shippingFee: number | null;
+  shippingSource: "GHN" | "FLAT" | null;
+  /** EN: Goods plus shipping: what VNPay charges. / VI: Tiền hàng cộng phí ship: số VNPay thu. */
+  total: number;
 }
 
 /** Order status (spec §5.3). */
@@ -589,6 +623,13 @@ export interface Order {
   /** EN: Completed because the buyer stayed silent past the wait. / VI: Hoàn tất vì người mua im lặng quá thời gian chờ. */
   autoCompleted: boolean;
   dispute: OrderDispute | null;
+  /** EN: The carrier's latest status (GHN), and when it delivered. / VI: Trạng thái mới nhất của đơn vị vận chuyển (GHN), và lúc giao. */
+  shippingStatus: string | null;
+  deliveredAt: IsoDateString | null;
+  /** EN: NexBid booked GHN for it (a label can be printed). / VI: NexBid đã đặt GHN cho đơn này (in được phiếu). */
+  ghnBooked: boolean;
+  /** EN: The address paid for was picked from GHN's lists. / VI: Địa chỉ đã trả tiền được chọn từ danh sách GHN. */
+  ghnAddress: boolean;
 }
 
 interface OrderShipping {
@@ -605,6 +646,10 @@ export interface ShippingAddress {
   ward: string;
   district: string;
   province: string;
+  /** EN: GHN's ids, when picked from GHN's lists; all three or none. / VI: Mã GHN khi chọn từ danh sách GHN; đủ cả ba hoặc không có. */
+  provinceId?: number | null;
+  districtId?: number | null;
+  wardCode?: string | null;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -642,7 +687,12 @@ export type AuditAction =
   | "PAYOUT_RECORDED"
   | "BANK_ACCOUNT_CHANGED"
   | "STRAY_CHARGE_REFUNDED"
-  | "AUCTION_REMOVED";
+  | "AUCTION_REMOVED"
+  | "SELLER_VERIFIED"
+  | "ORDER_MESSAGES_READ"
+  | "SHILL_PAIR_CLEARED"
+  | "TWO_FACTOR_ENABLED"
+  | "TWO_FACTOR_DISABLED";
 
 export interface AuditLog {
   id: Id;

@@ -55,6 +55,7 @@ export function toUser(user: ApiUser): User {
     roles: user.roles,
     status: user.status,
     createdAt: user.createdAt ?? new Date(0).toISOString(),
+    verified: user.verified ?? false,
   };
 }
 
@@ -128,7 +129,7 @@ export function toSummary(summary: ApiAuctionSummary, watched = false): AuctionS
     ...auction,
     product,
     category,
-    seller: { id: summary.seller.id, displayName: summary.seller.displayName },
+    seller: { id: summary.seller.id, displayName: summary.seller.displayName, verified: summary.seller.verified ?? false },
     watched,
   };
 }
@@ -168,6 +169,10 @@ function hrefFor(notification: ApiNotification): string | undefined {
     case "ORDER_REFUNDED":
     case "STRAY_CHARGE":
       return "/payments";
+    case "NEW_MESSAGE":
+      return "/messages";
+    case "SELLER_VERIFIED":
+      return "/seller/dashboard";
     case "SALE_REFUNDED":
       return "/seller/orders";
     case "LOT_REMOVED":
@@ -231,7 +236,15 @@ export function toOffer(offer: ApiOfferDetails): SecondChanceOffer {
 }
 
 export function toPayment(payment: ApiPaymentDetails): Payment {
-  return { ...payment, amount: Number(payment.amount) };
+  const amount = Number(payment.amount);
+  const shippingFee = payment.shippingFee == null ? null : Number(payment.shippingFee);
+  return {
+    ...payment,
+    amount,
+    shippingFee,
+    shippingSource: payment.shippingSource ?? null,
+    total: payment.total == null ? amount + (shippingFee ?? 0) : Number(payment.total),
+  };
 }
 
 export function toOrder(order: ApiOrder["order"]): Order {
@@ -245,6 +258,10 @@ export function toOrder(order: ApiOrder["order"]): Order {
     completedAt: order.completedAt ?? null,
     autoCompleted: order.autoCompleted ?? false,
     dispute: order.dispute ?? null,
+    shippingStatus: order.shippingStatus ?? null,
+    deliveredAt: order.deliveredAt ?? null,
+    ghnBooked: order.ghnBooked ?? false,
+    ghnAddress: order.ghnAddress ?? false,
   };
 }
 
@@ -257,6 +274,7 @@ export function toProduct(product: ApiProduct, images: ProductImage[] = []): Pro
     description: product.description,
     condition: product.condition,
     status: product.status,
+    parcel: product.parcel ?? null,
     images,
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,

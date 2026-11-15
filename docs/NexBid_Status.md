@@ -1,42 +1,52 @@
 # NexBid: hiện trạng và việc tiếp theo
 
-Cập nhật: 14/11/2026 (đợt 18: báo cáo lô, đánh giá người mua, trang Email của admin). Lịch sử chi tiết từng đợt nằm trong [NexBid_Backlog.md](NexBid_Backlog.md).
+Cập nhật: 15/11/2026 (đợt 21–26: thu phí ship, tạo đơn GHN trên NexBid, tìm không dấu, lô tương tự, đăng lại, thống kê lô, phát hiện tự trả giá, đăng nhập hai bước, đăng nhập Google, đối soát và doanh thu, nhập lô từ CSV). Lịch sử chi tiết từng đợt nằm trong [NexBid_Backlog.md](NexBid_Backlog.md).
 
 ## 1. Web đã tới đâu
 
 ### Người mua
-- Duyệt, tìm kiếm, lọc lô theo danh mục; trang lô cập nhật giá trực tiếp qua WebSocket, đồng hồ đếm ngược, chống bắn tỉa (gia hạn phút cuối).
+- Duyệt, tìm kiếm (không dấu: "dong ho" ra "Đồng hồ"), lọc lô theo danh mục; cuối trang lô có lô tương tự và lô đã xem gần đây; trang lô cập nhật giá trực tiếp qua WebSocket, đồng hồ đếm ngược, chống bắn tỉa (gia hạn phút cuối).
 - Trả giá, tự động trả giá (auto-bid), mua ngay, theo dõi lô.
 - Hỏi đáp công khai trên trang lô: người mua hỏi, người bán trả lời ngay dưới câu hỏi; mỗi người tối đa 3 câu đang chờ trên một lô.
 - Lưu tìm kiếm và theo dõi người bán: có lô mới khớp thì nhận thông báo ngay, và email tổng hợp mỗi ngày lúc 8:00.
+- Nhắn tin với người bán về đơn hàng; số điện thoại, email, link bị chặn để giữ giao dịch trên sàn.
+- Phí ship trên trang lô (GHN, theo địa chỉ của người xem); chọn tỉnh, quận, phường từ danh sách của GHN.
+- Phí ship thu cùng tiền hàng: trước khi sang VNPay thấy tiền hàng, phí ship (GHN hoặc phí cố định 50.000₫) và tổng; phí chốt theo địa chỉ, đổi địa chỉ thì báo lại.
 - Giá sàn ẩn: người mua chỉ thấy "chưa đạt / đã đạt giá sàn".
 - Thanh toán qua VNPay (bản demo đã bỏ). Phải có địa chỉ nhận hàng trước khi thanh toán.
-- Đơn hàng: theo dõi mã vận đơn, xác nhận đã nhận, đánh giá người bán (1–5 sao).
+- Đơn hàng: theo dõi mã vận đơn và trạng thái kiện từ GHN, xác nhận đã nhận, đánh giá người bán (1–5 sao).
 - Khiếu nại đơn hàng (chưa nhận, sai mô tả, hư hỏng, khác).
 - Cơ hội thứ hai: khi người thắng không trả tiền, người trả giá kế tiếp được mời mua.
+- Đăng nhập hai bước bằng ứng dụng xác thực (kèm 8 mã khôi phục) và đăng nhập bằng Google.
 - Thông báo trong app và email song ngữ; tắt được email bị vượt giá, có link huỷ đăng ký một chạm.
 - Giao diện tiếng Việt và tiếng Anh, giá theo ngôn ngữ (`18.500.000 ₫` / `₫18,500,000`), giao diện sáng và tối, dùng tốt trên điện thoại.
 
 ### Người bán
 - Gửi yêu cầu bán hàng, admin duyệt.
-- Đăng sản phẩm kèm ảnh, tạo phiên đấu giá (giá khởi điểm, bước giá, giá sàn, giá mua ngay).
+- Đăng sản phẩm kèm ảnh và kích thước đóng gói (để báo phí ship), tạo phiên đấu giá (giá khởi điểm, bước giá, giá sàn, giá mua ngay).
 - Quyết định bán khi lô đóng dưới giá sàn (trong 24 giờ).
-- Đánh giá người mua sau mỗi đơn hoàn tất, xem hồ sơ người mua cạnh đơn bán *(mới, chưa commit)*.
-- Đơn bán: xem địa chỉ giao, nhập đơn vị vận chuyển và mã vận đơn.
-- Thu nhập: số tiền chờ chi trả, đã nhận, phí sàn 5%, tài khoản ngân hàng nhận tiền.
+- Đánh giá người mua sau mỗi đơn hoàn tất, xem hồ sơ người mua cạnh đơn bán.
+- Đơn bán: xem địa chỉ giao, chọn đơn vị vận chuyển và nhập mã vận đơn; mã GHN được kiểm với GHN, sai thì báo ngay.
+- "Gửi bằng GHN": NexBid tự tạo vận đơn GHN bằng tài khoản của sàn, có mã và phiếu in ngay; sàn trả tiền GHN từ phí ship người mua đã trả.
+- Nhập nhiều lô từ file CSV kèm ảnh (tối đa 50 dòng), mỗi dòng thành lô nháp; có file mẫu.
+- Đăng lại lô không bán được (sao chép giá và cài đặt), trang Thống kê: người xem, theo dõi, trả giá từng lô, tỉ lệ bán được.
+- Thu nhập: số tiền chờ chi trả, đã nhận, phí sàn 5% (chỉ tính trên tiền hàng), phí ship người mua đã trả được cộng lại, tài khoản ngân hàng nhận tiền.
 
 ### Admin (trang đăng nhập riêng `/admin/login`)
-- Duyệt lô, quản lý danh mục, người dùng (khoá / mở khoá), yêu cầu bán hàng.
+- Duyệt lô, quản lý danh mục, người dùng (khoá / mở khoá, xác minh người bán), yêu cầu bán hàng.
 - Đơn hàng: hoàn tiền bằng chuyển khoản thủ công vào tài khoản người mua đã cho, kèm mã giao dịch.
-- Khiếu nại: hoàn tiền cho người mua hoặc giữ giao dịch, kèm ghi chú.
+- Khiếu nại: hoàn tiền cho người mua hoặc giữ giao dịch, kèm ghi chú; đọc tin nhắn giữa hai bên (mỗi lần đọc ghi vào nhật ký).
+- Tài chính: đối soát VNPay theo ngày (đã thu, áp vào lô, phải trả lại, đã hoàn, đã chi), doanh thu theo tháng, danh mục, người bán; xuất CSV mở bằng Excel.
 - Chi trả cho người bán: danh sách người bán đang chờ tiền, ghi nhận chuyển khoản kèm mã giao dịch.
 - Khoản VNPay thu thừa (trễ hạn hoặc trả hai lần): hiện ở trang Đơn hàng để chuyển khoản trả lại.
-- Báo cáo lô vi phạm: bỏ qua hoặc gỡ lô; trang Email để gửi lại email thất bại *(mới, chưa commit)*.
+- Nghi vấn tự trả giá: cặp người bán–người trả giá có dấu hiệu (cùng trình duyệt hoặc cùng mạng, gần như chỉ trả giá một người bán, không bao giờ thắng, hay dừng ngay dưới người thắng, tài khoản mới); admin bỏ nghi vấn hoặc khoá người trả giá.
+- Báo cáo lô vi phạm: bỏ qua hoặc gỡ lô; trang Email để gửi lại email thất bại.
 - Nhật ký hệ thống, thống kê hoạt động.
 
 ### Hệ thống
 - Backend Spring Boot 4 chia module (Spring Modulith), Postgres, Redis, Kafka (outbox), OpenTelemetry.
-- Đơn đã gửi tự hoàn tất sau 7 ngày nếu người mua không xác nhận và không khiếu nại.
+- Đơn đã gửi tự hoàn tất sau 7 ngày nếu người mua không xác nhận và không khiếu nại; gửi bằng GHN thì 3 ngày sau khi GHN báo đã giao.
+- Tích hợp GHN (sandbox): phí ship, trạng thái vận đơn, danh sách tỉnh/quận/phường; webhook cần địa chỉ công khai, chạy ở máy thì hỏi GHN 30 phút một lần.
 - 26 loại email song ngữ qua Brevo, có logo, tự gửi lại khi lỗi.
 - CI: test backend (độ phủ JaCoCo), kiểm tra frontend, test E2E Playwright.
 - File deploy staging với HTTPS tự động (Caddy) trong `deploy/staging/`, chưa deploy thật.
@@ -82,8 +92,11 @@ mục `nexbid-backend` của `.claude/launch.json` nạp file này; chạy bằn
 
 ## 4. Việc cần chủ dự án chuẩn bị
 
+- [ ] Đăng nhập Google: tạo OAuth client (loại Web application) trên Google Cloud Console, thêm `http://localhost:3000` vào Authorized JavaScript origins, rồi đặt `NEXBID_GOOGLE_CLIENT_ID` trong `backend/.env`. Chưa đặt thì nút Google không hiện.
+
 - [x] VNPay kích hoạt lại mã website sandbox `VVK6HZ1B`.
 - [x] Key Brevo: đã có, đã gửi thử thành công (mail vào thư rác vì gửi bằng địa chỉ Gmail).
+- [x] GHN sandbox: cửa hàng 239091 trên `5sao.ghn.dev`, đã có địa chỉ lấy hàng; Token, ShopId và webhook secret đã nằm trong `backend/.env`.
 - [ ] Mua domain, rồi deploy staging bằng `deploy/staging/`. Có domain thì:
   - IPN của VNPay gọi về được thật (không cần ngrok);
   - email gửi bằng `no-reply@domain` đã xác thực SPF/DKIM, không vào thư rác;
@@ -96,8 +109,3 @@ mục `nexbid-backend` của `.claude/launch.json` nạp file này; chạy bằn
 1. **Đặt cọc trước khi đấu giá lô giá trị cao.** Với lô từ một mức giá cấu hình được (ví dụ 20 triệu), người mua phải cọc qua VNPay khoảng 5–10% mới được trả giá. Thắng mà không trả tiền thì mất cọc; thua thì được hoàn cọc tự động. Giải quyết vấn đề lớn nhất của sàn đấu giá: người thắng bỏ không trả tiền.
    *Tạm dừng (14/11/2026): giữ số dư (ví) cho người dùng cần giấy phép của Ngân hàng Nhà nước, nên không làm ví. Nếu làm, thu cọc qua VNPay và hoàn bằng chuyển khoản tay như hoàn tiền hiện nay. Đợt 18 đã có giải pháp nhẹ hơn: người bỏ không trả 2 lần không được trả giá từ 20 triệu.*
 
-### Làm sau
-
-2. **Tích hợp GHN hoặc GHTK:** tính phí ship theo tỉnh lúc thanh toán, tự lấy trạng thái vận đơn, đơn tự hoàn tất khi đơn vị vận chuyển báo đã giao.
-3. **Nhắn tin giữa người mua và người bán** sau khi thắng, để hẹn giao hàng hoặc hỏi về kiện hàng.
-4. **Huy hiệu người bán đã xác minh** (đã xác minh giấy tờ), hiện trên trang lô.

@@ -188,6 +188,28 @@ class AccountNotices {
         mailer.send(event.sellerId(), MailKind.SALE_REFUNDED, MailFacts.lot(event.auctionId(), title, null));
     }
 
+    /** EN: The seller hears they now carry the verified badge. / VI: Người bán được báo đã có huy hiệu xác minh. */
+    @EventListener
+    void onSellerVerified(com.nexbid.user.SellerVerifiedEvent event) {
+        if (event.verified()) {
+            notifications.notify(event.sellerId(), NotificationType.SELLER_VERIFIED, "You are a verified seller",
+                    "NexBid checked your papers. Your lots now show the verified badge.", null, event.at());
+        }
+    }
+
+    /**
+     * EN: A new message is a notice only when it starts a run of unread ones, so a chat does not bury the inbox.
+     * VI: Tin nhắn mới chỉ thành thông báo khi nó mở đầu một loạt tin chưa đọc, để cuộc trò chuyện không lấp hộp thông báo.
+     */
+    @EventListener
+    void onMessage(com.nexbid.message.MessageEvents.Sent event) {
+        if (event.firstUnread()) {
+            String title = auctions.lotTitleOf(event.auctionId());
+            notifications.notify(event.recipientId(), NotificationType.NEW_MESSAGE, "New message",
+                    clip(title + " · " + event.sender() + ": " + event.body()), event.auctionId(), event.at());
+        }
+    }
+
     /** EN: The reporter hears what came of their report. / VI: Người báo cáo được báo kết quả báo cáo của mình. */
     @EventListener
     void onReportResolved(com.nexbid.report.ReportEvents.Resolved event) {

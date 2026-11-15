@@ -1,6 +1,6 @@
 "use client";
 
-import { Gavel, Plus, Send } from "lucide-react";
+import { Gavel, Plus, RotateCcw, Send } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useTransition } from "react";
@@ -11,10 +11,11 @@ import { ApiErrorState } from "@/components/common/api-error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { PageHeader } from "@/components/layout/page-header";
+import { ImportLotsDialog } from "@/components/seller/import-lots-dialog";
 import { Button } from "@/components/ui/button";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage } from "@/hooks/use-labels";
-import { isAuctionEditable } from "@/lib/auction-rules";
+import { isAuctionEditable, isRelistable } from "@/lib/auction-rules";
 import {
   decideReserve,
   listMyAuctions,
@@ -34,12 +35,15 @@ export default function SellerAuctionsPage() {
         title={t("auctionsTitle")}
         description={t("auctionsSubtitle")}
         actions={
-          <Button asChild>
-            <Link href="/seller/auctions/create">
-              <Plus className="size-4" />
-              {t("newAuction")}
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <ImportLotsDialog onImported={refresh} />
+            <Button asChild>
+              <Link href="/seller/auctions/create">
+                <Plus className="size-4" />
+                {t("newAuction")}
+              </Link>
+            </Button>
+          </div>
         }
       />
 
@@ -114,6 +118,14 @@ function SellerAuctionRow({
               <Button size="sm" onClick={handleSubmit} disabled={isPending}>
                 <Send className="size-3.5" />
                 {t("submitForApproval")}
+              </Button>
+            ) : null}
+            {isRelistable(auction.status, auction.product.status) ? (
+              <Button asChild size="sm" variant="outline">
+                <Link href={`/seller/auctions/create?relist=${auction.id}`}>
+                  <RotateCcw className="size-3.5" />
+                  {t("relist")}
+                </Link>
               </Button>
             ) : null}
             <Button asChild size="sm" variant="outline">

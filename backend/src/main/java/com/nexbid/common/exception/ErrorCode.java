@@ -116,6 +116,32 @@ public enum ErrorCode {
     // EN: Buyer reviews and the unpaid-win limit. / VI: Đánh giá người mua và giới hạn với người hay bỏ không trả.
     BUYER_REVIEW_NOT_ALLOWED(HttpStatus.CONFLICT),
     BIDDER_RESTRICTED(HttpStatus.FORBIDDEN),
+    // EN: Only a seller carries the verified badge. / VI: Chỉ người bán mới mang huy hiệu xác minh.
+    NOT_A_SELLER(HttpStatus.CONFLICT),
+    // EN: Order messages: closed (cancelled, or long completed), contact details refused, too many at once.
+    // VI: Tin nhắn đơn hàng: đã đóng (đơn huỷ hoặc hoàn tất lâu rồi), chứa thông tin liên lạc, gửi quá nhiều.
+    MESSAGES_CLOSED(HttpStatus.CONFLICT),
+    MESSAGE_BLOCKED(HttpStatus.UNPROCESSABLE_ENTITY),
+    MESSAGE_LIMIT(HttpStatus.TOO_MANY_REQUESTS),
+    // EN: GHN is not connected, or did not answer. / VI: Chưa kết nối GHN, hoặc GHN không trả lời.
+    SHIPPING_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE),
+    // EN: GHN has no order with the code the seller typed. / VI: GHN không có đơn nào mang mã người bán đã nhập.
+    TRACKING_NOT_FOUND(HttpStatus.UNPROCESSABLE_ENTITY),
+    // EN: GHN would not take the parcel (its message is kept), or an address lacks GHN ids. / VI: GHN không nhận kiện (giữ lời của GHN), hoặc một địa chỉ thiếu mã GHN.
+    GHN_REFUSED(HttpStatus.UNPROCESSABLE_ENTITY),
+    GHN_ADDRESS_REQUIRED(HttpStatus.UNPROCESSABLE_ENTITY),
+    // EN: Two-step sign-in: already on, setup not started, a wrong code, or the code step came too late.
+    // VI: Đăng nhập hai bước: đã bật, chưa bắt đầu cài đặt, mã sai, hoặc bước nhập mã đến quá muộn.
+    TWO_FACTOR_ALREADY_ON(HttpStatus.CONFLICT),
+    TWO_FACTOR_NOT_SET_UP(HttpStatus.CONFLICT),
+    TWO_FACTOR_CODE_INVALID(HttpStatus.UNPROCESSABLE_ENTITY),
+    TWO_FACTOR_CHALLENGE_EXPIRED(HttpStatus.UNAUTHORIZED),
+    // EN: Google sign-in is not set up, or Google's token did not check out. / VI: Chưa cài đăng nhập Google, hoặc token của Google không hợp lệ.
+    GOOGLE_SIGN_IN_OFF(HttpStatus.SERVICE_UNAVAILABLE),
+    GOOGLE_SIGN_IN_FAILED(HttpStatus.UNAUTHORIZED),
+    // EN: A CSV of lots that cannot be read at all (rows with problems are reported one by one instead).
+    // VI: File CSV lô không đọc được (dòng có lỗi thì được báo từng dòng).
+    IMPORT_INVALID(HttpStatus.BAD_REQUEST),
     // EN: Questions on a lot: none such, closed lot or own lot, too many waiting, or already answered.
     // VI: Hỏi đáp trên lô: không có câu hỏi, lô đã đóng hoặc lô của chính mình, quá nhiều câu đang chờ, hoặc đã trả lời.
     QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND),

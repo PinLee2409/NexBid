@@ -68,8 +68,33 @@ public class Order {
     @Column(name = "completed_at")
     private Instant completedAt;
 
+    // EN: What the carrier last reported (GHN), and when it said delivered. / VI: Trạng thái đơn vị vận chuyển báo gần nhất (GHN), và lúc báo đã giao.
+    @Column(name = "shipping_status", length = 40)
+    private String shippingStatus;
+
+    @Column(name = "delivered_at")
+    private Instant deliveredAt;
+
     @Column(name = "auto_completed", nullable = false)
     private boolean autoCompleted;
+
+    // EN: GHN's district and ward of the address paid for, when it was picked from GHN's lists. / VI: Quận và phường GHN của địa chỉ đã trả tiền, khi chọn từ danh sách GHN.
+    @Column(name = "ship_district_id")
+    private Integer shipDistrictId;
+
+    @Column(name = "ship_ward_code", length = 20)
+    private String shipWardCode;
+
+    // EN: Booked through NexBid's GHN account, which pays GHN; carrier_fee is what GHN charged. / VI: Đặt qua tài khoản GHN của NexBid, sàn trả tiền GHN; carrier_fee là số GHN thu.
+    @Column(name = "ghn_booked", nullable = false)
+    private boolean ghnBooked;
+
+    @Column(name = "carrier_fee", precision = 15, scale = 2)
+    private BigDecimal carrierFee;
+
+    // EN: Shipping the buyer paid on top of the amount; it goes to the seller with the goods. / VI: Phí ship người mua trả thêm ngoài số tiền hàng; trả cho người bán cùng tiền hàng.
+    @Column(name = "shipping_fee", nullable = false, precision = 15, scale = 2)
+    private BigDecimal shippingFee = BigDecimal.ZERO;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -140,6 +165,49 @@ public class Order {
         return updatedAt;
     }
 
+    public BigDecimal getShippingFee() {
+        return shippingFee;
+    }
+
+    /**
+     * EN: What the seller is paid for shipping: the buyer's shipping, unless NexBid booked GHN and paid for the parcel.
+     * VI: Phần phí ship trả cho người bán: phí ship người mua đã trả, trừ khi NexBid đặt GHN và đã trả tiền cho kiện.
+     */
+    public BigDecimal getSellerShipping() {
+        return ghnBooked ? BigDecimal.ZERO : shippingFee;
+    }
+
+    public Integer getShipDistrictId() {
+        return shipDistrictId;
+    }
+
+    public String getShipWardCode() {
+        return shipWardCode;
+    }
+
+    public boolean isGhnBooked() {
+        return ghnBooked;
+    }
+
+    public BigDecimal getCarrierFee() {
+        return carrierFee;
+    }
+
+    /** EN: GHN ids of the address paid for, or nulls for a typed one. / VI: Mã GHN của địa chỉ đã trả tiền, hoặc null với địa chỉ gõ tay. */
+    public void deliverToGhn(Integer districtId, String wardCode) {
+        this.shipDistrictId = districtId;
+        this.shipWardCode = wardCode;
+    }
+
+    public void bookedWithGhn(BigDecimal fee) {
+        this.ghnBooked = true;
+        this.carrierFee = fee;
+    }
+
+    public void chargeShipping(BigDecimal fee) {
+        this.shippingFee = fee == null ? BigDecimal.ZERO : fee;
+    }
+
     /** EN: The buyer's address as it was when they paid. / VI: Địa chỉ người mua tại thời điểm thanh toán. */
     public void deliverTo(String recipient, String phone, String address) {
         this.shipRecipient = recipient;
@@ -193,5 +261,21 @@ public class Order {
 
     public boolean isAutoCompleted() {
         return autoCompleted;
+    }
+
+    public String getShippingStatus() {
+        return shippingStatus;
+    }
+
+    public Instant getDeliveredAt() {
+        return deliveredAt;
+    }
+
+    /** EN: The carrier's latest word; the first "delivered" sets the delivery time. / VI: Thông tin mới nhất của đơn vị vận chuyển; lần "đã giao" đầu tiên đặt giờ giao. */
+    public void recordCarrierStatus(String status, boolean delivered, Instant at) {
+        this.shippingStatus = status;
+        if (delivered && this.deliveredAt == null) {
+            this.deliveredAt = at;
+        }
     }
 }

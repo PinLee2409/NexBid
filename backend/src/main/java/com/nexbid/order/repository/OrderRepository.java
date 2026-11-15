@@ -47,6 +47,30 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     List<Order> lockShippedBefore(@org.springframework.data.repository.query.Param("before") java.time.Instant before,
             @org.springframework.data.repository.query.Param("limit") int limit);
 
+    /** EN: Delivered (per the carrier) before the time given, still unconfirmed, locked. / VI: Đã giao (theo đơn vị vận chuyển) trước thời điểm cho trước, chưa xác nhận, được khoá. */
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT * FROM orders WHERE status = 'PROCESSING' AND delivered_at < :before
+            ORDER BY delivered_at LIMIT :limit FOR UPDATE SKIP LOCKED
+            """, nativeQuery = true)
+    List<Order> lockDeliveredBefore(@org.springframework.data.repository.query.Param("before") java.time.Instant before,
+            @org.springframework.data.repository.query.Param("limit") int limit);
+
+    /** EN: Shipped with a carrier, not yet delivered, for tracking. / VI: Đã gửi qua một đơn vị vận chuyển, chưa giao, để theo dõi. */
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT * FROM orders WHERE status = 'PROCESSING' AND upper(carrier) = :carrier AND tracking_number IS NOT NULL
+              AND delivered_at IS NULL ORDER BY shipped_at LIMIT :limit
+            """, nativeQuery = true)
+    List<Order> inTransitWith(@org.springframework.data.repository.query.Param("carrier") String carrier,
+            @org.springframework.data.repository.query.Param("limit") int limit);
+
+    /** EN: The order behind a carrier's parcel code. / VI: Đơn đứng sau mã vận đơn của đơn vị vận chuyển. */
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT * FROM orders WHERE upper(carrier) = :carrier AND upper(tracking_number) = upper(:code)
+            ORDER BY created_at DESC LIMIT 1 FOR UPDATE
+            """, nativeQuery = true)
+    java.util.Optional<Order> lockByParcel(@org.springframework.data.repository.query.Param("carrier") String carrier,
+            @org.springframework.data.repository.query.Param("code") String code);
+
     /** EN: Shipped, not yet confirmed, shipped inside the window. / VI: Đã gửi, chưa xác nhận, gửi trong khoảng đã cho. */
     List<Order> findByStatusAndShippedAtBetween(OrderStatus status, java.time.Instant from, java.time.Instant to);
 }

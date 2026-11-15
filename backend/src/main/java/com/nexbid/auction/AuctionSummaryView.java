@@ -18,6 +18,6 @@ public record AuctionSummaryView(
     public record Product(UUID id, String name, String coverImageUrl, String condition) {
     }
 
-    public record Seller(UUID id, String displayName) {
+    public record Seller(UUID id, String displayName, boolean verified) {
     }
 }

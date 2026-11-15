@@ -63,7 +63,7 @@ test("a seller rates the buyer of a completed order", async ({ page }) => {
   await expect(row.getByText("never left a win unpaid")).toBeVisible();
   await row.getByRole("button", { name: "Rate buyer" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("radio", { name: /4/ }).check({ force: true });
+  await dialog.getByRole("radio", { name: /4/ }).dispatchEvent("click");
   await dialog.getByLabel("Comment (optional)").fill("Paid at once.");
   await dialog.getByRole("button", { name: "Save rating" }).click();
   await expect(page.getByText("Rating saved")).toBeVisible();

@@ -38,6 +38,18 @@ public class AdminUserController {
         return ApiResponse.of(users.search(search, status, page, size));
     }
 
+    public record SetVerifiedRequest(@jakarta.validation.constraints.NotNull Boolean verified) {
+    }
+
+    @PatchMapping("/{id}/verified")
+    public ApiResponse<UserAccount> setVerified(
+            @AuthenticationPrincipal CurrentUser admin,
+            @PathVariable UUID id,
+            @Valid @RequestBody SetVerifiedRequest request) {
+        return ApiResponse.of(users.setVerified(id, admin.id(), request.verified()),
+                request.verified() ? "Seller verified" : "Verification removed");
+    }
+
     @PatchMapping("/{id}/block")
     public ApiResponse<UserAccount> setBlocked(
             @AuthenticationPrincipal CurrentUser admin,

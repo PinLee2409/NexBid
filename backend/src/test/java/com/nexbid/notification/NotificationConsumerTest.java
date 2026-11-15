@@ -147,7 +147,7 @@ class NotificationConsumerTest {
     void theSameEventDeliveredTwiceIsNotifiedOnce() throws Exception {
         UUID buyer = register("consumer.twice@nexbid.com", "Twice Buyer", RoleName.BUYER);
         UUID lot = someLot("twice");
-        var paid = new PaymentEvents.Succeeded(UUID.randomUUID(), lot, buyer, new BigDecimal("12000000"), Instant.now());
+        var paid = new PaymentEvents.Succeeded(UUID.randomUUID(), lot, buyer, new BigDecimal("12000000"), Instant.now(), null);
         UUID eventId = UUID.randomUUID();
         String type = EventHeaders.typeName(PaymentEvents.Succeeded.class);
 
@@ -156,7 +156,7 @@ class NotificationConsumerTest {
         // EN: A different event, delivered after both repeats, marks the point where they must have been read.
         // VI: Một sự kiện khác, giao sau cả hai lần lặp, đánh dấu thời điểm chắc chắn chúng đã được đọc.
         deliver(lot, UUID.randomUUID(), type,
-                new PaymentEvents.Succeeded(UUID.randomUUID(), lot, buyer, new BigDecimal("12000000"), Instant.now()));
+                new PaymentEvents.Succeeded(UUID.randomUUID(), lot, buyer, new BigDecimal("12000000"), Instant.now(), null));
 
         await().atMost(Duration.ofSeconds(15)).until(() -> paymentNotices(buyer) >= 2);
         Thread.sleep(500);
@@ -173,7 +173,7 @@ class NotificationConsumerTest {
                 new PaymentEvents.Opened(UUID.randomUUID(), lot, buyer, new BigDecimal("12000000")));
         UUID marker = UUID.randomUUID();
         deliver(lot, marker, EventHeaders.typeName(PaymentEvents.Succeeded.class),
-                new PaymentEvents.Succeeded(UUID.randomUUID(), lot, buyer, new BigDecimal("12000000"), Instant.now()));
+                new PaymentEvents.Succeeded(UUID.randomUUID(), lot, buyer, new BigDecimal("12000000"), Instant.now(), null));
 
         await().atMost(Duration.ofSeconds(15)).until(() -> paymentNotices(buyer) == 1);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM notifications WHERE user_id = ?", Integer.class, buyer))
@@ -197,7 +197,7 @@ class NotificationConsumerTest {
         // VI: Cùng khoá, nên sự kiện hợp lệ nằm ngay sau sự kiện hỏng trên cùng partition.
         deliverRaw(lot, broken, type, "{\"paymentId\": not json");
         deliver(lot, UUID.randomUUID(), type,
-                new PaymentEvents.Succeeded(UUID.randomUUID(), lot, buyer, new BigDecimal("12000000"), Instant.now()));
+                new PaymentEvents.Succeeded(UUID.randomUUID(), lot, buyer, new BigDecimal("12000000"), Instant.now(), null));
 
         await().atMost(Duration.ofSeconds(15)).until(() -> paymentNotices(buyer) == 1);
         assertThat(output).contains("Skipping an event that can never be handled: PaymentEvents.Succeeded at nexbid.payments-");
@@ -222,9 +222,9 @@ class NotificationConsumerTest {
         // EN: Names a buyer this database has never had — retrying can never make the insert pass.
         // VI: Trỏ tới người mua mà database này chưa từng có — thử lại bao nhiêu lần cũng không insert được.
         deliver(lot, refused, type, new PaymentEvents.Succeeded(
-                UUID.randomUUID(), lot, UUID.randomUUID(), new BigDecimal("12000000"), Instant.now()));
+                UUID.randomUUID(), lot, UUID.randomUUID(), new BigDecimal("12000000"), Instant.now(), null));
         deliver(lot, UUID.randomUUID(), type,
-                new PaymentEvents.Succeeded(UUID.randomUUID(), lot, buyer, new BigDecimal("12000000"), Instant.now()));
+                new PaymentEvents.Succeeded(UUID.randomUUID(), lot, buyer, new BigDecimal("12000000"), Instant.now(), null));
 
         await().atMost(Duration.ofSeconds(15)).until(() -> paymentNotices(buyer) == 1);
         assertThat(output).contains("Skipping an event that can never be handled: PaymentEvents.Succeeded at nexbid.payments-");

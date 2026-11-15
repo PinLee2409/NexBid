@@ -1,11 +1,13 @@
 "use client";
 
 import { useFormatter, useTranslations } from "next-intl";
+import { MessagesSquare } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { ProductPhoto } from "@/components/common/product-photo";
 import { useEnumLabels } from "@/hooks/use-labels";
+import { carrierStatusKey } from "@/lib/carriers";
 import { cn } from "@/lib/utils";
 import type { OrderEntry } from "@/services/order-service";
 import type { OrderStatus } from "@/types";
@@ -27,7 +29,18 @@ const STATUS_TONE: Record<OrderStatus, string | undefined> = {
  * VI: Một đơn hàng dạng một dòng — lô, ngày đặt, tổng tiền và trạng thái — chừa chỗ bên phải cho việc người
  *     đang xem có thể làm tiếp. Dùng chung cho danh sách của người mua, người bán và admin.
  */
-export function OrderRow({ entry, action, extra }: { entry: OrderEntry; action?: ReactNode; extra?: ReactNode }) {
+export function OrderRow({
+  entry,
+  action,
+  extra,
+  messages = false,
+}: {
+  entry: OrderEntry;
+  action?: ReactNode;
+  extra?: ReactNode;
+  /** EN: Show the link to this order's conversation. / VI: Hiện link tới cuộc trò chuyện của đơn này. */
+  messages?: boolean;
+}) {
   const money = useMoney();
   const t = useTranslations("account");
   const tc = useTranslations("common");
@@ -98,12 +111,42 @@ export function OrderRow({ entry, action, extra }: { entry: OrderEntry; action?:
             ) : null}
           </div>
         ) : null}
+        {entry.order.deliveredAt ? (
+          <p className="text-success mt-1 text-xs">
+            {t("orderDelivered", {
+              date: format.dateTime(new Date(entry.order.deliveredAt), { dateStyle: "medium" }),
+            })}
+          </p>
+        ) : entry.order.shippingStatus ? (
+          <p className="text-muted-foreground mt-1 text-xs">
+            <span className="label-sm text-dim">{t("orderCarrierStatus")}</span>{" "}
+            <span>
+              {carrierStatusKey(entry.order.shippingStatus)
+                ? t(`carrierStatus.${carrierStatusKey(entry.order.shippingStatus)}`)
+                : entry.order.shippingStatus}
+            </span>
+          </p>
+        ) : null}
         {extra}
+        {messages && entry.order.status !== "CANCELLED" ? (
+          <Link
+            href={`/messages?order=${entry.order.id}`}
+            className="text-signal-text mt-2 inline-flex items-center gap-1.5 text-xs underline-offset-4 hover:underline"
+          >
+            <MessagesSquare className="size-3.5" aria-hidden="true" />
+            {t("orderMessages")}
+          </Link>
+        ) : null}
       </div>
 
       <div className="shrink-0">
         <p className="label-sm text-dim mb-1">{t("orderTotal")}</p>
-        <p className="figure text-lg">{money.currency(entry.order.amount)}</p>
+        <p className="figure text-lg">{money.currency(entry.payment?.total ?? entry.order.amount)}</p>
+        {entry.payment?.shippingFee ? (
+          <p className="label-sm text-dim mt-1">
+            {t("paymentIncludesShipping", { fee: money.currency(entry.payment.shippingFee) })}
+          </p>
+        ) : null}
       </div>
 
       <div className="shrink-0">

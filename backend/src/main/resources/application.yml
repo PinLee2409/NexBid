@@ -158,6 +158,10 @@ nexbid:
     # VI: Câu trả lời "tài khoản đang hoạt động" được dùng lại bao lâu trước khi hỏi lại database. Khoá tài khoản
     #     có hiệu lực ngay trên server này; server khác sẽ thấy trong khoảng thời gian này.
     status-cache-ttl: ${NEXBID_STATUS_CACHE_TTL:10s}
+    google:
+      # EN: The OAuth client id from Google Cloud (Web application). Empty turns Google sign-in off.
+      # VI: OAuth client id lấy từ Google Cloud (Web application). Để trống thì tắt đăng nhập Google.
+      client-id: ${NEXBID_GOOGLE_CLIENT_ID:}
     refresh:
       # EN: A session lasts this long after its last use: each refresh starts the clock again.
       # VI: Một phiên đăng nhập sống chừng này kể từ lần dùng cuối: mỗi lần refresh tính lại từ đầu.
@@ -255,6 +259,9 @@ nexbid:
     # EN: How long the runner-up has to take a second-chance offer; the expiry job above closes it too.
     # VI: Người trả giá cao thứ hai có bao lâu để nhận đề nghị cơ hội thứ hai; job hết hạn ở trên cũng đóng nó.
     offer-window: ${NEXBID_OFFER_WINDOW:24h}
+    # EN: Shipping charged when GHN cannot quote (GHN off or failing, or an address not picked from GHN's lists).
+    # VI: Phí ship thu khi GHN không báo được phí (GHN tắt hoặc lỗi, hoặc một địa chỉ không chọn từ danh sách GHN).
+    flat-shipping-fee: ${NEXBID_FLAT_SHIPPING_FEE:50000}
     # EN: VNPay (https://sandbox.vnpayment.vn/apis/). The defaults are placeholders: checkout builds a signed URL with
     #     them, but VNPay will refuse it until NEXBID_VNPAY_TMN_CODE and NEXBID_VNPAY_HASH_SECRET are real. The prod
     #     profile refuses to start with the placeholders.
@@ -281,6 +288,26 @@ nexbid:
     # EN: How long before that the buyer is reminded to confirm or dispute (ORDER_COMPLETING). Sent by the heads-up job.
     # VI: Người mua được nhắc xác nhận hoặc khiếu nại trước lúc đó bao lâu (ORDER_COMPLETING). Do job heads-up gửi.
     auto-complete-reminder: ${NEXBID_ORDER_AUTO_COMPLETE_REMINDER:2d}
+    # EN: Once the carrier reports delivery (GHN), the order completes after this long instead.
+    # VI: Khi đơn vị vận chuyển báo đã giao (GHN), đơn hoàn tất sau khoảng này thay vì khoảng trên.
+    complete-after-delivery: ${NEXBID_ORDER_COMPLETE_AFTER_DELIVERY:3d}
+
+  shipping:
+    ghn:
+      # EN: GHN (Giao Hang Nhanh). Without a token the integration is off and sellers type the tracking number by hand.
+      #     The default gateway is GHN's sandbox; production is https://online-gateway.ghn.vn/shiip/public-api.
+      # VI: GHN (Giao Hàng Nhanh). Không có token thì tích hợp tắt và người bán tự nhập mã vận đơn. Gateway mặc định là
+      #     sandbox của GHN; production là https://online-gateway.ghn.vn/shiip/public-api.
+      token: ${NEXBID_GHN_TOKEN:}
+      shop-id: ${NEXBID_GHN_SHOP_ID:}
+      base-url: ${NEXBID_GHN_BASE_URL:https://dev-online-gateway.ghn.vn/shiip/public-api}
+      # EN: Part of the webhook URL GHN calls: /api/shipping/ghn/webhook?secret=... / VI: Một phần URL webhook GHN gọi.
+      webhook-secret: ${NEXBID_GHN_WEBHOOK_SECRET:}
+      # EN: How often parcels in transit are checked, in case a webhook was missed. / VI: Bao lâu kiểm tra kiện đang giao một lần, phòng khi lỡ webhook.
+      poll-interval: ${NEXBID_GHN_POLL_INTERVAL_MS:1800000}
+      # EN: The most a parcel is insured for with GHN (about 0.5% of it is added to the fee), whatever the lot's price.
+      # VI: Giá khai bảo hiểm tối đa với GHN (khoảng 0,5% giá khai cộng vào phí), dù giá lô cao bao nhiêu.
+      insurance-cap: ${NEXBID_GHN_INSURANCE_CAP:5000000}
 
   payout:
     # EN: The platform's cut of each completed sale, in percent. / VI: Phần sàn giữ lại trên mỗi giao dịch hoàn tất, tính theo phần trăm.

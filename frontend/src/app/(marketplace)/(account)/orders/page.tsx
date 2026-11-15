@@ -72,6 +72,7 @@ export default function OrdersPage() {
               <OrderRow
                 key={entry.order.id}
                 entry={entry}
+                messages
                 action={
                   <OrderActions
                     entry={entry}

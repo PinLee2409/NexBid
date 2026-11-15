@@ -156,7 +156,7 @@ class AnalyticsApiTest {
         deliver("nexbid.auctions", sold, UUID.randomUUID(), endedAt(sold, at.plusSeconds(120), winner));
         deliver("nexbid.auctions", unsold, UUID.randomUUID(), endedAt(unsold, at.plusSeconds(130), null));
         deliver("nexbid.payments", sold, UUID.randomUUID(), new PaymentEvents.Succeeded(
-                UUID.randomUUID(), sold, winner, new BigDecimal("10500000"), at.plusSeconds(300)));
+                UUID.randomUUID(), sold, winner, new BigDecimal("10500000"), at.plusSeconds(300), null));
 
         await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> {
             Map<String, Object> row = rowFor(hour);

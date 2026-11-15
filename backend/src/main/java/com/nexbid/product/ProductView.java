@@ -15,6 +15,8 @@ public record ProductView(
         String description,
         ProductCondition condition,
         ProductStatus status,
+        /** EN: Null when the seller gave no size. / VI: Null khi người bán chưa khai kích thước. */
+        Parcel parcel,
         Instant createdAt,
         Instant updatedAt) {
 }

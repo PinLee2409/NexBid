@@ -2,8 +2,10 @@ package com.nexbid.product.dto;
 
 import java.util.UUID;
 
+import com.nexbid.product.Parcel;
 import com.nexbid.product.ProductCondition;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -34,5 +36,9 @@ public record CreateProductRequest(
          * EN: Optional. Left out, the product is a DRAFT — a seller can save a half-written listing.
          * VI: Không bắt buộc. Bỏ trống thì sản phẩm là DRAFT — người bán lưu được bản nháp viết dở.
          */
-        Boolean publishNow) {
+        Boolean publishNow,
+
+        /** EN: Optional packed size, for shipping quotes. / VI: Kích thước kiện, không bắt buộc, để báo phí ship. */
+        @Valid
+        Parcel parcel) {
 }

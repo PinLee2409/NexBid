@@ -62,8 +62,8 @@ public class PayoutService {
     }
 
     /** EN: One completed sale and what the seller gets from it. / VI: Một giao dịch hoàn tất và người bán nhận được bao nhiêu. */
-    public record Earning(UUID id, UUID orderId, UUID auctionId, BigDecimal gross, BigDecimal fee, BigDecimal net,
-            UUID payoutId, Instant createdAt, AuctionSummaryView auction) {
+    public record Earning(UUID id, UUID orderId, UUID auctionId, BigDecimal gross, BigDecimal fee, BigDecimal shipping,
+            BigDecimal net, UUID payoutId, Instant createdAt, AuctionSummaryView auction) {
     }
 
     /** EN: One transfer to a seller. / VI: Một lần chuyển tiền cho người bán. */
@@ -87,13 +87,16 @@ public class PayoutService {
      */
     @EventListener
     void onCompleted(OrderEvents.Completed event) {
+        // EN: The fee is on the goods only; the shipping the buyer paid goes to the seller, who sent the parcel.
+        // VI: Phí sàn chỉ tính trên tiền hàng; phí ship người mua đã trả thuộc về người bán, người đã gửi kiện hàng.
         BigDecimal fee = event.amount().multiply(feePercent).divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
+        BigDecimal shipping = event.shippingFee() == null ? BigDecimal.ZERO : event.shippingFee();
         jdbc.update("""
-                INSERT INTO seller_earnings (id, order_id, seller_id, auction_id, gross, fee, net, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO seller_earnings (id, order_id, seller_id, auction_id, gross, fee, shipping, net, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (order_id) DO NOTHING
                 """, UUID.randomUUID(), event.orderId(), event.sellerId(), event.auctionId(), event.amount(), fee,
-                event.amount().subtract(fee), utc(event.at()));
+                shipping, event.amount().subtract(fee).add(shipping), utc(event.at()));
     }
 
     @Transactional(readOnly = true)
@@ -104,7 +107,8 @@ public class PayoutService {
         Map<UUID, AuctionSummaryView> lots = auctions.participantSummariesOf(
                 earnings.stream().map(Earning::auctionId).distinct().toList());
         List<Earning> withLots = earnings.stream()
-                .map(e -> new Earning(e.id(), e.orderId(), e.auctionId(), e.gross(), e.fee(), e.net(), e.payoutId(),
+                .map(e -> new Earning(e.id(), e.orderId(), e.auctionId(), e.gross(), e.fee(), e.shipping(), e.net(),
+                        e.payoutId(),
                         e.createdAt(), lots.get(e.auctionId())))
                 .toList();
 
@@ -193,7 +197,7 @@ public class PayoutService {
     private static Earning earning(ResultSet rs, AuctionSummaryView lot) throws SQLException {
         return new Earning(rs.getObject("id", UUID.class), rs.getObject("order_id", UUID.class),
                 rs.getObject("auction_id", UUID.class), rs.getBigDecimal("gross"), rs.getBigDecimal("fee"),
-                rs.getBigDecimal("net"), rs.getObject("payout_id", UUID.class),
+                rs.getBigDecimal("shipping"), rs.getBigDecimal("net"), rs.getObject("payout_id", UUID.class),
                 rs.getTimestamp("created_at").toInstant(), lot);
     }
 

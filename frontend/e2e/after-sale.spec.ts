@@ -142,8 +142,9 @@ test("a seller adds a payout account and an admin records the transfer", async (
 
   await signIn(page.context(), email);
   await page.goto("/seller/earnings");
-  // EN: 2,000,000 less the 5% fee. / VI: 2.000.000 trừ phí 5%.
-  await expect(page.getByText(/1,900,000/).first()).toBeVisible();
+  // EN: 2,000,000 less the 5% fee, plus the 50,000 flat shipping the buyer paid. / VI: 2.000.000 trừ phí 5%, cộng 50.000 phí ship cố định người mua đã trả.
+  await expect(page.getByText(/1,950,000/).first()).toBeVisible();
+  await expect(page.getByText("Price ₫2,000,000 − fee ₫100,000 + shipping ₫50,000")).toBeVisible();
   await page.getByLabel("Bank").fill("Vietcombank");
   await page.getByLabel("Account number").fill("0123456789");
   await page.getByLabel("Account holder").fill("Payout Seller");

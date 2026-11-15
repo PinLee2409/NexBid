@@ -9,6 +9,7 @@ import { BUYER_NAV } from "@/constants/site";
 import { cn } from "@/lib/utils";
 import { useUnreadNotificationCount } from "@/services/notification-service";
 import { signOut } from "@/services/session-service";
+import { useUnreadMessageCount } from "@/services/message-service";
 import { useWatchedAuctionIds } from "@/services/watchlist-service";
 
 /**
@@ -23,10 +24,12 @@ export function AccountNav() {
 
   const unread = useUnreadNotificationCount();
   const watching = useWatchedAuctionIds().size;
+  const messages = useUnreadMessageCount();
 
   function countFor(href: string): number {
     if (href === "/notifications") return unread;
     if (href === "/watchlist") return watching;
+    if (href === "/messages") return messages;
     return 0;
   }
 

@@ -146,6 +146,30 @@ public class AuditLogService {
     }
 
     @EventListener
+    void onSellerVerified(com.nexbid.user.SellerVerifiedEvent event) {
+        record(event.actorId(), AuditAction.SELLER_VERIFIED, "User", event.sellerId(),
+                String.valueOf(!event.verified()), String.valueOf(event.verified()));
+    }
+
+    @EventListener
+    void onOrderMessagesRead(com.nexbid.message.MessageEvents.AdminRead event) {
+        record(event.adminId(), AuditAction.ORDER_MESSAGES_READ, "Order", event.orderId(), null,
+                event.messages() + " messages");
+    }
+
+    @EventListener
+    void onTwoFactor(com.nexbid.auth.TwoFactorService.Changed event) {
+        record(event.userId(), event.enabled() ? AuditAction.TWO_FACTOR_ENABLED : AuditAction.TWO_FACTOR_DISABLED,
+                "User", event.userId(), null, event.enabled() ? "ON" : "OFF");
+    }
+
+    @EventListener
+    void onShillPairCleared(com.nexbid.trust.ShillSignals.Cleared event) {
+        record(event.adminId(), AuditAction.SHILL_PAIR_CLEARED, "User", event.bidderId(), null,
+                "seller " + event.sellerId() + (event.note() == null ? "" : ": " + event.note()));
+    }
+
+    @EventListener
     void onUserStatus(UserStatusChangedEvent event) {
         AuditAction action = event.after() == com.nexbid.user.UserStatus.BLOCKED
                 ? AuditAction.USER_BLOCKED : AuditAction.USER_UNBLOCKED;

@@ -48,7 +48,14 @@ public record OrderView(Details order, PaymentView.Details payment, AuctionSumma
             Instant shippedAt,
             Instant completedAt,
             boolean autoCompleted,
-            Dispute dispute) {
+            Dispute dispute,
+            // EN: The carrier's latest status and delivery time, when tracked (GHN). / VI: Trạng thái mới nhất và giờ giao của đơn vị vận chuyển, khi được theo dõi (GHN).
+            String shippingStatus,
+            Instant deliveredAt,
+            // EN: Booked with GHN through NexBid (a label can be printed); the address paid for has GHN ids.
+            // VI: Đặt GHN qua NexBid (in được phiếu); địa chỉ đã trả tiền có mã GHN.
+            boolean ghnBooked,
+            boolean ghnAddress) {
     }
 
     /**

@@ -334,3 +334,142 @@ Phần khoá dòng, chống trùng và chạy nhiều máy đã chắc; sửa 6 
 - **Kiểm chứng:** backend 465 test (độ phủ 95.8% dòng, 81.2% nhánh); test mới (báo cáo và gỡ lô, khoá người bán, đánh giá người mua, giới hạn trả giá, email admin, mã
   giao dịch trùng); frontend 149 unit test; E2E 50/50 (test mới: báo cáo rồi gỡ lô, đánh giá người mua, trang VNPay không
   cần đăng nhập và trang Email của admin).
+
+## Đã làm (15/11/2026) — đợt 19: huy hiệu xác minh, nhắn tin, khung GHN, ảnh README mới
+
+- **Huy hiệu "người bán đã xác minh":** admin bật/tắt ở trang Người dùng (chỉ cho người bán, `NOT_A_SELLER`). Cột
+  `users.seller_verified` (V35), đọc mới mỗi lần (không lấy từ thẻ lô đã cache) nên huy hiệu đổi ngay; hiện trên trang lô
+  và có trong thẻ danh mục. Người bán nhận thông báo `SELLER_VERIFIED`; nhật ký ghi `SELLER_VERIFIED`.
+- **Nhắn tin giữa người mua và người bán của một đơn** (module `message`, bảng `order_messages`): mở từ lúc thắng tới 30
+  ngày sau khi hoàn tất, đơn huỷ thì đóng (`MESSAGES_CLOSED`); chặn số điện thoại, dãy số dài (số tài khoản), email,
+  đường link và tên ứng dụng chat/ví (Zalo, Messenger, Momo…) kể cả khi viết cách quãng (`MESSAGE_BLOCKED`); tối đa 20
+  tin mỗi 10 phút (`MESSAGE_LIMIT`). Tin tới trực tiếp qua socket `/user/queue/messages`; thông báo `NEW_MESSAGE` chỉ
+  khi mở đầu một loạt tin chưa đọc. Trang **Tin nhắn** (`/messages`): danh sách cuộc trò chuyện và khung chat, số tin
+  chưa đọc ở menu tài khoản, link "Tin nhắn" trên từng đơn của người mua và người bán; admin đọc được để xử lý khiếu nại.
+- **Khung tích hợp GHN** (chờ key): client gọi phí ship, trạng thái vận đơn và danh sách tỉnh/quận/phường; webhook
+  `/api/shipping/ghn/webhook?secret=…` và lượt hỏi 30 phút một lần ghi trạng thái vào đơn (`orders.shipping_status`,
+  `delivered_at`); GHN báo đã giao thì đơn tự hoàn tất sau 3 ngày nếu không khiếu nại. Chưa có key thì các endpoint trả
+  `SHIPPING_UNAVAILABLE` và mọi thứ chạy như trước. Biến môi trường trong `backend/.env.example`.
+- **README:** chụp lại toàn bộ ảnh và GIF trả giá trực tiếp theo giao diện mới, thêm ảnh trang Tin nhắn, thêm phần
+  "Shipping with GHN" và các endpoint mới.
+- **E2E phát hiện:** WebSocket chỉ cho đăng ký phòng lô và hộp thông báo, nên hàng đợi tin nhắn bị từ chối và socket
+  đóng luôn (kéo theo thông báo trực tiếp hỏng). Đã cho phép `/user/queue/messages` với người đã đăng nhập.
+- **Kiểm chứng:** backend 468 test (độ phủ 95.6% dòng, 79.9% nhánh, vẫn trên ngưỡng); frontend 150 unit test; E2E 52/52 (test mới: nhắn tin hai chiều kèm chặn số điện thoại, admin xác minh
+  người bán và huy hiệu hiện trên lô).
+
+## Đã làm (15/11/2026) — đợt 20: hoàn thiện GHN
+
+- **Key GHN sandbox** (cửa hàng 239091 trên `5sao.ghn.dev`) đã nằm trong `backend/.env`. Gọi thật: 65 tỉnh, quận/phường,
+  phí 1 kg Quận 1 → Ba Đình 96.900₫, mã vận đơn không có trả "Đơn hàng không tồn tại". Phí chỉ tính được khi cửa hàng
+  trên GHN có địa chỉ lấy hàng.
+- **Admin đọc tin nhắn của đơn** ở trang Đơn hàng và Khiếu nại (khung chỉ đọc, ghi rõ tin của người mua hay người bán,
+  tên đầy đủ). Mỗi lần mở ghi nhật ký `ORDER_MESSAGES_READ` kèm số tin.
+- **Người bán chọn hãng vận chuyển** từ danh sách (GHN, GHTK, Viettel Post, J&T Express, VNPost, Ninja Van, hoặc gõ tên
+  hãng khác). Chọn GHN khi tích hợp đang bật: hỏi GHN trước khi lưu (trước khi khoá dòng đơn, vì GHN có thể mất vài
+  giây); GHN báo không có đơn thì từ chối `TRACKING_NOT_FOUND`, có thì ghi luôn trạng thái đầu tiên; GHN lỗi, chậm
+  hoặc token sai thì vẫn cho gửi. "Giao hàng nhanh" gõ tay cũng được hiểu là GHN.
+- **Trạng thái GHN bằng chữ dễ đọc** trên đơn ("Chờ lấy hàng", "Đang giao", "Đã giao"…) thay cho mã thô.
+- **Địa chỉ có mã GHN** (V36: `user_addresses.province_id`, `district_id`, `ward_code`): khi GHN bật, form địa chỉ
+  chọn tỉnh → quận → phường từ danh sách GHN; tắt hoặc không tải được thì vẫn là ô gõ tay. Danh sách nhớ 24 giờ, bỏ các
+  địa danh test của sandbox ("Hà Nội 02", "Test - Alert…"), sắp xếp theo tiếng Việt.
+- **Kích thước đóng gói của sản phẩm** (V36: `products.weight_grams`, `length_cm`, `width_cm`, `height_cm`, đủ cả bốn
+  hoặc không có): mục "Đóng gói" trong form sản phẩm, giới hạn của GHN 30 kg và 150 cm mỗi cạnh.
+- **Phí ship tham khảo trên trang lô** (`GET /api/auctions/{id}/shipping-estimate`): từ địa chỉ người bán tới địa chỉ
+  người xem, theo kích thước kiện (bỏ trống thì hộp 1 kg 20×15×10 cm và ghi rõ), khai giá bằng giá lô làm tròn lên
+  triệu; nhớ 30 phút. Chưa đăng nhập hoặc chưa có địa chỉ GHN thì mời đăng nhập / thêm địa chỉ; GHN tắt, người bán
+  chưa có địa chỉ GHN hoặc GHN lỗi thì không hiện gì. Không cộng vào tiền thanh toán.
+- **Kiểm chứng:** backend 469 test (độ phủ 95.5% dòng, 79.5% nhánh); frontend 154 unit test, tsc, ESLint, knip sạch; E2E
+  54 test (mới: người bán chọn hãng vận chuyển, admin đọc tin nhắn của đơn; 2 test cũ chập chờn khi chạy 4 luồng, chạy lại
+  đều qua). Chạy thật với GHN sandbox qua API của NexBid: lô Omega 90 triệu từ Quận 1 về Ba Đình báo 503.900₫ (phần lớn là
+  phí bảo hiểm theo giá khai), form địa chỉ chọn tỉnh → quận → phường và bắt buộc đủ ba.
+
+## Đã làm (15/11/2026) — đợt 21: thu phí ship cùng tiền hàng
+
+- **Báo phí lúc thanh toán** (`POST /api/payments/{id}/shipping-quote`): khi người mua bấm Thanh toán, phí ship được
+  chốt trên khoản thanh toán (V37: `payments.shipping_fee`, `shipping_source`, `shipping_address_key`) và hiện
+  trong khung "Kiểm tra số tiền": tiền hàng, phí ship, tổng. GHN báo phí khi cả hai địa chỉ chọn từ danh sách GHN;
+  không thì phí cố định `NEXBID_FLAT_SHIPPING_FEE` (50.000₫). Bấm lại dùng đúng số đã chốt; đổi địa chỉ thì báo lại.
+- **VNPay thu tổng** tiền hàng + phí ship. Lần thử mở trước khi người mua đổi địa chỉ vẫn thu số đã hiện lúc đó, và
+  khoản thanh toán giữ đúng số đã thu.
+- **Bảo hiểm GHN có trần** `NEXBID_GHN_INSURANCE_CAP` (5 triệu): lô 90 triệu không còn phí ship 500 nghìn.
+- **Đơn hàng** ghi phí ship (V37: `orders.shipping_fee`); danh sách đơn, trang thanh toán, email biên nhận hiện tổng
+  kèm "gồm X phí ship".
+- **Chi trả**: người bán nhận tiền hàng − 5% phí sàn + phí ship (V37: `seller_earnings.shipping`); phí sàn không tính
+  trên phí ship.
+- **Hoàn tiền** khi khiếu nại hoàn cả phí ship; khoản thu thừa trả lại đúng số VNPay đã thu.
+- Module thanh toán hỏi phí qua giao diện `ShippingQuoter` do phía GHN hiện thực, nên hai module không phụ thuộc vòng.
+
+## Đã làm (15/11/2026) — đợt 22: tạo đơn GHN ngay trên NexBid
+
+- **"Gửi bằng GHN"** trên đơn bán đã thanh toán (`POST /api/seller/orders/{id}/ghn`): NexBid gọi GHN tạo vận đơn bằng
+  tài khoản GHN của sàn (không thu hộ, cho xem hàng không cho thử, khai giá như lúc báo phí), từ địa chỉ đã lưu của
+  người bán tới địa chỉ người mua đã dùng khi trả tiền. Đơn chuyển sang đang giao với mã GHN và trạng thái "Chờ lấy
+  hàng". Dòng đơn được khoá trong lúc chờ GHN nên bấm hai lần chỉ tạo một vận đơn.
+- **Mã GHN của địa chỉ được chép lên đơn** khi người mua thanh toán (V38: `orders.ship_district_id`,
+  `ship_ward_code`). Địa chỉ gõ tay hoặc người bán chưa chọn địa chỉ từ danh sách GHN thì báo `GHN_ADDRESS_REQUIRED`;
+  GHN từ chối (số điện thoại, địa chỉ) thì báo `GHN_REFUSED`, đơn vẫn chờ gửi.
+- **In phiếu GHN** (`GET /api/seller/orders/{id}/ghn-label`): link tới phiếu A5 của GHN, mở ở thẻ mới.
+- **Tiền ship khi sàn trả GHN**: đơn đặt qua NexBid ghi `ghn_booked` và số GHN thu (`carrier_fee`); người bán nhận
+  tiền hàng trừ phí sàn, không cộng phí ship (sàn đã dùng khoản đó trả GHN). Người bán tự gửi thì vẫn nhận phí ship
+  như đợt 21.
+
+## Đã làm (15/11/2026) — đợt 23: tìm không dấu, lô tương tự, đăng lại, thống kê
+
+- **Tìm không dấu** (V39: tiện ích `unaccent` và hàm `fold()`): "dong ho" tìm ra "Đồng hồ", không phân biệt hoa thường,
+  ở trang duyệt lô và trong bộ lọc đã lưu.
+- **Lô tương tự** (`GET /api/auctions/{id}/similar`): tối đa 8 lô đang mở hoặc sắp mở cùng danh mục, lô của người bán
+  khác trước, lô sắp đóng trước; thay cho danh sách "cùng danh mục" cũ chỉ lấy lô đang mở.
+- **Đã xem gần đây** ở cuối trang lô: trình duyệt nhớ 12 lô gần nhất, hiện 4 lô khác lô đang xem
+  (`GET /api/auctions/cards?ids=…`).
+- **Đếm lượt xem** (V40: `auction_views`, `POST /api/auctions/{id}/views` từ trình duyệt vì trang lô dựng ở server):
+  mỗi người xem một lần mỗi ngày (theo tài khoản, hoặc mã băm địa chỉ IP khi chưa đăng nhập); người bán tự xem không
+  được đếm.
+- **Trang Thống kê của người bán** (`/seller/stats`, `GET /api/seller/auctions/stats`): tổng người xem, theo dõi, lượt
+  trả giá, tỉ lệ lô đã đóng bán được, và bảng theo từng lô.
+- **Đăng lại** lô không bán được, bị huỷ hoặc đã hoàn tiền: nút "Đăng lại" mở form tạo phiên đã điền sẵn giá khởi điểm,
+  bước giá, giá sàn, giá mua ngay và chống bắn tỉa; ngày giờ đặt mới. Form tạo phiên cũng cho chọn sản phẩm đã về lại
+  tay người bán.
+
+## Đã làm (15/11/2026) — đợt 24: phát hiện tự trả giá
+
+- **Ghi nguồn thao tác** (module `trust`, V41: `user_origins`): mỗi tài khoản đăng nhập được ghi mã băm địa chỉ mạng
+  và mã thiết bị (trình duyệt gửi `X-Device-Id`, một UUID giữ trong localStorage), tối đa một lần mỗi giờ cho mỗi
+  nguồn. Không lưu IP gốc; ghi lỗi không chặn request.
+- **Chấm điểm cặp người bán–người trả giá** trong 90 ngày (`GET /api/admin/shill-suspects`): cùng trình duyệt 50, cùng
+  mạng 25 (chỉ khi địa chỉ đó có tối đa 5 tài khoản, để mạng công ty hay nhà mạng không bị tính), ít nhất 80% lượt trả
+  giá dồn vào người bán này 20, trả giá 3 lô trở lên mà không thắng 15, hai lần trở lên dừng ngay dưới giá thắng một
+  bước giá 15, tài khoản dưới 14 ngày tuổi 10. Từ 50 điểm trở lên thì hiện cho admin.
+- **Trang admin "Nghi vấn tự trả giá"** (`/admin/trust`): hiện các dấu hiệu, số lượt trả giá, số lô, số lần thắng. Admin
+  bỏ nghi vấn (V41: `shill_reviews`, ghi nhật ký `SHILL_PAIR_CLEARED`; cặp hiện lại khi người đó trả giá lô của người
+  bán này lần nữa) hoặc khoá người trả giá. Không có gì tự động quyết định.
+
+## Đã làm (15/11/2026) — đợt 25: đăng nhập hai bước và đăng nhập Google
+
+- **Đăng nhập hai bước (TOTP, RFC 6238)** cho mọi tài khoản, bật ở trang Hồ sơ (`/api/users/me/2fa`): hiện khoá để gõ
+  vào ứng dụng xác thực (hoặc link `otpauth://` để mở trên điện thoại), mã đầu tiên khớp thì bật và hiện 8 mã khôi phục
+  một lần. V42: `user_totp` (secret mã hoá AES-GCM bằng khoá suy ra từ JWT secret, `last_step` chặn dùng lại mã, mã
+  khôi phục lưu dạng băm). Tắt cần một mã. Bật/tắt ghi nhật ký.
+- **Luồng đăng nhập**: mật khẩu đúng mà đã bật hai bước thì trả `twoFactorChallenge` (JWT 5 phút, khoá và issuer riêng,
+  không dùng làm access token được), chưa đặt cookie; `POST /api/auth/login/2fa` nhận challenge + mã. Mã sai tính vào
+  cùng giới hạn đăng nhập sai như mật khẩu.
+- **Đăng nhập Google** (`POST /api/auth/google`, `GET /api/auth/providers`): nút của Google trên trang đăng nhập khi có
+  `NEXBID_GOOGLE_CLIENT_ID`. Server kiểm ID token bằng khoá công khai của Google (giữ 1 giờ), issuer, audience, hạn và
+  email đã xác minh; tìm tài khoản theo id Google (V42: `user_identities`), rồi theo email (liên kết), hoặc tạo người
+  mua mới. Đăng nhập hai bước vẫn áp dụng. CSP cho phép `accounts.google.com/gsi/` (style, frame, connect).
+
+## Đã làm (15/11/2026) — đợt 26: đối soát, doanh thu, nhập lô từ CSV
+
+- **Đối soát VNPay** (module `finance`, `GET /api/admin/finance/reconciliation?from=&to=`): theo từng ngày giờ Việt Nam,
+  số lần thu thành công và số tiền VNPay đã thu, phần áp vào lô, phần phải trả lại (trễ hạn, trả hai lần), đã hoàn khi
+  khiếu nại, đã trả lại khoản thu thừa, đã chi cho người bán. "Không khớp" đếm lần thu thành công không áp vào lô nào
+  cũng không nằm trong danh sách phải trả lại (luôn phải bằng 0; khác 0 thì trang báo đỏ).
+- **File CSV các lần thu** (`/api/admin/finance/charges.csv`) để so với báo cáo giao dịch trên cổng merchant VNPay: giờ,
+  mã giao dịch NexBid và VNPay, ngân hàng, số tiền, kết quả, lô, người mua.
+- **Doanh thu** (`/api/admin/finance/revenue`, `revenue.csv`): 12 tháng gần nhất theo tháng hoàn tất (tiền hàng, phí
+  sàn, phí ship trả người bán), theo danh mục, 20 người bán hàng đầu.
+- CSV xuất ra là UTF-8 có BOM để Excel hiện đúng tiếng Việt; ô bắt đầu bằng =, +, -, @ được vô hiệu để bảng tính không
+  chạy như công thức.
+- **Nhập lô từ CSV** (`POST /api/seller/auctions/import`, nút "Nhập CSV" ở trang Phiên đấu giá của người bán): file CSV
+  (dấu phẩy hoặc chấm phẩy, có hoặc không BOM) kèm ảnh, tối đa 50 dòng; mỗi dòng thành sản phẩm đã đăng kèm ảnh và lô
+  nháp trong transaction riêng, dòng lỗi được báo từng lỗi và bỏ qua. Giá viết 1500000 hoặc 1.500.000; giờ
+  `yyyy-MM-dd HH:mm` theo giờ Việt Nam. File mẫu ở `/templates/nexbid-lots.csv`.

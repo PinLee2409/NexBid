@@ -28,7 +28,16 @@ public final class PaymentEvents {
 
     /** EN: Spec §19 names it PaymentSucceededEvent. / VI: Spec §19 gọi nó là PaymentSucceededEvent. */
     @Externalized("nexbid.payments::#{auctionId()}")
-    public record Succeeded(UUID paymentId, UUID auctionId, UUID userId, BigDecimal amount, Instant at) {
+    public record Succeeded(UUID paymentId, UUID auctionId, UUID userId, BigDecimal amount, Instant at,
+            BigDecimal shippingFee) {
+
+        /**
+         * EN: Goods plus shipping. Events written before shipping was charged carry no fee.
+         * VI: Tiền hàng cộng phí ship. Sự kiện ghi trước khi thu phí ship không có phí.
+         */
+        public BigDecimal total() {
+            return shippingFee == null ? amount : amount.add(shippingFee);
+        }
     }
 
     @Externalized("nexbid.payments::#{auctionId()}")

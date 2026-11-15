@@ -6,6 +6,7 @@ import {
   getQuickBidAmounts,
   getUrgency,
   isAuctionEditable,
+  isRelistable,
   isBelowReserve,
   isEndingSoon,
   validateAutoBid,
@@ -154,5 +155,20 @@ describe("a lot that closed below its reserve", () => {
     expect(isBelowReserve({ ...closed, reserveMet: true })).toBe(false);
     expect(isBelowReserve({ ...closed, reserveMet: null })).toBe(false);
     expect(isBelowReserve({ ...closed, reserveDecision: "ACCEPTED" })).toBe(false);
+  });
+});
+
+describe("isRelistable", () => {
+  it("offers a finished lot again once its product is back with the seller", () => {
+    expect(isRelistable("ENDED", "AVAILABLE")).toBe(true);
+    expect(isRelistable("CANCELLED", "AVAILABLE")).toBe(true);
+    expect(isRelistable("COMPLETED", "AVAILABLE")).toBe(true);
+  });
+
+  it("does not offer a lot that is live, still being decided, or sold", () => {
+    expect(isRelistable("ACTIVE", "IN_AUCTION")).toBe(false);
+    expect(isRelistable("ENDED", "IN_AUCTION")).toBe(false);
+    expect(isRelistable("COMPLETED", "SOLD")).toBe(false);
+    expect(isRelistable("REJECTED", "AVAILABLE")).toBe(false);
   });
 });

@@ -3,6 +3,7 @@ package com.nexbid.product.entity;
 import java.time.Instant;
 import java.util.UUID;
 
+import com.nexbid.product.Parcel;
 import com.nexbid.product.ProductCondition;
 import com.nexbid.product.ProductStatus;
 
@@ -58,6 +59,18 @@ public class Product {
     @Column(nullable = false, length = 16)
     private ProductStatus status = ProductStatus.DRAFT;
 
+    @Column(name = "weight_grams")
+    private Integer weightGrams;
+
+    @Column(name = "length_cm")
+    private Integer lengthCm;
+
+    @Column(name = "width_cm")
+    private Integer widthCm;
+
+    @Column(name = "height_cm")
+    private Integer heightCm;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -97,6 +110,18 @@ public class Product {
     /** EN: The rule behind every seller screen. / VI: Luật đứng sau mọi màn của người bán. */
     public boolean isOwnedBy(UUID userId) {
         return this.sellerId.equals(userId);
+    }
+
+    /** EN: The packed size, or null when the seller gave none. / VI: Kích thước kiện, hoặc null khi người bán chưa khai. */
+    public Parcel getParcel() {
+        return weightGrams == null ? null : new Parcel(weightGrams, lengthCm, widthCm, heightCm);
+    }
+
+    public void setParcel(Parcel parcel) {
+        this.weightGrams = parcel == null ? null : parcel.weightGrams();
+        this.lengthCm = parcel == null ? null : parcel.lengthCm();
+        this.widthCm = parcel == null ? null : parcel.widthCm();
+        this.heightCm = parcel == null ? null : parcel.heightCm();
     }
 
     public UUID getId() {

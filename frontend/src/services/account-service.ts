@@ -101,7 +101,7 @@ export async function getAccountStats(): Promise<AccountStats> {
     watching: watching.length,
     totalSpent: payments
       .filter((entry) => entry.payment.status === "SUCCESS")
-      .reduce((total, entry) => total + Number(entry.payment.amount), 0),
+      .reduce((total, entry) => total + toPayment(entry.payment).total, 0),
   };
 }
 

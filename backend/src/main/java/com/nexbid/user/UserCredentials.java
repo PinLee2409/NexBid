@@ -15,7 +15,4 @@ public record UserCredentials(
         UserStatus status,
         Set<RoleName> roles) {
 
-    public UserAccount toAccount(java.time.Instant createdAt) {
-        return new UserAccount(id, fullName, email, roles, status, createdAt);
-    }
 }

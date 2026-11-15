@@ -54,6 +54,15 @@ public class PaymentController {
     }
 
     /** EN: The page language, so VNPay's page matches it. / VI: Ngôn ngữ của trang, để trang VNPay khớp theo. */
+    /**
+     * EN: Fixes and shows the shipping to the buyer's current address before they go to VNPay: goods, shipping, total.
+     * VI: Chốt và hiện phí ship tới địa chỉ hiện tại của người mua trước khi sang VNPay: tiền hàng, phí ship, tổng.
+     */
+    @PostMapping("/api/payments/{id}/shipping-quote")
+    public ApiResponse<ShippingQuote> shippingQuote(@AuthenticationPrincipal CurrentUser me, @PathVariable UUID id) {
+        return ApiResponse.of(payments.quoteShipping(me.id(), id));
+    }
+
     public record CheckoutRequest(String locale) {
     }
 

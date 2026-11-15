@@ -76,7 +76,7 @@ function VnpayResult() {
       <EmptyState
         icon={CircleCheck}
         title={t("paymentSucceeded")}
-        description={`${money.currency(payment.amount)} · ${t("paymentSucceededBody")}`}
+        description={`${money.currency(payment.total)} · ${t("paymentSucceededBody")}`}
         action={{ label: t("viewOrder"), href: "/orders" }}
         secondaryAction={{ label: t("paymentsTitle"), href: "/payments" }}
       />

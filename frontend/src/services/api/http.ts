@@ -55,6 +55,27 @@ function queryString(query: RequestOptions["query"]): string {
   return text ? `?${text}` : "";
 }
 
+const DEVICE_KEY = "nexbid:device";
+
+/**
+ * EN: A random id this browser keeps, sent with each request so the server can tell when two accounts act from the
+ *     same device (shill bidding). Null when storage is unavailable.
+ * VI: Một mã ngẫu nhiên trình duyệt này giữ, gửi kèm mỗi request để server biết khi hai tài khoản thao tác từ cùng một
+ *     thiết bị (tự trả giá). Null khi không dùng được bộ nhớ.
+ */
+function deviceId(): string | null {
+  try {
+    let id = window.localStorage.getItem(DEVICE_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      window.localStorage.setItem(DEVICE_KEY, id);
+    }
+    return id;
+  } catch {
+    return null;
+  }
+}
+
 export async function api<T>(path: string, options: RequestOptions = {}, retried = false): Promise<T> {
   const onServer = typeof window === "undefined";
   const url = `${onServer ? SERVER_BASE_URL : ""}${path}${queryString(options.query)}`;
@@ -80,6 +101,8 @@ export async function api<T>(path: string, options: RequestOptions = {}, retried
   // VI: Render trên server luôn ẩn danh: token chỉ nằm trong trình duyệt.
   const token = onServer ? null : getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
+  const device = onServer ? null : deviceId();
+  if (device) headers["X-Device-Id"] = device;
 
   let response: Response;
   try {

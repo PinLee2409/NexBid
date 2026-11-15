@@ -2,8 +2,10 @@ package com.nexbid.product.dto;
 
 import java.util.UUID;
 
+import com.nexbid.product.Parcel;
 import com.nexbid.product.ProductCondition;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -34,5 +36,9 @@ public record UpdateProductRequest(
          * EN: Moves between DRAFT and AVAILABLE only — the two states a seller owns.
          * VI: Chỉ chuyển giữa DRAFT và AVAILABLE — hai trạng thái thuộc quyền người bán.
          */
-        Boolean published) {
+        Boolean published,
+
+        /** EN: The packed size; left out, it is cleared. / VI: Kích thước kiện; bỏ trống thì xoá. */
+        @Valid
+        Parcel parcel) {
 }

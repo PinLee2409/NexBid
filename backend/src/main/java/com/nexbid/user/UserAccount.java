@@ -14,5 +14,7 @@ public record UserAccount(
         String email,
         Set<RoleName> roles,
         UserStatus status,
-        Instant createdAt) {
+        Instant createdAt,
+        // EN: A seller whose papers an admin checked. / VI: Người bán đã được admin xác minh giấy tờ.
+        boolean verified) {
 }

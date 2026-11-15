@@ -17,10 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.nexbid.payment.entity.Payment;
 import com.nexbid.payment.entity.PaymentTransaction;
-import com.nexbid.common.exception.BusinessException;
-import com.nexbid.common.exception.ErrorCode;
 import com.nexbid.payment.repository.PaymentTransactionRepository;
-import com.nexbid.user.AddressBook;
 
 /**
  * EN: Paying through VNPay. Checkout records an attempt and hands the buyer a signed link to VNPay's page; VNPay then
@@ -46,16 +43,14 @@ public class VnpayService {
     private final PaymentTransactionRepository transactions;
     private final VnpayProperties properties;
     private final VnpaySigner signer;
-    private final AddressBook addresses;
     private final StrayCharges strays;
 
     VnpayService(PaymentService payments, PaymentTransactionRepository transactions, VnpayProperties properties,
-            AddressBook addresses, StrayCharges strays) {
+            StrayCharges strays) {
         this.strays = strays;
         this.payments = payments;
         this.transactions = transactions;
         this.properties = properties;
-        this.addresses = addresses;
         this.signer = new VnpaySigner(properties.hashSecret());
     }
 
@@ -73,13 +68,11 @@ public class VnpayService {
     public Checkout startCheckout(UUID userId, UUID paymentId, String clientIp, String locale) {
         Instant now = Instant.now();
         Payment payment = payments.payableBy(userId, paymentId, now);
-        // EN: No money is taken for goods that cannot be delivered. / VI: Không thu tiền cho món hàng chưa biết giao tới đâu.
-        if (addresses.addressOf(userId).isEmpty()) {
-            throw new BusinessException(ErrorCode.ADDRESS_REQUIRED, "Add a delivery address before paying");
-        }
+        // EN: Goods plus the shipping to the buyer's address, fixed here at the latest. / VI: Tiền hàng cộng phí ship tới địa chỉ người mua, chốt muộn nhất ở đây.
+        BigDecimal total = payments.quoteShipping(userId, paymentId).total();
 
         String txnRef = newTxnRef(now);
-        transactions.save(new PaymentTransaction(payment.getId(), txnRef, payment.getAmount()));
+        transactions.save(new PaymentTransaction(payment.getId(), txnRef, total));
 
         Instant expires = now.plus(properties.timeout());
         if (payment.getExpiredAt().isBefore(expires)) {
@@ -90,7 +83,7 @@ public class VnpayService {
         fields.put("vnp_Version", "2.1.0");
         fields.put("vnp_Command", "pay");
         fields.put("vnp_TmnCode", properties.tmnCode());
-        fields.put("vnp_Amount", minorUnits(payment.getAmount()));
+        fields.put("vnp_Amount", minorUnits(total));
         fields.put("vnp_CurrCode", "VND");
         fields.put("vnp_TxnRef", txnRef);
         // EN: VNPay wants plain ASCII here. / VI: VNPay yêu cầu ASCII không dấu ở trường này.
@@ -160,7 +153,8 @@ public class VnpayService {
         transactions.save(attempt);
 
         Instant now = Instant.now();
-        PaymentService.Settled settled = payments.settleAttempt(attempt.getPaymentId(), success, now);
+        PaymentService.Settled settled = payments.settleAttempt(attempt.getPaymentId(), success,
+                attempt.getAmount(), now);
         // EN: Money taken that no payment can use waits for an admin to transfer it back, and the buyer is told.
         // VI: Tiền đã thu mà không khoản nào dùng được sẽ chờ admin chuyển trả lại, và người mua được báo.
         if (success && settled == PaymentService.Settled.TOO_LATE) {

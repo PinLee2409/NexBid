@@ -8,6 +8,7 @@ import type {
   OfferStatus,
   OrderDispute,
   OrderStatus,
+  Parcel,
   PaymentStatus,
   ProductCondition,
   ProductStatus,
@@ -37,12 +38,15 @@ export interface ApiUser {
   roles: UserRole[];
   status: UserStatus;
   createdAt?: IsoDateString;
+  verified?: boolean;
 }
 
 export interface ApiLogin {
   accessToken: string;
   expiresAt: IsoDateString;
   user: ApiUser;
+  /** EN: Instead of the token when a code from the authenticator app is needed. / VI: Thay cho token khi cần mã từ ứng dụng xác thực. */
+  twoFactorChallenge?: string | null;
 }
 
 export interface ApiCategory {
@@ -85,7 +89,7 @@ export interface ApiAuctionSummary {
   auction: ApiAuction;
   product: { id: string; name: string; coverImageUrl: string | null; condition: ProductCondition | null };
   category: ApiCategory | null;
-  seller: { id: string; displayName: string };
+  seller: { id: string; displayName: string; verified?: boolean };
 }
 
 export interface ApiImage {
@@ -115,7 +119,7 @@ export interface ApiAuctionDetail {
   product: { id: string; name: string; description: string; condition: ProductCondition };
   category: ApiCategory | null;
   images: ApiImage[];
-  seller: { id: string; displayName: string };
+  seller: { id: string; displayName: string; verified?: boolean };
   minimumNextBid: number;
   openForBidding: boolean;
   /** EN: Null when the server cannot count right now. / VI: Null khi server tạm thời không đếm được. */
@@ -186,6 +190,9 @@ export interface ApiPaymentDetails {
   expiredAt: IsoDateString;
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
+  shippingFee?: number | null;
+  shippingSource?: "GHN" | "FLAT" | null;
+  total?: number;
 }
 
 export interface ApiPayment {
@@ -256,6 +263,10 @@ export interface ApiOrder {
     completedAt?: IsoDateString | null;
     autoCompleted?: boolean;
     dispute?: OrderDispute | null;
+    shippingStatus?: string | null;
+    deliveredAt?: IsoDateString | null;
+    ghnBooked?: boolean;
+    ghnAddress?: boolean;
   };
   payment: ApiPaymentDetails | null;
   auction: ApiAuctionSummary | null;
@@ -275,6 +286,7 @@ export interface ApiProduct {
   description: string;
   condition: ProductCondition;
   status: ProductStatus;
+  parcel?: Parcel | null;
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
 }
@@ -323,4 +335,7 @@ export interface ApiShippingAddress {
   ward: string | null;
   district: string | null;
   province: string;
+  provinceId?: number | null;
+  districtId?: number | null;
+  wardCode?: string | null;
 }

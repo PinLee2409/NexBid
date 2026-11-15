@@ -9,6 +9,7 @@ import { ApiErrorState } from "@/components/common/api-error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { FormField } from "@/components/common/form-field";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
+import { OrderMessagesButton } from "@/components/common/order-messages-dialog";
 import { OrderRow } from "@/components/common/order-row";
 import { PageHeader } from "@/components/layout/page-header";
 import { RefundTransfer, useRefundAccount } from "@/components/payment/refund-transfer";
@@ -75,6 +76,7 @@ export default function AdminDisputesPage() {
                 <OrderRow
                   key={row.dispute.id}
                   entry={row.entry}
+                  extra={<OrderMessagesButton orderId={row.entry.order.id} />}
                   action={
                     row.dispute.status === "OPEN" ? (
                       <div className="flex shrink-0 flex-col items-end gap-2">
@@ -184,7 +186,7 @@ function DecideDialog({
           <DialogDescription>
             {refund
               ? t("disputeRefundBody", {
-                  amount: money.currency(entry?.order.amount ?? 0),
+                  amount: money.currency(entry?.payment?.total ?? entry?.order.amount ?? 0),
                   name: entry?.auction?.product.name ?? "",
                 })
               : shipped
@@ -196,7 +198,7 @@ function DecideDialog({
         {refund && entry ? (
           <RefundTransfer
             account={account}
-            amount={entry.order.amount}
+            amount={entry.payment?.total ?? entry.order.amount}
             reference={reference}
             error={referenceError}
             disabled={isPending}

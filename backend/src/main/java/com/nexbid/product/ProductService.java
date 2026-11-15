@@ -58,6 +58,7 @@ public class ProductService {
                 request.description().trim(),
                 request.condition(),
                 status);
+        product.setParcel(request.parcel());
 
         return toView(products.save(product));
     }
@@ -151,6 +152,7 @@ public class ProductService {
         product.setName(request.name().trim());
         product.setDescription(request.description().trim());
         product.setCondition(request.condition());
+        product.setParcel(request.parcel());
 
         if (request.published() != null) {
             product.setStatus(request.published() ? ProductStatus.AVAILABLE : ProductStatus.DRAFT);
@@ -256,6 +258,7 @@ public class ProductService {
                 product.getDescription(),
                 product.getCondition(),
                 product.getStatus(),
+                product.getParcel(),
                 product.getCreatedAt(),
                 product.getUpdatedAt());
     }

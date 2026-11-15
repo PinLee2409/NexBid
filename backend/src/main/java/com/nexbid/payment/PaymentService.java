@@ -1,13 +1,19 @@
 package com.nexbid.payment;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.HexFormat;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
@@ -22,7 +28,9 @@ import com.nexbid.common.exception.ErrorCode;
 import com.nexbid.common.exception.ResourceNotFoundException;
 import com.nexbid.payment.entity.Payment;
 import com.nexbid.payment.repository.PaymentRepository;
+import com.nexbid.user.AddressBook;
 import com.nexbid.user.BankAccount;
+import com.nexbid.user.ShippingAddress;
 
 /**
  * EN: The winner's payment (guide §32, spec §17): created at the close, paid by the winner alone, and
@@ -39,6 +47,9 @@ public class PaymentService {
     private final Duration window;
     private final JdbcTemplate jdbc;
     private final com.nexbid.common.BankReferences references;
+    private final AddressBook addresses;
+    private final ObjectProvider<ShippingQuoter> quoters;
+    private final BigDecimal flatShippingFee;
 
     PaymentService(
             PaymentRepository payments,
@@ -46,9 +57,15 @@ public class PaymentService {
             ApplicationEventPublisher events,
             @Value("${nexbid.payment.window}") Duration window,
             JdbcTemplate jdbc,
-            com.nexbid.common.BankReferences references) {
+            com.nexbid.common.BankReferences references,
+            AddressBook addresses,
+            ObjectProvider<ShippingQuoter> quoters,
+            @Value("${nexbid.payment.flat-shipping-fee:50000}") BigDecimal flatShippingFee) {
 
         this.references = references;
+        this.addresses = addresses;
+        this.quoters = quoters;
+        this.flatShippingFee = flatShippingFee;
 
         this.payments = payments;
         this.auctions = auctions;
@@ -67,6 +84,46 @@ public class PaymentService {
     void openFor(UUID auctionId, UUID winnerId, BigDecimal amount, Instant closedAt) {
         Payment payment = payments.saveAndFlush(new Payment(auctionId, winnerId, amount, closedAt.plus(window)));
         events.publishEvent(new PaymentEvents.Opened(payment.getId(), auctionId, winnerId, amount));
+    }
+
+    /**
+     * EN: The shipping the buyer will pay with the goods, fixed on the payment. The first call quotes it — GHN from the
+     *     seller's address to the buyer's when both were picked from GHN's lists, otherwise the flat fee — and later
+     *     calls give the same figure until the buyer changes address, so the total does not move under them.
+     * VI: Phí ship người mua sẽ trả cùng tiền hàng, chốt trên khoản thanh toán. Lần gọi đầu báo phí — GHN từ địa chỉ
+     *     người bán tới địa chỉ người mua khi cả hai chọn từ danh sách GHN, không thì phí cố định — và các lần sau trả
+     *     đúng con số đó tới khi người mua đổi địa chỉ, để tổng tiền không đổi dưới tay họ.
+     */
+    @Transactional
+    public ShippingQuote quoteShipping(UUID userId, UUID paymentId) {
+        payableBy(userId, paymentId, Instant.now());
+        // EN: No money is taken for goods that cannot be delivered. / VI: Không thu tiền cho món hàng chưa biết giao tới đâu.
+        ShippingAddress address = addresses.addressOf(userId).orElseThrow(() ->
+                new BusinessException(ErrorCode.ADDRESS_REQUIRED, "Add a delivery address before paying"));
+        Payment payment = payments.findByIdForUpdate(paymentId).orElseThrow(() -> notFound(paymentId));
+
+        String key = addressKey(address);
+        if (!payment.isQuotedFor(key)) {
+            Optional<BigDecimal> carrier = Optional.ofNullable(quoters.getIfAvailable())
+                    .flatMap(quoter -> quoter.quote(payment.getAuctionId(), userId, payment.getAmount()));
+            payment.quoteShipping(carrier.orElse(flatShippingFee),
+                    carrier.isPresent() ? ShippingQuote.GHN : ShippingQuote.FLAT, key);
+            payments.saveAndFlush(payment);
+        }
+        return new ShippingQuote(payment.getAmount(), payment.getShippingFee(), payment.getShippingSource(),
+                payment.getTotal());
+    }
+
+    /** EN: Changes whenever the parcel's destination does. / VI: Đổi mỗi khi nơi nhận kiện hàng đổi. */
+    private static String addressKey(ShippingAddress address) {
+        String raw = String.join("|", String.valueOf(address.provinceId()), String.valueOf(address.districtId()),
+                String.valueOf(address.wardCode()), address.oneLine());
+        try {
+            return HexFormat.of().formatHex(
+                    MessageDigest.getInstance("SHA-256").digest(raw.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException(ex);
+        }
     }
 
     public List<PaymentView> listFor(UUID userId) {
@@ -131,14 +188,14 @@ public class PaymentService {
                 INSERT INTO payment_refunds (id, payment_id, amount, reference, bank_name, account_number,
                                              account_holder, created_by, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, UUID.randomUUID(), paymentId, payment.getAmount(), reference, account.bankName(),
+                """, UUID.randomUUID(), paymentId, payment.getTotal(), reference, account.bankName(),
                 account.accountNumber(), account.accountHolder(), actorId,
                 java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC));
 
         payment.settle(PaymentStatus.REFUNDED);
         payments.saveAndFlush(payment);
         events.publishEvent(new PaymentEvents.Refunded(
-                payment.getId(), payment.getAuctionId(), payment.getUserId(), payment.getAmount(), reference,
+                payment.getId(), payment.getAuctionId(), payment.getUserId(), payment.getTotal(), reference,
                 account.masked(), actorId, Instant.now()));
     }
 
@@ -192,7 +249,7 @@ public class PaymentService {
      *     được. Thành công thì phát PaymentEvents.Succeeded, thứ hoàn tất đơn hàng, lô và các thông báo.
      */
     @Transactional
-    Settled settleAttempt(UUID paymentId, boolean success, Instant now) {
+    Settled settleAttempt(UUID paymentId, boolean success, BigDecimal charged, Instant now) {
         Payment payment = payments.findByIdForUpdate(paymentId).orElseThrow(() -> notFound(paymentId));
 
         if (payment.getStatus() == PaymentStatus.SUCCESS) {
@@ -203,13 +260,19 @@ public class PaymentService {
         }
 
         payment.settle(success ? PaymentStatus.SUCCESS : PaymentStatus.FAILED);
+        // EN: An attempt started before the buyer changed address charged the shipping quoted then; that is what was paid.
+        // VI: Lần thử bắt đầu trước khi người mua đổi địa chỉ đã thu phí ship báo lúc đó; đó là số đã thực trả.
+        if (success && charged.compareTo(payment.getTotal()) != 0) {
+            payment.quoteShipping(charged.subtract(payment.getAmount()), payment.getShippingSource(), null);
+        }
         payments.saveAndFlush(payment);
 
         if (!success) {
             return Settled.FAILED;
         }
         events.publishEvent(new PaymentEvents.Succeeded(
-                payment.getId(), payment.getAuctionId(), payment.getUserId(), payment.getAmount(), now));
+                payment.getId(), payment.getAuctionId(), payment.getUserId(), payment.getAmount(), now,
+                payment.getShippingFee()));
         return Settled.PAID;
     }
 
@@ -263,7 +326,10 @@ public class PaymentService {
                         status,
                         payment.getExpiredAt(),
                         payment.getCreatedAt(),
-                        payment.getUpdatedAt()),
+                        payment.getUpdatedAt(),
+                        payment.getShippingSource() == null ? null : payment.getShippingFee(),
+                        payment.getShippingSource(),
+                        payment.getTotal()),
                 lot);
     }
 

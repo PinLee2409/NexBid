@@ -19,6 +19,8 @@ interface Earning {
   orderId: string;
   auctionId: string;
   gross: number;
+  /** EN: Shipping the buyer paid, passed on to the seller. / VI: Phí ship người mua đã trả, chuyển cho người bán. */
+  shipping: number;
   fee: number;
   net: number;
   /** EN: Set once the money was transferred. / VI: Có giá trị khi tiền đã được chuyển. */
@@ -74,6 +76,7 @@ export async function getEarnings(): Promise<SellerEarnings> {
     earnings: data.earnings.map((earning) => ({
       ...earning,
       gross: Number(earning.gross),
+      shipping: Number(earning.shipping ?? 0),
       fee: Number(earning.fee),
       net: Number(earning.net),
       auction: earning.auction ? toSummary(earning.auction) : null,

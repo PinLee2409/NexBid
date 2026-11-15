@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -195,7 +194,6 @@ public class AlertService {
         }
         UUID sellerId = lot.auction().sellerId();
         String name = lot.product().name();
-        String lowered = name.toLowerCase(Locale.ROOT);
         String slug = lot.category() == null ? null : lot.category().slug();
 
         // EN: Followers first: "a seller you follow" says more than a search. / VI: Người theo dõi trước: "người bán bạn theo dõi" nói nhiều hơn một bộ lọc.
@@ -211,14 +209,13 @@ public class AlertService {
                   AND (cardinality(conditions) = 0 OR ? = ANY (conditions))
                   AND (min_price IS NULL OR min_price <= ?)
                   AND (max_price IS NULL OR max_price >= ?)
+                  AND (q IS NULL OR strpos(fold(?), fold(q)) > 0)
                 ORDER BY created_at
                 """, rs -> {
-            String q = rs.getString("q");
+            // EN: Words match ignoring accents and case, as on the browse page. / VI: Từ khoá khớp bỏ qua dấu và chữ hoa, như trang duyệt lô.
             UUID userId = rs.getObject("user_id", UUID.class);
-            if (q == null || lowered.contains(q.toLowerCase(Locale.ROOT))) {
-                alerts.putIfAbsent(userId, new Alert(userId, rs.getObject("id", UUID.class), null));
-            }
-        }, sellerId, slug, lot.product().condition(), lot.auction().currentPrice(), lot.auction().currentPrice());
+            alerts.putIfAbsent(userId, new Alert(userId, rs.getObject("id", UUID.class), null));
+        }, sellerId, slug, lot.product().condition(), lot.auction().currentPrice(), lot.auction().currentPrice(), name);
 
         int noted = 0;
         for (Alert alert : alerts.values()) {

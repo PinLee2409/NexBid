@@ -11,6 +11,7 @@ import { NextResponse, type NextRequest } from "next/server";
  */
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8080/ws";
+const GOOGLE_SIGN_IN = "https://accounts.google.com/gsi/";
 
 function policy(nonce: string): string {
   const development = process.env.NODE_ENV === "development";
@@ -20,11 +21,14 @@ function policy(nonce: string): string {
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${development ? " 'unsafe-eval'" : ""}`,
     // EN: Toasts and animations write inline styles as they run, which no nonce can cover; styles cannot run code.
     // VI: Toast và hiệu ứng động ghi style inline lúc chạy, thứ mà nonce không phủ được; còn style thì không chạy được code.
-    "style-src 'self' 'unsafe-inline'",
+    // EN: Google's sign-in button (when set up) brings its own stylesheet, frame and requests from /gsi/.
+    // VI: Nút đăng nhập Google (khi được cài) mang stylesheet, khung và request riêng từ /gsi/.
+    `style-src 'self' 'unsafe-inline' ${GOOGLE_SIGN_IN}`,
     // EN: blob: for photo previews before upload. / VI: blob: cho ảnh xem trước khi tải lên.
     "img-src 'self' blob: data:",
     "font-src 'self'",
-    `connect-src 'self' ${new URL(SOCKET_URL).origin}`,
+    `connect-src 'self' ${new URL(SOCKET_URL).origin} ${GOOGLE_SIGN_IN}`,
+    `frame-src ${GOOGLE_SIGN_IN}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

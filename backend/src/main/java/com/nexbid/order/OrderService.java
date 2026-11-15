@@ -25,6 +25,7 @@ import com.nexbid.common.exception.ErrorCode;
 import com.nexbid.common.exception.ResourceNotFoundException;
 import com.nexbid.order.entity.Order;
 import com.nexbid.order.repository.OrderRepository;
+import com.nexbid.order.shipping.GhnShipping;
 import com.nexbid.payment.PaymentService;
 import com.nexbid.payment.PaymentView;
 import com.nexbid.user.BankAccount;
@@ -48,6 +49,8 @@ public class OrderService {
     private final Duration autoCompleteAfter;
     private final BankAccounts bankAccounts;
     private final BuyerReviews buyerReviews;
+    private final GhnShipping ghn;
+    private final com.nexbid.order.shipping.GhnBookings bookings;
 
     public OrderService(
             OrderRepository orders,
@@ -58,7 +61,11 @@ public class OrderService {
             DisputeBook disputes,
             @Value("${nexbid.order.auto-complete-after}") Duration autoCompleteAfter,
             BankAccounts bankAccounts,
-            BuyerReviews buyerReviews) {
+            BuyerReviews buyerReviews,
+            GhnShipping ghn,
+            com.nexbid.order.shipping.GhnBookings bookings) {
+        this.ghn = ghn;
+        this.bookings = bookings;
         this.buyerReviews = buyerReviews;
         this.bankAccounts = bankAccounts;
         this.orders = orders;
@@ -70,7 +77,25 @@ public class OrderService {
         this.autoCompleteAfter = autoCompleteAfter;
     }
 
-    /** EN: A shipped order nobody confirmed yet, and when it completes on its own. / VI: Một đơn đã gửi chưa ai xác nhận, và lúc nó tự hoàn tất. */
+    /** EN: Who is party to an order, for its messages. / VI: Ai là bên của một đơn, cho phần tin nhắn. */
+    public record Parties(UUID orderId, UUID auctionId, UUID buyerId, UUID sellerId, OrderStatus status,
+            Instant completedAt) {
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Optional<Parties> partiesOf(UUID orderId) {
+        return orders.findById(orderId).map(order -> new Parties(order.getId(), order.getAuctionId(),
+                order.getBuyerId(), order.getSellerId(), order.getStatus(), order.getCompletedAt()));
+    }
+
+    /** EN: The same for many orders at once. / VI: Như trên, cho nhiều đơn cùng lúc. */
+    @Transactional(readOnly = true)
+    public Map<UUID, Parties> partiesOf(java.util.Collection<UUID> orderIds) {
+        return orders.findAllById(orderIds).stream().collect(Collectors.toMap(Order::getId, order -> new Parties(
+                order.getId(), order.getAuctionId(), order.getBuyerId(), order.getSellerId(), order.getStatus(),
+                order.getCompletedAt())));
+    }
+
     public record AwaitingReceipt(UUID orderId, UUID auctionId, UUID buyerId, Instant completesAt) {
     }
 
@@ -127,20 +152,70 @@ public class OrderService {
     }
 
     /**
-     * EN: The seller marks a paid order as shipped. Another seller's order answers 404.
-     * VI: Người bán đánh dấu một đơn đã trả là đã gửi hàng. Đơn của người bán khác trả 404.
+     * EN: The seller marks a paid order as shipped. Another seller's order answers 404. With GHN connected, a GHN code
+     *     is checked first (before the row lock, as GHN may take seconds): one GHN has never heard of is refused
+     *     (TRACKING_NOT_FOUND), a real one records its first status at once; when GHN cannot be asked, the shipment is
+     *     taken as typed.
+     * VI: Người bán đánh dấu một đơn đã trả là đã gửi hàng. Đơn của người bán khác trả 404. Khi đã kết nối GHN, mã GHN được
+     *     kiểm trước (trước khi khoá dòng, vì GHN có thể mất vài giây): mã GHN không biết bị từ chối (TRACKING_NOT_FOUND),
+     *     mã thật ghi luôn trạng thái đầu tiên; khi không hỏi được GHN thì nhận như người bán đã nhập.
      */
     @Transactional
     public OrderView ship(UUID sellerId, UUID orderId, String carrier, String trackingNumber) {
+        String code = blankToNull(trackingNumber);
+        boolean viaGhn = GhnShipping.isGhn(carrier);
+        java.util.Optional<String> parcel = viaGhn && code != null ? ghn.verifyParcel(code) : java.util.Optional.empty();
+
         Order order = orders.findLockedById(orderId)
                 .filter(found -> found.getSellerId().equals(sellerId))
                 .orElseThrow(() -> notFound(orderId));
 
         move(order, OrderStatus.PAID, OrderStatus.PROCESSING, "Only a paid order can be shipped");
-        order.recordShipment(blankToNull(carrier), blankToNull(trackingNumber), Instant.now());
+        Instant now = Instant.now();
+        order.recordShipment(viaGhn ? GhnShipping.CARRIER : blankToNull(carrier), code, now);
+        parcel.ifPresent(status -> order.recordCarrierStatus(status, GhnShipping.isDelivered(status), now));
         events.publishEvent(new OrderEvents.Shipped(order.getId(), sellerId, order.getBuyerId(), order.getAuctionId(),
                 order.getCarrier(), order.getTrackingNumber()));
         return views(List.of(order), payments.detailsOf(List.of(order.getPaymentId()))).getFirst();
+    }
+
+    /**
+     * EN: Books GHN to pick the parcel up, on NexBid's GHN account, and marks the order shipped with GHN's code. NexBid
+     *     pays GHN out of the shipping the buyer paid, so the seller is not paid that shipping. The row is locked while
+     *     GHN answers, so two clicks book one parcel.
+     * VI: Đặt GHN đến lấy kiện, bằng tài khoản GHN của NexBid, và đánh dấu đơn đã gửi với mã của GHN. NexBid trả tiền GHN
+     *     từ phí ship người mua đã trả, nên người bán không nhận phần phí ship đó. Dòng đơn được khoá trong lúc chờ GHN,
+     *     nên bấm hai lần chỉ đặt một kiện.
+     */
+    @Transactional
+    public OrderView shipWithGhn(UUID sellerId, UUID orderId) {
+        Order order = orders.findLockedById(orderId)
+                .filter(found -> found.getSellerId().equals(sellerId))
+                .orElseThrow(() -> notFound(orderId));
+        if (order.getStatus() != OrderStatus.PAID) {
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID, "Only a paid order can be shipped");
+        }
+        com.nexbid.order.shipping.GhnBookings.Booked booked = bookings.book(order);
+
+        move(order, OrderStatus.PAID, OrderStatus.PROCESSING, "Only a paid order can be shipped");
+        Instant now = Instant.now();
+        order.recordShipment(GhnShipping.CARRIER, booked.orderCode(), now);
+        order.recordCarrierStatus("ready_to_pick", false, now);
+        order.bookedWithGhn(booked.fee());
+        events.publishEvent(new OrderEvents.Shipped(order.getId(), sellerId, order.getBuyerId(), order.getAuctionId(),
+                order.getCarrier(), order.getTrackingNumber()));
+        return views(List.of(order), payments.detailsOf(List.of(order.getPaymentId()))).getFirst();
+    }
+
+    /** EN: GHN's printable label for an order NexBid booked. / VI: Phiếu GHN in được cho đơn NexBid đã đặt. */
+    public String ghnLabel(UUID sellerId, UUID orderId) {
+        Order order = orders.findById(orderId)
+                .filter(found -> found.getSellerId().equals(sellerId))
+                .orElseThrow(() -> notFound(orderId));
+        if (!order.isGhnBooked()) {
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID, "This order was not booked with GHN through NexBid");
+        }
+        return bookings.labelUrl(order.getTrackingNumber());
     }
 
     /**
@@ -166,6 +241,18 @@ public class OrderService {
      * VI: Đơn đã gửi mà không ai xác nhận và không ai khiếu nại sẽ tự hoàn tất sau {@code shippedBefore}, để người mua
      *     quên bấm không giữ tiền của người bán mãi được. Trả về số đơn đã hoàn tất.
      */
+    /**
+     * EN: Orders the carrier delivered before the time given, which the buyer neither confirmed nor disputed, complete.
+     * VI: Đơn đơn vị vận chuyển đã giao trước thời điểm cho trước, mà người mua không xác nhận cũng không khiếu nại, sẽ hoàn tất.
+     */
+    @Transactional
+    public int completeDelivered(Instant deliveredBefore, int limit) {
+        List<Order> delivered = orders.lockDeliveredBefore(deliveredBefore, limit);
+        Instant now = Instant.now();
+        delivered.forEach(order -> complete(order, null, true, now));
+        return delivered.size();
+    }
+
     @Transactional
     public int completeOverdue(Instant shippedBefore, int limit) {
         List<Order> overdue = orders.lockShippedBefore(shippedBefore, limit);
@@ -180,7 +267,7 @@ public class OrderService {
         orders.save(order);
         events.publishEvent(new OrderEvents.Received(order.getId(), actorId, from));
         events.publishEvent(new OrderEvents.Completed(order.getId(), order.getAuctionId(), order.getSellerId(),
-                order.getBuyerId(), order.getAmount(), automatic, at));
+                order.getBuyerId(), order.getAmount(), automatic, at, order.getSellerShipping()));
     }
 
     /**
@@ -342,7 +429,11 @@ public class OrderService {
                                 order.getShippedAt(),
                                 order.getCompletedAt(),
                                 order.isAutoCompleted(),
-                                disputed.containsKey(order.getId()) ? disputed.get(order.getId()).view() : null),
+                                disputed.containsKey(order.getId()) ? disputed.get(order.getId()).view() : null,
+                                order.getShippingStatus(),
+                                order.getDeliveredAt(),
+                                order.isGhnBooked(),
+                                order.getShipDistrictId() != null),
                         paid.get(order.getPaymentId()),
                         lots.get(order.getAuctionId()),
                         reviewed.get(order.getId()),

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { ApiErrorState } from "@/components/common/api-error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
+import { OrderMessagesButton } from "@/components/common/order-messages-dialog";
 import { OrderRow } from "@/components/common/order-row";
 import { PageHeader } from "@/components/layout/page-header";
 import { RefundTransfer, useRefundAccount } from "@/components/payment/refund-transfer";
@@ -79,6 +80,7 @@ export default function AdminOrdersPage() {
                 <OrderRow
                   key={entry.order.id}
                   entry={entry}
+                  extra={<OrderMessagesButton orderId={entry.order.id} />}
                   action={
                     entry.order.status === "PAID" || entry.order.status === "PROCESSING" || entry.order.status === "DISPUTED" ? (
                       <Button size="sm" variant="outline" onClick={() => setRefunding(entry)}>
@@ -153,7 +155,7 @@ function RefundDialog({
         {entry ? (
           <RefundTransfer
             account={account}
-            amount={entry.order.amount}
+            amount={entry.payment?.total ?? entry.order.amount}
             reference={reference}
             error={error}
             disabled={isPending}

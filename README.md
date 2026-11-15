@@ -16,7 +16,8 @@ realtime updates, scheduling, caching, rate limiting and event delivery.
 
 ## Screenshots
 
-Taken from the Docker stack with the [demo data](#demo-data) loaded.
+Taken in November 2026 from the Docker stack with the [demo data](#demo-data) loaded (the Grafana shot is from an
+earlier load test).
 
 ![Two buyers bidding on the same lot: each bid reaches the other browser over the socket](docs/screenshots/live-bidding.gif)
 
@@ -29,10 +30,12 @@ away: the price, the bid feed, and the "You've been outbid" banner all update wi
 | Home | Lot page — current price, countdown, live bid feed |
 | ![Seller dashboard](docs/screenshots/seller-dashboard.png) | ![Admin approval queue](docs/screenshots/admin-approval.png) |
 | Seller dashboard | Admin approval queue |
-| ![Admin overview with hourly activity](docs/screenshots/admin-overview.png) | ![Grafana dashboard during a load test](docs/screenshots/grafana.png) |
-| Admin overview — hourly activity from the analytics consumer | Grafana during a k6 run at 200 users |
-| ![Swagger UI](docs/screenshots/swagger.png) | ![Bid latency under load](docs/load-test/bid-latency.svg) |
-| Swagger UI | Load test — bid latency from 10 to 1000 users |
+| ![Admin overview with hourly activity](docs/screenshots/admin-overview.png) | ![Messages between the buyer and the seller of an order](docs/screenshots/messages.png) |
+| Admin overview — hourly activity from the analytics consumer | Messages — buyer and seller of an order; phone numbers, emails and links are refused |
+| ![Grafana dashboard during a load test](docs/screenshots/grafana.png) | ![Bid latency under load](docs/load-test/bid-latency.svg) |
+| Grafana during a k6 run at 200 users | Load test — bid latency from 10 to 1000 users |
+| ![Swagger UI](docs/screenshots/swagger.png) | |
+| Swagger UI | |
 
 ---
 
@@ -354,14 +357,21 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | Auth | `POST /api/auth/register`, `POST /api/auth/login` (JWT for 15 minutes + refresh cookie), `POST /api/auth/refresh`, `POST /api/auth/logout` |
 | Catalogue | `GET /api/auctions`, `GET /api/auctions/{id}`, `GET /api/categories`, `GET /api/server-time` — public |
 | Bidding | `GET`/`POST /api/auctions/{id}/questions` (public Q&A; reading needs no sign-in), `POST /api/auctions/{id}/bids`, `GET /api/auctions/{id}/bids`, `/api/auctions/{id}/auto-bid`, `POST /api/auctions/{id}/buy-now` |
-| Account | `GET`/`PUT /api/users/me/address` (delivery address, required before paying), `GET`/`PUT /api/users/me/email-preferences`, `POST /api/email/unsubscribe` (signed link, public) |
+| Account | `GET`/`PUT /api/users/me/address` (delivery address, required before paying; GHN's province, district and ward ids when picked from GHN's lists), `GET`/`PUT /api/users/me/email-preferences`, `POST /api/email/unsubscribe` (signed link, public) |
 | Reports | `POST /api/auctions/{id}/reports` (counterfeit, misdescribed, prohibited; signed in, not the seller), `/api/admin/reports` (`…/{id}/dismiss`, `…/{id}/take-down`), `POST /api/admin/auctions/{id}/remove` |
+| Messages | `GET /api/messages` (the caller's conversations), `GET /api/messages/unread-count`, `GET`/`POST /api/orders/{id}/messages` (buyer and seller of that order only; contact details refused), `GET /api/admin/orders/{id}/messages` (each read goes in the audit log) |
+| Shipping | `GET /api/auctions/{id}/shipping-estimate` (the fee guide on a lot page; signed out is fine), `GET /api/shipping/status` (public), `GET /api/shipping/ghn/provinces`, `…/districts`, `…/wards`, `POST /api/shipping/ghn/fee`, `POST /api/shipping/ghn/webhook?secret=…` (GHN's own calls) |
 | Alerts | `GET`/`POST /api/alerts/searches`, `DELETE /api/alerts/searches/{id}` (saved catalogue searches, 10 each), `GET /api/alerts/sellers`, `GET`/`PUT`/`DELETE /api/alerts/sellers/{id}` (follow a seller) |
-| Payment | `POST /api/payments/{id}/vnpay` (signed VNPay checkout link), `GET /api/payments/vnpay/ipn` and `GET /api/payments/vnpay/return` (VNPay's callbacks, public, checked by signature) |
+| Sign-in extras | `POST /api/auth/login/2fa` (the code step), `POST /api/auth/google` (Google ID token), `GET /api/auth/providers`, `GET /api/users/me/2fa`, `POST /api/users/me/2fa/setup`, `…/enable`, `…/disable` |
+| Finance | `GET /api/admin/finance/reconciliation?from=&to=`, `GET /api/admin/finance/charges.csv`, `GET /api/admin/finance/revenue`, `GET /api/admin/finance/revenue.csv` |
+| Seller import | `POST /api/seller/auctions/import` (multipart: `file` CSV and `images`; template at `/templates/nexbid-lots.csv`) |
+| Trust | `GET /api/admin/shill-suspects` (seller–bidder pairs whose bidding looks like shill bidding, with the signals), `POST /api/admin/shill-suspects/clear` (audited) |
+| Lot extras | `GET /api/auctions/{id}/similar` (open lots in the same category), `GET /api/auctions/cards?ids=…` (recently viewed), `POST /api/auctions/{id}/views` (one visit a day per viewer), `GET /api/seller/auctions/stats` (the seller's figures) |
+| Payment | `POST /api/payments/{id}/shipping-quote` (fixes and shows goods, shipping and total), `POST /api/payments/{id}/vnpay` (signed VNPay checkout link for that total), `GET /api/payments/vnpay/ipn` and `GET /api/payments/vnpay/return` (VNPay's callbacks, public, checked by signature) |
 | Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders` (`…/{id}/received`, `…/{id}/dispute`), `…/me/bank-account` (payouts and refunds go here), `…/me/watchlist`, `…/me/offers` (`…/{id}/accept`, `…/{id}/decline`), `…/me/orders/{id}/review`, `…/me/seller-application`, `/api/notifications`, `GET /api/sellers/{id}/reviews` (public) |
 | Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions`, `/api/seller/auctions/{id}/second-chance`, `/api/seller/auctions/{id}/reserve-decision`, `/api/seller/second-chances`, `/api/seller/orders` (`…/{id}/ship`), `/api/seller/earnings`, `/api/seller/questions/{id}/answer` |
-| Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users`, `/api/admin/users/{id}/block`, `/api/admin/seller-applications` (`…/{id}/approve`, `…/{id}/reject`), `/api/admin/orders` (`…/{id}/refund-account`, `…/{id}/refund` with the bank transfer's reference), `/api/admin/disputes` (`…/{id}/resolve`), `/api/admin/payouts` (`…/due`; recording one sends the amount the admin transferred and is refused if the balance moved), `/api/admin/stray-charges` (`…/{id}/refund`: VNPay charges no payment could use), `/api/admin/emails` (`…/{id}/retry` a failed email), `/api/seller/orders/{id}/buyer-review`, `/api/admin/analytics`, `/api/admin/audit-logs` |
-| Realtime | STOMP at `/ws`: `/topic/auctions/{id}` for everyone, `/user/queue/notifications` for the signed-in user |
+| Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users`, `/api/admin/users/{id}/block`, `/api/admin/users/{id}/verified` (the verified seller badge), `/api/admin/seller-applications` (`…/{id}/approve`, `…/{id}/reject`), `/api/admin/orders` (`…/{id}/refund-account`, `…/{id}/refund` with the bank transfer's reference), `/api/admin/disputes` (`…/{id}/resolve`), `/api/admin/payouts` (`…/due`; recording one sends the amount the admin transferred and is refused if the balance moved), `/api/admin/stray-charges` (`…/{id}/refund`: VNPay charges no payment could use), `/api/admin/emails` (`…/{id}/retry` a failed email), `/api/seller/orders/{id}/buyer-review`, `/api/admin/analytics`, `/api/admin/audit-logs` |
+| Realtime | STOMP at `/ws`: `/topic/auctions/{id}` for everyone, `/user/queue/notifications` and `/user/queue/messages` for the signed-in user |
 
 `/api/admin/**` needs the ADMIN role and `/api/seller/**` needs SELLER. The frontend hides those menus
 too, but that is decoration — the server is what refuses.
@@ -507,6 +517,38 @@ passes them through.
 
 The demo scripts pay by sending a signed IPN themselves, so they need the backend's hash secret: they read
 `NEXBID_VNPAY_HASH_SECRET` and fall back to the local placeholder.
+
+### Shipping with GHN
+
+The GHN (Giao Hàng Nhanh) integration is off until it has a shop's keys: set `NEXBID_GHN_TOKEN` and
+`NEXBID_GHN_SHOP_ID` (sandbox keys from [5sao.ghn.dev](https://5sao.ghn.dev) under the account's security settings; the
+shop needs a pickup address before GHN quotes fees). The default gateway is GHN's sandbox; set `NEXBID_GHN_BASE_URL` for
+production. Once on:
+
+- addresses are picked from GHN's province, district and ward lists, so their ids are saved;
+- a lot page shows a shipping fee guide from the seller's address to the viewer's, for the product's packed size (a 1 kg
+  box when the seller gave none), insured at the lot's price up to `NEXBID_GHN_INSURANCE_CAP` (5,000,000₫);
+- the same quote is charged with the goods when the buyer pays (see below);
+- a seller can have NexBid book GHN for a paid order (`POST /api/seller/orders/{id}/ghn`): GHN's code and a printable
+  label (`GET /api/seller/orders/{id}/ghn-label`) come back at once. NexBid's GHN account pays GHN out of the buyer's
+  shipping, so that shipping is not added to the seller's payout. Both addresses must have been picked from GHN's lists;
+- a seller who ships with GHN picks it from the carrier list; the tracking code is checked with GHN, a code GHN does not
+  know is refused, and the parcel's first status is recorded at once. When GHN cannot be asked, the code is taken as typed;
+- GHN's webhook (`/api/shipping/ghn/webhook?secret=<NEXBID_GHN_WEBHOOK_SECRET>`, which needs a public URL) and a poll
+  every 30 minutes keep the parcel's status on the order;
+- when GHN reports "delivered", the order completes three days later unless the buyer disputes
+  (`NEXBID_ORDER_COMPLETE_AFTER_DELIVERY`), instead of seven days after shipping.
+
+#### Shipping charged with the goods
+
+When the buyer goes to pay, the shipping is fixed on the payment and shown with the goods and the total: GHN's fee from
+the seller's address to the buyer's when both were picked from GHN's lists, otherwise a flat fee
+(`NEXBID_FLAT_SHIPPING_FEE`, 50,000₫). The quote holds until the buyer changes address. VNPay charges the total; the
+seller is paid the goods less the platform fee plus the shipping (the fee is on the goods only); a refund returns the
+whole charge.
+
+Without keys the GHN endpoints answer `SHIPPING_UNAVAILABLE`, addresses are typed by hand, no fee guide is shown, and
+any carrier name and tracking number are accepted, as before.
 
 ### Monitoring
 

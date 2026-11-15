@@ -53,6 +53,31 @@ export async function listAuctions(query: AuctionQuery = {}): Promise<AuctionLis
   return { ...page, serverTime };
 }
 
+/**
+ * `GET /api/auctions/{id}/similar` — open or upcoming lots in the same
+ * category, other sellers first. Empty when it cannot be asked.
+ */
+export async function listSimilarLots(auctionId: string): Promise<AuctionSummary[]> {
+  try {
+    const items = await api<ApiAuctionSummary[]>(`/api/auctions/${auctionId}/similar`);
+    return items.map((item) => toSummary(item));
+  } catch {
+    return [];
+  }
+}
+
+/** `GET /api/auctions/cards?ids=…` — cards for lots by id, hidden ones skipped. */
+export async function listLotCards(ids: string[]): Promise<AuctionSummary[]> {
+  if (ids.length === 0) return [];
+  const items = await api<ApiAuctionSummary[]>("/api/auctions/cards", { query: { ids } });
+  return items.map((item) => toSummary(item));
+}
+
+/** `POST /api/auctions/{id}/views` — counts a visit for the seller's statistics; failures are ignored. */
+export async function recordLotView(auctionId: string): Promise<void> {
+  await api(`/api/auctions/${auctionId}/views`, { method: "POST" }).catch(() => undefined);
+}
+
 /** `GET /api/auctions/{id}`, with the most recent bids. Null when the lot is not public. */
 export async function getAuction(auctionId: string): Promise<AuctionDetail | null> {
   let detail: ApiAuctionDetail;
@@ -84,7 +109,7 @@ export async function getAuction(auctionId: string): Promise<AuctionDetail | nul
       updatedAt: auction.updatedAt,
     },
     category,
-    seller: { id: detail.seller.id, displayName: detail.seller.displayName },
+    seller: { id: detail.seller.id, displayName: detail.seller.displayName, verified: detail.seller.verified ?? false },
     viewerCount: detail.viewerCount ?? undefined,
     watched: false,
     recentBids: bids.items.map((bid) => toBid(bid, null)),
