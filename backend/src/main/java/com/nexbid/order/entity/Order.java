@@ -78,6 +78,10 @@ public class Order {
     @Column(name = "auto_completed", nullable = false)
     private boolean autoCompleted;
 
+    // EN: Shipping the buyer paid on top of the amount; it goes to the seller with the goods. / VI: Phí ship người mua trả thêm ngoài số tiền hàng; trả cho người bán cùng tiền hàng.
+    @Column(name = "shipping_fee", nullable = false, precision = 15, scale = 2)
+    private BigDecimal shippingFee = BigDecimal.ZERO;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -145,6 +149,14 @@ public class Order {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public BigDecimal getShippingFee() {
+        return shippingFee;
+    }
+
+    public void chargeShipping(BigDecimal fee) {
+        this.shippingFee = fee == null ? BigDecimal.ZERO : fee;
     }
 
     /** EN: The buyer's address as it was when they paid. / VI: Địa chỉ người mua tại thời điểm thanh toán. */

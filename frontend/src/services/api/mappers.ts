@@ -236,7 +236,15 @@ export function toOffer(offer: ApiOfferDetails): SecondChanceOffer {
 }
 
 export function toPayment(payment: ApiPaymentDetails): Payment {
-  return { ...payment, amount: Number(payment.amount) };
+  const amount = Number(payment.amount);
+  const shippingFee = payment.shippingFee == null ? null : Number(payment.shippingFee);
+  return {
+    ...payment,
+    amount,
+    shippingFee,
+    shippingSource: payment.shippingSource ?? null,
+    total: payment.total == null ? amount + (shippingFee ?? 0) : Number(payment.total),
+  };
 }
 
 export function toOrder(order: ApiOrder["order"]): Order {

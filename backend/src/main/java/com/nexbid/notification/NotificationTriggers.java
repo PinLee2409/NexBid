@@ -163,8 +163,8 @@ class NotificationTriggers {
     void onPaymentSucceeded(PaymentEvents.Succeeded event) {
         String title = auctions.lotTitleOf(event.auctionId());
         notifications.notify(event.userId(), NotificationType.PAYMENT_SUCCESS, "Payment successful",
-                title + ": " + money(event.amount()) + " paid.", event.auctionId(), event.at());
-        MailFacts facts = MailFacts.lot(event.auctionId(), title, event.amount());
+                title + ": " + money(event.total()) + " paid.", event.auctionId(), event.at());
+        MailFacts facts = MailFacts.lot(event.auctionId(), title, event.total());
         mailer.send(event.userId(), MailKind.PAYMENT_RECEIPT, facts);
         mailer.send(auctions.sellerOf(event.auctionId()), MailKind.SELLER_PAID, facts);
     }

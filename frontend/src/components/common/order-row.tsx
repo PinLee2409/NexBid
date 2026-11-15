@@ -141,7 +141,12 @@ export function OrderRow({
 
       <div className="shrink-0">
         <p className="label-sm text-dim mb-1">{t("orderTotal")}</p>
-        <p className="figure text-lg">{money.currency(entry.order.amount)}</p>
+        <p className="figure text-lg">{money.currency(entry.payment?.total ?? entry.order.amount)}</p>
+        {entry.payment?.shippingFee ? (
+          <p className="label-sm text-dim mt-1">
+            {t("paymentIncludesShipping", { fee: money.currency(entry.payment.shippingFee) })}
+          </p>
+        ) : null}
       </div>
 
       <div className="shrink-0">

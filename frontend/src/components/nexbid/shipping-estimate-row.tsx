@@ -11,10 +11,10 @@ import { getShippingEstimate, type ShippingEstimate } from "@/services/shipping-
 import type { Locale } from "@/i18n/config";
 
 /**
- * EN: "Shipping to Ba Đình, Hà Nội: about 96,900₫" on a lot page, under the specs. A guide from GHN, never charged.
+ * EN: "Shipping to Ba Đình, Hà Nội: about 96,900₫" on a lot page, under the specs. GHN's fee, charged with the item at checkout.
  *     Shows nothing when GHN is off, the seller has no GHN address, or GHN did not answer; asks for an address when the
  *     viewer has none. Asked again when the viewer signs in or out.
- * VI: "Phí ship về Ba Đình, Hà Nội: khoảng 96.900₫" trên trang lô, dưới phần thông số. Phí tham khảo từ GHN, không thu.
+ * VI: "Phí ship về Ba Đình, Hà Nội: khoảng 96.900₫" trên trang lô, dưới phần thông số. Phí của GHN, thu cùng tiền hàng khi thanh toán.
  *     Không hiện gì khi GHN tắt, người bán chưa có địa chỉ GHN, hoặc GHN không trả lời; mời thêm địa chỉ khi người xem
  *     chưa có. Hỏi lại khi người xem đăng nhập hoặc đăng xuất.
  */

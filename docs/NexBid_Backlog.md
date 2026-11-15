@@ -382,3 +382,20 @@ Phần khoá dòng, chống trùng và chạy nhiều máy đã chắc; sửa 6 
   54 test (mới: người bán chọn hãng vận chuyển, admin đọc tin nhắn của đơn; 2 test cũ chập chờn khi chạy 4 luồng, chạy lại
   đều qua). Chạy thật với GHN sandbox qua API của NexBid: lô Omega 90 triệu từ Quận 1 về Ba Đình báo 503.900₫ (phần lớn là
   phí bảo hiểm theo giá khai), form địa chỉ chọn tỉnh → quận → phường và bắt buộc đủ ba.
+
+## Đã làm (15/11/2026) — đợt 21: thu phí ship cùng tiền hàng
+
+- **Báo phí lúc thanh toán** (`POST /api/payments/{id}/shipping-quote`): khi người mua bấm Thanh toán, phí ship được
+  chốt trên khoản thanh toán (V37: `payments.shipping_fee`, `shipping_source`, `shipping_address_key`) và hiện
+  trong khung "Kiểm tra số tiền": tiền hàng, phí ship, tổng. GHN báo phí khi cả hai địa chỉ chọn từ danh sách GHN;
+  không thì phí cố định `NEXBID_FLAT_SHIPPING_FEE` (50.000₫). Bấm lại dùng đúng số đã chốt; đổi địa chỉ thì báo lại.
+- **VNPay thu tổng** tiền hàng + phí ship. Lần thử mở trước khi người mua đổi địa chỉ vẫn thu số đã hiện lúc đó, và
+  khoản thanh toán giữ đúng số đã thu.
+- **Bảo hiểm GHN có trần** `NEXBID_GHN_INSURANCE_CAP` (5 triệu): lô 90 triệu không còn phí ship 500 nghìn.
+- **Đơn hàng** ghi phí ship (V37: `orders.shipping_fee`); danh sách đơn, trang thanh toán, email biên nhận hiện tổng
+  kèm "gồm X phí ship".
+- **Chi trả**: người bán nhận tiền hàng − 5% phí sàn + phí ship (V37: `seller_earnings.shipping`); phí sàn không tính
+  trên phí ship.
+- **Hoàn tiền** khi khiếu nại hoàn cả phí ship; khoản thu thừa trả lại đúng số VNPay đã thu.
+- Module thanh toán hỏi phí qua giao diện `ShippingQuoter` do phía GHN hiện thực, nên hai module không phụ thuộc vòng.
+

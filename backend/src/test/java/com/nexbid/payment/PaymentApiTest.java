@@ -185,6 +185,79 @@ class PaymentApiTest {
                 .andExpect(status().isOk()));
     }
 
+    private org.springframework.test.web.servlet.ResultActions quote(Won won) throws Exception {
+        return mockMvc.perform(post("/api/payments/" + won.paymentId() + "/shipping-quote")
+                .header("Authorization", "Bearer " + won.winner()));
+    }
+
+    private void addressOnGhn(String token, String line) throws Exception {
+        mockMvc.perform(put("/api/users/me/address").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                        {"recipient":"Test Buyer","phone":"0901234567","line":"%s","ward":"Phúc Xá",
+                         "district":"Ba Đình","province":"Hà Nội","provinceId":201,"districtId":1484,
+                         "wardCode":"1A0101"}""".formatted(line))).andExpect(status().isOk());
+    }
+
+    /**
+     * EN: Shipping is charged with the goods: a flat fee unless the carrier can quote, fixed once quoted, quoted again
+     *     only for a new address, and what a running attempt charged is what the payment keeps.
+     * VI: Phí ship thu cùng tiền hàng: phí cố định trừ khi hãng báo được phí, chốt sau khi báo, chỉ báo lại khi đổi
+     *     địa chỉ, và số mà lần thử đang chạy đã thu là số khoản thanh toán giữ lại.
+     */
+    @Test
+    void shippingIsQuotedOnceForEachAddressAndChargedWithTheGoods() throws Exception {
+        Won won = wonLot("shipfee");
+        quote(won).andExpect(jsonPath("$.code").value("ADDRESS_REQUIRED"));
+
+        VnpayTestSupport.saveAddress(mockMvc, won.winner());
+        quote(won).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.amount").value(10500000))
+                .andExpect(jsonPath("$.data.shippingFee").value(50000))
+                .andExpect(jsonPath("$.data.source").value("FLAT"))
+                .andExpect(jsonPath("$.data.total").value(10550000));
+
+        Object flat = org.springframework.test.util.ReflectionTestUtils.getField(payments, "quoters");
+        // EN: GHN quotes more for the second address. / VI: GHN báo phí cao hơn cho địa chỉ thứ hai.
+        var asked = new java.util.concurrent.atomic.AtomicInteger();
+        ShippingQuoter ghn = (auctionId, buyerId, price) ->
+                java.util.Optional.of(new BigDecimal(asked.getAndIncrement() == 0 ? "36300" : "41000"));
+        org.springframework.test.util.ReflectionTestUtils.setField(payments, "quoters",
+                new org.springframework.beans.factory.support.StaticListableBeanFactory(java.util.Map.of("ghn", ghn))
+                        .getBeanProvider(ShippingQuoter.class));
+        try {
+            // EN: Fixed: the carrier answering now does not move a quote already given. / VI: Đã chốt: hãng trả lời bây giờ không đổi phí đã báo.
+            quote(won).andExpect(jsonPath("$.data.source").value("FLAT"));
+
+            addressOnGhn(won.winner(), "1 Phan Đình Phùng");
+            quote(won).andExpect(jsonPath("$.data.source").value("GHN"))
+                    .andExpect(jsonPath("$.data.total").value(10536300));
+            String started = VnpayTestSupport.paymentUrlOf(mockMvc.perform(post("/api/payments/" + won.paymentId() + "/vnpay")
+                    .header("Authorization", "Bearer " + won.winner())
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"locale\":\"en\"}")).andExpect(status().isOk()));
+            assertThat(VnpayTestSupport.fieldsOf(started).get("vnp_Amount")).isEqualTo("1053630000");
+
+            // EN: The buyer moves while VNPay's page is open; the old attempt still pays what it showed.
+            // VI: Người mua đổi địa chỉ khi trang VNPay đang mở; lần thử cũ vẫn trả đúng số đã hiện.
+            VnpayTestSupport.saveAddress(mockMvc, won.winner());
+            quote(won).andExpect(jsonPath("$.data.source").value("GHN"))
+                    .andExpect(jsonPath("$.data.total").value(10541000));
+            mockMvc.perform(VnpayTestSupport.withParams(get("/api/payments/vnpay/return"),
+                    VnpayTestSupport.reply(started, VnpayTestSupport.PAID))).andExpect(status().isOk());
+        } finally {
+            org.springframework.test.util.ReflectionTestUtils.setField(payments, "quoters", flat);
+        }
+
+        assertThat(stored(won.paymentId())).isEqualTo("SUCCESS");
+        assertThat(jdbc.queryForObject("SELECT shipping_fee FROM payments WHERE id = ?::uuid", BigDecimal.class,
+                won.paymentId())).isEqualByComparingTo("36300");
+        assertThat(jdbc.queryForObject("SELECT shipping_fee FROM orders WHERE payment_id = ?::uuid", BigDecimal.class,
+                won.paymentId())).isEqualByComparingTo("36300");
+        mockMvc.perform(get("/api/payments/" + won.paymentId()).header("Authorization", "Bearer " + won.winner()))
+                .andExpect(jsonPath("$.data.payment.shippingFee").value(36300))
+                .andExpect(jsonPath("$.data.payment.total").value(10536300));
+        quote(won).andExpect(jsonPath("$.code").value("PAYMENT_ALREADY_PAID"));
+    }
+
     private String stored(String paymentId) {
         return jdbc.queryForObject("SELECT status FROM payments WHERE id = ?::uuid", String.class, paymentId);
     }
@@ -462,7 +535,7 @@ class PaymentApiTest {
         assertThat(sent.get("vnp_CurrCode")).isEqualTo("VND");
         // EN: VNPay counts in hundredths even for VND. / VI: VNPay tính theo phần trăm đơn vị kể cả với VND.
         assertThat(sent.get("vnp_Amount")).isEqualTo(
-                new BigDecimal(jdbc.queryForObject("SELECT amount::text FROM payments WHERE id = ?::uuid", String.class,
+                new BigDecimal(jdbc.queryForObject("SELECT (amount + shipping_fee)::text FROM payments WHERE id = ?::uuid", String.class,
                         won.paymentId())).movePointRight(2).toBigInteger().toString());
         // EN: The test signs the same fields on its own and must get the same hash. / VI: Test tự ký cùng các trường và phải ra cùng hash.
         assertThat(VnpayTestSupport.signed(sent).get("vnp_SecureHash")).isEqualTo(sent.get("vnp_SecureHash"));

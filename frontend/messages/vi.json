@@ -104,7 +104,8 @@
     "alerts": "Báo lô mới",
     "reports": "Báo cáo",
     "emails": "Email",
-    "messages": "Tin nhắn"
+    "messages": "Tin nhắn",
+    "stats": "Thống kê"
   },
   "footer": {
     "marketplace": "Sàn đấu giá",
@@ -273,10 +274,11 @@
     "reportSentBody": "NexBid sẽ xem xét. Bạn sẽ được báo kết quả.",
     "shippingEstimate": "Phí ship",
     "shippingEstimateTo": "về {place}: khoảng",
-    "shippingEstimateNote": "GHN chuẩn, chỉ để tham khảo; người bán có thể gửi hãng khác",
-    "shippingEstimateDefault": "GHN chuẩn cho hộp 1 kg, chỉ để tham khảo; người bán chưa khai kích thước",
+    "shippingEstimateNote": "GHN chuẩn, trả cùng tiền hàng; chốt khi thanh toán",
+    "shippingEstimateDefault": "GHN chuẩn cho hộp 1 kg (người bán chưa khai kích thước), trả cùng tiền hàng; chốt khi thanh toán",
     "shippingEstimateAddAddress": "Thêm địa chỉ để xem phí ship",
-    "shippingEstimateSignIn": "Đăng nhập để xem phí ship về địa chỉ của bạn"
+    "shippingEstimateSignIn": "Đăng nhập để xem phí ship về địa chỉ của bạn",
+    "recentlyViewed": "Đã xem gần đây"
   },
   "bidErrors": {
     "NOT_AUTHENTICATED": "Đăng nhập để đặt giá.",
@@ -543,7 +545,17 @@
       "lost": "Hàng bị thất lạc"
     },
     "addressPick": "Chọn…",
-    "addressPickAgain": "Địa chỉ đã lưu ({address}) được gõ tay. Hãy chọn lại từ danh sách để trang lô báo được phí ship."
+    "addressPickAgain": "Địa chỉ đã lưu ({address}) được gõ tay. Hãy chọn lại từ danh sách để trang lô báo được phí ship.",
+    "paymentReviewTitle": "Kiểm tra số tiền",
+    "paymentReviewBody": "Phí ship về địa chỉ của bạn được giữ nguyên tới khi bạn đổi địa chỉ.",
+    "paymentGoods": "Tiền hàng",
+    "paymentShipping": "Phí ship",
+    "paymentShippingGhn": "GHN về địa chỉ của bạn",
+    "paymentShippingFlat": "Phí cố định",
+    "paymentTotal": "Tổng cộng",
+    "paymentContinue": "Tiếp tục sang VNPay",
+    "paymentChangeAddress": "Đổi địa chỉ",
+    "paymentIncludesShipping": "gồm {fee} phí ship"
   },
   "becomeSeller": {
     "title": "Trở thành người bán",
@@ -762,7 +774,23 @@
       "lengthCm": "Dài (cm)",
       "widthCm": "Rộng (cm)",
       "heightCm": "Cao (cm)"
-    }
+    },
+    "earningsBreakdownShipping": "Giá {gross} − phí {fee} + ship {shipping}",
+    "relist": "Đăng lại",
+    "statsTitle": "Thống kê",
+    "statsSubtitle": "Các lô của bạn đang thế nào: người xem, người theo dõi, lượt trả giá, và bao nhiêu lô đã đóng bán được.",
+    "statsViews": "Người xem",
+    "statsWatchers": "Theo dõi",
+    "statsBidders": "Người trả giá",
+    "statsBids": "Lượt trả giá",
+    "statsSellThrough": "Bán được",
+    "statsSellThroughHint": "{sold} trên {closed} lô đã đóng bán được. Mỗi người xem được đếm một lần mỗi ngày; bạn tự xem lô của mình không được đếm.",
+    "statsLots": "Theo từng lô",
+    "statsLot": "Lô",
+    "statsStatus": "Trạng thái",
+    "statsPrice": "Giá",
+    "statsEmptyTitle": "Chưa có lô nào",
+    "statsEmptyBody": "Số liệu hiện khi bạn đã gửi một lô."
   },
   "admin": {
     "console": "Bảng quản trị",

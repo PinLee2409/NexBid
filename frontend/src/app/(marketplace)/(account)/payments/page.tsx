@@ -36,7 +36,7 @@ export default function PaymentsPage() {
   const entries = state.status === "success" ? state.data : [];
   const outstanding = entries
     .filter((entry) => entry.payment.status === "PENDING")
-    .reduce((total, entry) => total + entry.payment.amount, 0);
+    .reduce((total, entry) => total + entry.payment.total, 0);
 
   return (
     <>
@@ -136,8 +136,13 @@ function PaymentRow({ entry }: { entry: PaymentEntry }) {
             {t("paymentAmount")}
           </span>
           <span className="figure block text-lg">
-            {money.currency(payment.amount)}
+            {money.currency(payment.total)}
           </span>
+          {payment.shippingFee ? (
+            <span className="label-sm text-dim block">
+              {t("paymentIncludesShipping", { fee: money.currency(payment.shippingFee) })}
+            </span>
+          ) : null}
         </span>
 
         {/* The window is the whole point of this screen, so it is a clock. */}

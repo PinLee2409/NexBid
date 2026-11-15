@@ -39,6 +39,29 @@ export async function listPayments(): Promise<PaymentEntry[]> {
   return payments.map((payment) => toEntry(payment, orders));
 }
 
+/** EN: Goods, the shipping fixed for the buyer's address, and what VNPay will charge. / VI: Tiền hàng, phí ship chốt cho địa chỉ người mua, và số VNPay sẽ thu. */
+export interface ShippingQuote {
+  amount: number;
+  shippingFee: number;
+  source: "GHN" | "FLAT";
+  total: number;
+}
+
+/**
+ * `POST /api/payments/{id}/shipping-quote` — fixes the shipping to the buyer's
+ * current address (GHN when both addresses are on GHN, otherwise the flat fee)
+ * and returns the total VNPay will charge. Kept until the address changes.
+ */
+export async function quoteShipping(paymentId: string): Promise<ShippingQuote> {
+  const quote = await api<ShippingQuote>(`/api/payments/${paymentId}/shipping-quote`, { method: "POST" });
+  return {
+    ...quote,
+    amount: Number(quote.amount),
+    shippingFee: Number(quote.shippingFee),
+    total: Number(quote.total),
+  };
+}
+
 /**
  * `POST /api/payments/{id}/vnpay` — the signed link to VNPay's payment page, in
  * the reader's language. The caller sends the browser there.

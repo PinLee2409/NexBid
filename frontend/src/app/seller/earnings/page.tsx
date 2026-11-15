@@ -123,7 +123,13 @@ function EarningList({ data }: { data: SellerEarnings }) {
             <p className="mono-figure text-dim mt-1 text-[11px]">
               {format.dateTime(new Date(earning.createdAt), { dateStyle: "medium" })}
               {" · "}
-              {t("earningsBreakdown", { gross: money.currency(earning.gross), fee: money.currency(earning.fee) })}
+              {earning.shipping
+                ? t("earningsBreakdownShipping", {
+                    gross: money.currency(earning.gross),
+                    fee: money.currency(earning.fee),
+                    shipping: money.currency(earning.shipping),
+                  })
+                : t("earningsBreakdown", { gross: money.currency(earning.gross), fee: money.currency(earning.fee) })}
             </p>
           </div>
           <div className="text-right">

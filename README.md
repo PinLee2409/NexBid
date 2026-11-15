@@ -362,7 +362,7 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | Messages | `GET /api/messages` (the caller's conversations), `GET /api/messages/unread-count`, `GET`/`POST /api/orders/{id}/messages` (buyer and seller of that order only; contact details refused), `GET /api/admin/orders/{id}/messages` (each read goes in the audit log) |
 | Shipping | `GET /api/auctions/{id}/shipping-estimate` (the fee guide on a lot page; signed out is fine), `GET /api/shipping/status` (public), `GET /api/shipping/ghn/provinces`, `…/districts`, `…/wards`, `POST /api/shipping/ghn/fee`, `POST /api/shipping/ghn/webhook?secret=…` (GHN's own calls) |
 | Alerts | `GET`/`POST /api/alerts/searches`, `DELETE /api/alerts/searches/{id}` (saved catalogue searches, 10 each), `GET /api/alerts/sellers`, `GET`/`PUT`/`DELETE /api/alerts/sellers/{id}` (follow a seller) |
-| Payment | `POST /api/payments/{id}/vnpay` (signed VNPay checkout link), `GET /api/payments/vnpay/ipn` and `GET /api/payments/vnpay/return` (VNPay's callbacks, public, checked by signature) |
+| Payment | `POST /api/payments/{id}/shipping-quote` (fixes and shows goods, shipping and total), `POST /api/payments/{id}/vnpay` (signed VNPay checkout link for that total), `GET /api/payments/vnpay/ipn` and `GET /api/payments/vnpay/return` (VNPay's callbacks, public, checked by signature) |
 | Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders` (`…/{id}/received`, `…/{id}/dispute`), `…/me/bank-account` (payouts and refunds go here), `…/me/watchlist`, `…/me/offers` (`…/{id}/accept`, `…/{id}/decline`), `…/me/orders/{id}/review`, `…/me/seller-application`, `/api/notifications`, `GET /api/sellers/{id}/reviews` (public) |
 | Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions`, `/api/seller/auctions/{id}/second-chance`, `/api/seller/auctions/{id}/reserve-decision`, `/api/seller/second-chances`, `/api/seller/orders` (`…/{id}/ship`), `/api/seller/earnings`, `/api/seller/questions/{id}/answer` |
 | Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users`, `/api/admin/users/{id}/block`, `/api/admin/users/{id}/verified` (the verified seller badge), `/api/admin/seller-applications` (`…/{id}/approve`, `…/{id}/reject`), `/api/admin/orders` (`…/{id}/refund-account`, `…/{id}/refund` with the bank transfer's reference), `/api/admin/disputes` (`…/{id}/resolve`), `/api/admin/payouts` (`…/due`; recording one sends the amount the admin transferred and is refused if the balance moved), `/api/admin/stray-charges` (`…/{id}/refund`: VNPay charges no payment could use), `/api/admin/emails` (`…/{id}/retry` a failed email), `/api/seller/orders/{id}/buyer-review`, `/api/admin/analytics`, `/api/admin/audit-logs` |
@@ -522,13 +522,22 @@ production. Once on:
 
 - addresses are picked from GHN's province, district and ward lists, so their ids are saved;
 - a lot page shows a shipping fee guide from the seller's address to the viewer's, for the product's packed size (a 1 kg
-  box when the seller gave none). It is a guide only and is not added to the payment;
+  box when the seller gave none), insured at the lot's price up to `NEXBID_GHN_INSURANCE_CAP` (5,000,000₫);
+- the same quote is charged with the goods when the buyer pays (see below);
 - a seller who ships with GHN picks it from the carrier list; the tracking code is checked with GHN, a code GHN does not
   know is refused, and the parcel's first status is recorded at once. When GHN cannot be asked, the code is taken as typed;
 - GHN's webhook (`/api/shipping/ghn/webhook?secret=<NEXBID_GHN_WEBHOOK_SECRET>`, which needs a public URL) and a poll
   every 30 minutes keep the parcel's status on the order;
 - when GHN reports "delivered", the order completes three days later unless the buyer disputes
   (`NEXBID_ORDER_COMPLETE_AFTER_DELIVERY`), instead of seven days after shipping.
+
+#### Shipping charged with the goods
+
+When the buyer goes to pay, the shipping is fixed on the payment and shown with the goods and the total: GHN's fee from
+the seller's address to the buyer's when both were picked from GHN's lists, otherwise a flat fee
+(`NEXBID_FLAT_SHIPPING_FEE`, 50,000₫). The quote holds until the buyer changes address. VNPay charges the total; the
+seller is paid the goods less the platform fee plus the shipping (the fee is on the goods only); a refund returns the
+whole charge.
 
 Without keys the GHN endpoints answer `SHIPPING_UNAVAILABLE`, addresses are typed by hand, no fee guide is shown, and
 any carrier name and tracking number are accepted, as before.

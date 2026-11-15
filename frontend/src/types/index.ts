@@ -565,6 +565,11 @@ export interface Payment {
   expiredAt: IsoDateString;
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
+  /** EN: Null until quoted at checkout. / VI: Null tới khi báo phí lúc thanh toán. */
+  shippingFee: number | null;
+  shippingSource: "GHN" | "FLAT" | null;
+  /** EN: Goods plus shipping: what VNPay charges. / VI: Tiền hàng cộng phí ship: số VNPay thu. */
+  total: number;
 }
 
 /** Order status (spec §5.3). */

@@ -1,4 +1,4 @@
-import { buyOutright, login, pay, payAndShip, register, sendOrderMessage } from "./support/stack";
+import { buyOutright, login, pay, payAndShip, register, saveAddress, sendOrderMessage } from "./support/stack";
 import { data, expect, newLot, signIn, test, unique } from "./support/test";
 
 /** EN: A buyer of its own. / VI: Một người mua riêng. */
@@ -58,4 +58,26 @@ test("an admin reads an order's messages", async ({ page }) => {
   await expect(dialog.getByText(note)).toBeVisible();
   await expect(dialog.getByText("Yes, fully insured.")).toBeVisible();
   await expect(dialog.getByText("buyer", { exact: false }).first()).toBeVisible();
+});
+
+/**
+ * EN: Before VNPay the buyer sees the goods, the shipping and the total they will be charged.
+ * VI: Trước khi sang VNPay, người mua thấy tiền hàng, phí ship và tổng số sẽ bị thu.
+ */
+test("the buyer sees the shipping added before paying", async ({ page }) => {
+  const lot = await newLot("Fee lot", true, { buyNowPrice: 2_000_000 });
+  const email = await freshBuyer("fee-buyer");
+  const buyer = await login(email);
+  await buyOutright(lot.id, buyer);
+  await saveAddress(buyer);
+
+  await signIn(page.context(), email);
+  await page.goto("/payments");
+  await page.getByRole("main").locator("li").filter({ hasText: lot.name })
+    .getByRole("button", { name: "Pay with VNPay" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "Check the total" });
+  await expect(dialog.getByText("Flat rate")).toBeVisible();
+  await expect(dialog.getByTestId("payment-total")).toHaveText("₫2,050,000");
+  await expect(dialog.getByRole("button", { name: "Continue to VNPay" })).toBeEnabled();
 });

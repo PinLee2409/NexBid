@@ -37,6 +37,17 @@ public class Payment {
     @Column(nullable = false, updatable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 
+    // EN: Shipping charged on top of the amount, fixed once quoted until the buyer changes address. Zero until quoted.
+    // VI: Phí ship thu thêm ngoài số tiền hàng, chốt khi báo phí và giữ tới khi người mua đổi địa chỉ. Bằng 0 khi chưa báo.
+    @Column(name = "shipping_fee", nullable = false, precision = 15, scale = 2)
+    private BigDecimal shippingFee = BigDecimal.ZERO;
+
+    @Column(name = "shipping_source", length = 8)
+    private String shippingSource;
+
+    @Column(name = "shipping_address_key", length = 64)
+    private String shippingAddressKey;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private PaymentStatus status = PaymentStatus.PENDING;
@@ -75,6 +86,31 @@ public class Payment {
     /** EN: The clock decides, not the status — a PENDING row past its deadline is already too late. / VI: Đồng hồ quyết định chứ không phải trạng thái — dòng PENDING đã quá hạn là đã trễ. */
     public boolean isOverdue(Instant now) {
         return !now.isBefore(expiredAt);
+    }
+
+    /** EN: Fixes the shipping for the address it was quoted for. / VI: Chốt phí ship cho địa chỉ đã dùng để báo phí. */
+    public void quoteShipping(BigDecimal fee, String source, String addressKey) {
+        this.shippingFee = fee;
+        this.shippingSource = source;
+        this.shippingAddressKey = addressKey;
+    }
+
+    /** EN: Whether a quote for this address is already fixed. / VI: Đã có phí chốt cho địa chỉ này chưa. */
+    public boolean isQuotedFor(String addressKey) {
+        return shippingSource != null && addressKey.equals(shippingAddressKey);
+    }
+
+    /** EN: Goods plus shipping: what VNPay charges and what a refund gives back. / VI: Tiền hàng cộng phí ship: số VNPay thu và số hoàn lại. */
+    public BigDecimal getTotal() {
+        return amount.add(shippingFee);
+    }
+
+    public BigDecimal getShippingFee() {
+        return shippingFee;
+    }
+
+    public String getShippingSource() {
+        return shippingSource;
     }
 
     public void settle(PaymentStatus outcome) {

@@ -232,9 +232,10 @@ class AfterSaleApiTest {
                 "DISPUTE_REJECTED OPEN -> REJECTED: Carrier confirms delivery on the 12th.");
         // EN: Completed from DISPUTED, not from PROCESSING. / VI: Hoàn tất từ DISPUTED, không phải từ PROCESSING.
         assertThat(auditOf(sale.orderId())).contains("ORDER_COMPLETED DISPUTED -> COMPLETED");
-        // EN: Completed, so the seller is owed the price less 5%. / VI: Đã hoàn tất, nên sàn nợ người bán giá bán trừ 5%.
+        // EN: Completed, so the seller is owed the price less 5%, plus the flat shipping the buyer paid.
+        // VI: Đã hoàn tất, nên sàn nợ người bán giá bán trừ 5%, cộng phí ship cố định người mua đã trả.
         assertThat(jdbc.queryForObject("SELECT net FROM seller_earnings WHERE order_id = ?::uuid", BigDecimal.class,
-                sale.orderId())).isEqualByComparingTo("11400000");
+                sale.orderId())).isEqualByComparingTo("11450000");
     }
 
     @Test
@@ -261,6 +262,9 @@ class AfterSaleApiTest {
         assertThat(statusOf("payments", sale.paymentId())).isEqualTo("REFUNDED");
         assertThat(jdbc.queryForObject("SELECT reference || ' ' || account_holder FROM payment_refunds WHERE payment_id = ?::uuid",
                 String.class, sale.paymentId())).isEqualTo("FT2611140099 NGUYEN VAN A");
+        // EN: The whole charge goes back, shipping included. / VI: Hoàn toàn bộ số đã thu, kể cả phí ship.
+        assertThat(jdbc.queryForObject("SELECT amount FROM payment_refunds WHERE payment_id = ?::uuid",
+                BigDecimal.class, sale.paymentId())).isEqualByComparingTo("12050000");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM seller_earnings WHERE order_id = ?::uuid", Integer.class,
                 sale.orderId())).isZero();
         assertThat(mailsTo(sale.buyerId())).contains("PAYMENT_REFUNDED");
@@ -335,15 +339,16 @@ class AfterSaleApiTest {
 
         mockMvc.perform(get("/api/seller/earnings").header("Authorization", "Bearer " + sale.seller()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.balance").value(11400000))
+                .andExpect(jsonPath("$.data.balance").value(11450000))
                 .andExpect(jsonPath("$.data.feePercent").value(5))
                 .andExpect(jsonPath("$.data.earnings[0].fee").value(600000))
+                .andExpect(jsonPath("$.data.earnings[0].shipping").value(50000))
                 .andExpect(jsonPath("$.data.earnings[0].auction.product.name").value("After sale payout"))
                 .andExpect(jsonPath("$.data.account").doesNotExist());
         mockMvc.perform(get("/api/seller/earnings").header("Authorization", "Bearer " + sale.buyer()))
                 .andExpect(status().isForbidden());
 
-        String pay = "{\"sellerId\":\"%s\",\"reference\":\"FT2611130001\",\"amount\":11400000}".formatted(sale.sellerId());
+        String pay = "{\"sellerId\":\"%s\",\"reference\":\"FT2611130001\",\"amount\":11450000}".formatted(sale.sellerId());
         mockMvc.perform(post("/api/admin/payouts").header("Authorization", "Bearer " + sale.admin())
                         .contentType(MediaType.APPLICATION_JSON).content(pay))
                 .andExpect(status().isConflict())
@@ -358,18 +363,18 @@ class AfterSaleApiTest {
                 .andExpect(status().isBadRequest());
         assertThat(auditOf(sale.sellerId().toString())).contains("BANK_ACCOUNT_CHANGED - -> Vietcombank ••••6789");
         mockMvc.perform(get("/api/admin/payouts/due").header("Authorization", "Bearer " + sale.admin()))
-                .andExpect(jsonPath("$.data[?(@.sellerId == '" + sale.sellerId() + "')].balance", hasItem(11400000.0)))
+                .andExpect(jsonPath("$.data[?(@.sellerId == '" + sale.sellerId() + "')].balance", hasItem(11450000.0)))
                 .andExpect(jsonPath("$.data[?(@.sellerId == '" + sale.sellerId() + "')].account.bankName").value("Vietcombank"));
 
         // EN: A balance that moved since the admin read it is refused. / VI: Số dư đã đổi kể từ lúc admin xem thì bị từ chối.
         mockMvc.perform(post("/api/admin/payouts").header("Authorization", "Bearer " + sale.admin())
-                        .contentType(MediaType.APPLICATION_JSON).content(pay.replace("11400000", "9000000")))
+                        .contentType(MediaType.APPLICATION_JSON).content(pay.replace("11450000", "9000000")))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("PAYOUT_AMOUNT_CHANGED"));
         mockMvc.perform(post("/api/admin/payouts").header("Authorization", "Bearer " + sale.admin())
                         .contentType(MediaType.APPLICATION_JSON).content(pay))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.amount").value(11400000));
+                .andExpect(jsonPath("$.data.amount").value(11450000));
         mockMvc.perform(post("/api/admin/payouts").header("Authorization", "Bearer " + sale.admin())
                         .contentType(MediaType.APPLICATION_JSON).content(pay))
                 .andExpect(status().isConflict())
@@ -377,13 +382,13 @@ class AfterSaleApiTest {
 
         mockMvc.perform(get("/api/seller/earnings").header("Authorization", "Bearer " + sale.seller()))
                 .andExpect(jsonPath("$.data.balance").value(0))
-                .andExpect(jsonPath("$.data.paidOut").value(11400000))
+                .andExpect(jsonPath("$.data.paidOut").value(11450000))
                 .andExpect(jsonPath("$.data.payouts[0].reference").value("FT2611130001"));
         assertThat(mailsTo(sale.sellerId())).contains("SELLER_PAYOUT");
         assertThat(noticesTo(sale.sellerId())).contains("PAYOUT_SENT");
         String payoutId = jdbc.queryForObject("SELECT id::text FROM seller_payouts WHERE seller_id = ?",
                 String.class, sale.sellerId());
-        assertThat(auditOf(payoutId)).containsExactly("PAYOUT_RECORDED - -> 11400000.00 ref FT2611130001");
+        assertThat(auditOf(payoutId)).containsExactly("PAYOUT_RECORDED - -> 11450000.00 ref FT2611130001");
         mockMvc.perform(post("/api/admin/payouts").header("Authorization", "Bearer " + sale.seller())
                         .contentType(MediaType.APPLICATION_JSON).content(pay))
                 .andExpect(status().isForbidden());
@@ -660,7 +665,10 @@ class AfterSaleApiTest {
                     .andExpect(jsonPath("$.data.defaultParcel").value(true));
             String quoted = calls.stream().filter(call -> call.contains("\"from_district_id\":1442")).findFirst()
                     .orElseThrow();
-            assertThat(quoted).contains("\"to_ward_code\":\"1A0101\"", "\"weight\":1000", "\"insurance_value\":12000000");
+            assertThat(quoted).contains("\"to_ward_code\":\"1A0101\"", "\"weight\":1000", "\"insurance_value\":5000000");
+            // EN: The same quote is what a won lot is charged. / VI: Cùng cách báo phí đó là số thu khi thắng lô.
+            assertThat(estimates.quote(UUID.fromString(sale.auctionId()), sale.buyerId(), new BigDecimal("12000000")))
+                    .contains(new BigDecimal("36300"));
 
             // EN: A code GHN never issued is refused; GHN being down is not the seller's fault. / VI: Mã GHN chưa cấp bị từ chối; GHN sập không phải lỗi người bán.
             mockMvc.perform(post("/api/seller/orders/" + sale.orderId() + "/ship").header("Authorization", "Bearer " + sale.seller())

@@ -104,7 +104,8 @@
     "alerts": "Alerts",
     "reports": "Reports",
     "emails": "Emails",
-    "messages": "Messages"
+    "messages": "Messages",
+    "stats": "Statistics"
   },
   "footer": {
     "marketplace": "Marketplace",
@@ -273,10 +274,11 @@
     "reportSentBody": "NexBid will review it. You will be notified of the outcome.",
     "shippingEstimate": "Shipping",
     "shippingEstimateTo": "to {place}: about",
-    "shippingEstimateNote": "GHN standard, a guide only; the seller may use another carrier",
-    "shippingEstimateDefault": "GHN standard for a 1 kg box, a guide only; the seller gave no size",
+    "shippingEstimateNote": "GHN standard, paid with the item; fixed when you pay",
+    "shippingEstimateDefault": "GHN standard for a 1 kg box (the seller gave no size), paid with the item; fixed when you pay",
     "shippingEstimateAddAddress": "Add your address to see the fee",
-    "shippingEstimateSignIn": "Sign in to see the fee to your address"
+    "shippingEstimateSignIn": "Sign in to see the fee to your address",
+    "recentlyViewed": "Recently viewed"
   },
   "bidErrors": {
     "NOT_AUTHENTICATED": "Sign in to place a bid.",
@@ -543,7 +545,17 @@
       "lost": "Lost"
     },
     "addressPick": "Choose…",
-    "addressPickAgain": "Your saved address ({address}) was typed by hand. Choose it again from the lists so lot pages can quote shipping."
+    "addressPickAgain": "Your saved address ({address}) was typed by hand. Choose it again from the lists so lot pages can quote shipping.",
+    "paymentReviewTitle": "Check the total",
+    "paymentReviewBody": "Shipping to your address is fixed until you change the address.",
+    "paymentGoods": "Item",
+    "paymentShipping": "Shipping",
+    "paymentShippingGhn": "GHN to your address",
+    "paymentShippingFlat": "Flat rate",
+    "paymentTotal": "Total",
+    "paymentContinue": "Continue to VNPay",
+    "paymentChangeAddress": "Change address",
+    "paymentIncludesShipping": "incl. {fee} shipping"
   },
   "becomeSeller": {
     "title": "Become a seller",
@@ -762,7 +774,23 @@
       "lengthCm": "Length (cm)",
       "widthCm": "Width (cm)",
       "heightCm": "Height (cm)"
-    }
+    },
+    "earningsBreakdownShipping": "Price {gross} − fee {fee} + shipping {shipping}",
+    "relist": "List again",
+    "statsTitle": "Statistics",
+    "statsSubtitle": "How your lots are doing: visitors, watchers and bids, and how many closed lots sold.",
+    "statsViews": "Visitors",
+    "statsWatchers": "Watchers",
+    "statsBidders": "Bidders",
+    "statsBids": "Bids",
+    "statsSellThrough": "Sold",
+    "statsSellThroughHint": "{sold} of {closed} closed lots sold. Visitors count once a day each; your own visits are not counted.",
+    "statsLots": "By lot",
+    "statsLot": "Lot",
+    "statsStatus": "Status",
+    "statsPrice": "Price",
+    "statsEmptyTitle": "No lots yet",
+    "statsEmptyBody": "Figures appear once a lot has been submitted."
   },
   "admin": {
     "console": "Admin console",

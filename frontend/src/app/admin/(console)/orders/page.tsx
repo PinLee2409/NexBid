@@ -155,7 +155,7 @@ function RefundDialog({
         {entry ? (
           <RefundTransfer
             account={account}
-            amount={entry.order.amount}
+            amount={entry.payment?.total ?? entry.order.amount}
             reference={reference}
             error={error}
             disabled={isPending}

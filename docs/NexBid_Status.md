@@ -1,6 +1,6 @@
 # NexBid: hiện trạng và việc tiếp theo
 
-Cập nhật: 15/11/2026 (đợt 20: GHN chạy với key sandbox, phí ship tham khảo, admin đọc tin nhắn). Lịch sử chi tiết từng đợt nằm trong [NexBid_Backlog.md](NexBid_Backlog.md).
+Cập nhật: 15/11/2026 (đợt 21: thu phí ship cùng tiền hàng). Lịch sử chi tiết từng đợt nằm trong [NexBid_Backlog.md](NexBid_Backlog.md).
 
 ## 1. Web đã tới đâu
 
@@ -10,7 +10,8 @@ Cập nhật: 15/11/2026 (đợt 20: GHN chạy với key sandbox, phí ship tha
 - Hỏi đáp công khai trên trang lô: người mua hỏi, người bán trả lời ngay dưới câu hỏi; mỗi người tối đa 3 câu đang chờ trên một lô.
 - Lưu tìm kiếm và theo dõi người bán: có lô mới khớp thì nhận thông báo ngay, và email tổng hợp mỗi ngày lúc 8:00.
 - Nhắn tin với người bán về đơn hàng; số điện thoại, email, link bị chặn để giữ giao dịch trên sàn.
-- Phí ship tham khảo trên trang lô (GHN, theo địa chỉ của người xem); chọn tỉnh, quận, phường từ danh sách của GHN *(mới, chưa commit)*.
+- Phí ship trên trang lô (GHN, theo địa chỉ của người xem); chọn tỉnh, quận, phường từ danh sách của GHN.
+- Phí ship thu cùng tiền hàng: trước khi sang VNPay thấy tiền hàng, phí ship (GHN hoặc phí cố định 50.000₫) và tổng; phí chốt theo địa chỉ, đổi địa chỉ thì báo lại *(mới, chưa commit)*.
 - Giá sàn ẩn: người mua chỉ thấy "chưa đạt / đã đạt giá sàn".
 - Thanh toán qua VNPay (bản demo đã bỏ). Phải có địa chỉ nhận hàng trước khi thanh toán.
 - Đơn hàng: theo dõi mã vận đơn và trạng thái kiện từ GHN, xác nhận đã nhận, đánh giá người bán (1–5 sao).
@@ -24,13 +25,13 @@ Cập nhật: 15/11/2026 (đợt 20: GHN chạy với key sandbox, phí ship tha
 - Đăng sản phẩm kèm ảnh và kích thước đóng gói (để báo phí ship), tạo phiên đấu giá (giá khởi điểm, bước giá, giá sàn, giá mua ngay).
 - Quyết định bán khi lô đóng dưới giá sàn (trong 24 giờ).
 - Đánh giá người mua sau mỗi đơn hoàn tất, xem hồ sơ người mua cạnh đơn bán.
-- Đơn bán: xem địa chỉ giao, chọn đơn vị vận chuyển và nhập mã vận đơn; mã GHN được kiểm với GHN, sai thì báo ngay *(mới, chưa commit)*.
-- Thu nhập: số tiền chờ chi trả, đã nhận, phí sàn 5%, tài khoản ngân hàng nhận tiền.
+- Đơn bán: xem địa chỉ giao, chọn đơn vị vận chuyển và nhập mã vận đơn; mã GHN được kiểm với GHN, sai thì báo ngay.
+- Thu nhập: số tiền chờ chi trả, đã nhận, phí sàn 5% (chỉ tính trên tiền hàng), phí ship người mua đã trả được cộng lại, tài khoản ngân hàng nhận tiền *(phí ship: mới, chưa commit)*.
 
 ### Admin (trang đăng nhập riêng `/admin/login`)
 - Duyệt lô, quản lý danh mục, người dùng (khoá / mở khoá, xác minh người bán), yêu cầu bán hàng.
 - Đơn hàng: hoàn tiền bằng chuyển khoản thủ công vào tài khoản người mua đã cho, kèm mã giao dịch.
-- Khiếu nại: hoàn tiền cho người mua hoặc giữ giao dịch, kèm ghi chú; đọc tin nhắn giữa hai bên (mỗi lần đọc ghi vào nhật ký) *(đọc tin nhắn: mới, chưa commit)*.
+- Khiếu nại: hoàn tiền cho người mua hoặc giữ giao dịch, kèm ghi chú; đọc tin nhắn giữa hai bên (mỗi lần đọc ghi vào nhật ký).
 - Chi trả cho người bán: danh sách người bán đang chờ tiền, ghi nhận chuyển khoản kèm mã giao dịch.
 - Khoản VNPay thu thừa (trễ hạn hoặc trả hai lần): hiện ở trang Đơn hàng để chuyển khoản trả lại.
 - Báo cáo lô vi phạm: bỏ qua hoặc gỡ lô; trang Email để gửi lại email thất bại.
@@ -100,6 +101,3 @@ mục `nexbid-backend` của `.claude/launch.json` nạp file này; chạy bằn
 1. **Đặt cọc trước khi đấu giá lô giá trị cao.** Với lô từ một mức giá cấu hình được (ví dụ 20 triệu), người mua phải cọc qua VNPay khoảng 5–10% mới được trả giá. Thắng mà không trả tiền thì mất cọc; thua thì được hoàn cọc tự động. Giải quyết vấn đề lớn nhất của sàn đấu giá: người thắng bỏ không trả tiền.
    *Tạm dừng (14/11/2026): giữ số dư (ví) cho người dùng cần giấy phép của Ngân hàng Nhà nước, nên không làm ví. Nếu làm, thu cọc qua VNPay và hoàn bằng chuyển khoản tay như hoàn tiền hiện nay. Đợt 18 đã có giải pháp nhẹ hơn: người bỏ không trả 2 lần không được trả giá từ 20 triệu.*
 
-### Làm sau
-
-2. **Thu phí ship cùng tiền hàng** (hiện chỉ tham khảo): cộng phí GHN vào số tiền thanh toán VNPay, trả lại người bán cùng tiền hàng; đụng tới thanh toán, hoàn tiền và chi trả nên cần làm riêng một đợt.

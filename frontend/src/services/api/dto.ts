@@ -188,6 +188,9 @@ export interface ApiPaymentDetails {
   expiredAt: IsoDateString;
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
+  shippingFee?: number | null;
+  shippingSource?: "GHN" | "FLAT" | null;
+  total?: number;
 }
 
 export interface ApiPayment {

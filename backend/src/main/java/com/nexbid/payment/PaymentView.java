@@ -20,6 +20,10 @@ public record PaymentView(Details payment, AuctionSummaryView auction) {
             PaymentStatus status,
             Instant expiredAt,
             Instant createdAt,
-            Instant updatedAt) {
+            Instant updatedAt,
+            // EN: Null until quoted at checkout; source is GHN or FLAT. / VI: Null tới khi báo phí lúc thanh toán; source là GHN hoặc FLAT.
+            BigDecimal shippingFee,
+            String shippingSource,
+            BigDecimal total) {
     }
 }

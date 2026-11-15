@@ -186,7 +186,7 @@ function DecideDialog({
           <DialogDescription>
             {refund
               ? t("disputeRefundBody", {
-                  amount: money.currency(entry?.order.amount ?? 0),
+                  amount: money.currency(entry?.payment?.total ?? entry?.order.amount ?? 0),
                   name: entry?.auction?.product.name ?? "",
                 })
               : shipped
@@ -198,7 +198,7 @@ function DecideDialog({
         {refund && entry ? (
           <RefundTransfer
             account={account}
-            amount={entry.order.amount}
+            amount={entry.payment?.total ?? entry.order.amount}
             reference={reference}
             error={referenceError}
             disabled={isPending}
