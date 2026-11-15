@@ -4,6 +4,7 @@ import { BarChart3, Eye, Gavel, Heart, Percent } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 
+import { BarChart } from "@/components/charts/bar-chart";
 import { ApiErrorState } from "@/components/common/api-error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton, StatTileSkeleton } from "@/components/common/loading-skeleton";
@@ -79,6 +80,17 @@ export default function SellerStatsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
+            <h3 className="label-sm text-dim mt-6">{t("statsViewsChart")}</h3>
+            <BarChart
+              className="mt-3 mb-8"
+              orientation="horizontal"
+              label={t("statsViewsChart")}
+              format={(value) => value.toLocaleString()}
+              bars={[...stats.lots]
+                .sort((a, b) => b.views - a.views)
+                .slice(0, 10)
+                .map((lot) => ({ key: lot.auctionId, label: lot.name, value: lot.views }))}
+            />
             <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-line text-dim border-b text-left">

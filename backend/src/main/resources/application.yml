@@ -26,7 +26,9 @@ spring:
     multipart:
       # EN: Two limits: one file, and the whole request. A gallery upload sends several at once.
       # VI: Hai giới hạn: một file, và cả request. Màn tải ảnh gửi nhiều tấm cùng lúc.
-      max-file-size: ${NEXBID_MAX_IMAGE_BYTES:5MB}
+      # EN: Big enough for a short video; images are held to max-image-bytes by ImageStorage.
+      # VI: Đủ cho một video ngắn; ảnh vẫn bị ImageStorage giới hạn theo max-image-bytes.
+      max-file-size: ${NEXBID_MAX_VIDEO_BYTES:20MB}
       max-request-size: 25MB
 
   jackson:
@@ -312,6 +314,8 @@ nexbid:
   payout:
     # EN: The platform's cut of each completed sale, in percent. / VI: Phần sàn giữ lại trên mỗi giao dịch hoàn tất, tính theo phần trăm.
     fee-percent: ${NEXBID_PAYOUT_FEE_PERCENT:5}
+    # EN: A new seller's first sales carry no platform fee. / VI: Vài giao dịch đầu của người bán mới không tính phí sàn.
+    new-seller-free-sales: ${NEXBID_NEW_SELLER_FREE_SALES:3}
 
   mail:
     # EN: Transactional email through Brevo (https://developers.brevo.com/). Without an API key nothing is sent: each
@@ -343,6 +347,7 @@ nexbid:
     # VI: Nằm ngoài cây mã nguồn — ảnh tải lên là dữ liệu chứ không phải mã, không được lọt vào commit.
     images-dir: ${NEXBID_IMAGES_DIR:var/images}
     max-image-bytes: ${NEXBID_MAX_IMAGE_BYTES:5242880}
+    max-video-bytes: 20971520
     public-path: /media/products
 
   bootstrap:

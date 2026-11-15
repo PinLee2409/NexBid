@@ -143,6 +143,25 @@ class GhnClient {
         return baseUrl.replaceFirst("/shiip/public-api/?$", "") + "/a5/public-api/printA5?token=" + printToken;
     }
 
+    /**
+     * EN: Cancels a GHN order not yet picked up. GHN answers per order code; false means it refused (already picked up,
+     *     say), with its reason.
+     * VI: Huỷ một đơn GHN chưa được lấy hàng. GHN trả lời theo từng mã đơn; false nghĩa là từ chối (đã lấy hàng chẳng
+     *     hạn), kèm lý do.
+     */
+    record Cancelled(boolean done, String message) {
+    }
+
+    Cancelled cancel(String orderCode) {
+        JsonNode data = post("/v2/switch-status/cancel", Map.of("order_codes", List.of(orderCode)), true);
+        for (JsonNode one : data) {
+            if (orderCode.equals(one.path("order_code").asString())) {
+                return new Cancelled(one.path("result").asBoolean(false), one.path("message").asString(""));
+            }
+        }
+        return new Cancelled(false, "GHN did not answer for " + orderCode);
+    }
+
     /** EN: The parcel's status word, e.g. "delivering" or "delivered". / VI: Trạng thái của kiện, ví dụ "delivering" hay "delivered". */
     String status(String orderCode) {
         return post("/v2/shipping-order/detail", Map.of("order_code", orderCode), false).get("status").asString();

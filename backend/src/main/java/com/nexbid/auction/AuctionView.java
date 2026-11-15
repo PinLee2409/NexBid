@@ -32,6 +32,10 @@ public record AuctionView(
         Boolean reserveMet,
         BigDecimal buyNowPrice,
         boolean boughtNow,
+        // EN: The seller pays the parcel. / VI: Người bán trả tiền gửi kiện.
+        boolean freeShipping,
+        // EN: A draft timed to go for approval. / VI: Bản nháp hẹn giờ gửi duyệt.
+        Instant submitAt,
         ReserveDecision reserveDecision,
         Instant reserveDecisionUntil,
         Instant createdAt,

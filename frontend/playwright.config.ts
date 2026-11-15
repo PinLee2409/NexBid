@@ -19,6 +19,8 @@ export default defineConfig({
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: WEB_URL,
+    // EN: The service worker would sit between the tests and the network they intercept. / VI: Service worker sẽ đứng giữa test và mạng mà test chặn.
+    serviceWorkers: "block",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },

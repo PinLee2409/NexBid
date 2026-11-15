@@ -31,7 +31,7 @@ interface Share {
 }
 
 export interface Revenue {
-  months: { month: string; sales: number; gross: number; fees: number; shipping: number }[];
+  months: { month: string; sales: number; gross: number; fees: number; shipping: number; discounts: number }[];
   categories: Share[];
   sellers: Share[];
 }

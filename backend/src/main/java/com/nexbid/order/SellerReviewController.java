@@ -14,9 +14,17 @@ import com.nexbid.common.response.ApiResponse;
 public class SellerReviewController {
 
     private final ReviewService reviews;
+    private final SellerProfiles profiles;
 
-    SellerReviewController(ReviewService reviews) {
+    SellerReviewController(ReviewService reviews, SellerProfiles profiles) {
         this.reviews = reviews;
+        this.profiles = profiles;
+    }
+
+    /** EN: The seller's public page. / VI: Trang công khai của người bán. */
+    @GetMapping("/api/sellers/{id}/profile")
+    public ApiResponse<SellerProfiles.Profile> profile(@PathVariable UUID id) {
+        return ApiResponse.of(profiles.of(id));
     }
 
     @GetMapping("/api/sellers/{id}/reviews")

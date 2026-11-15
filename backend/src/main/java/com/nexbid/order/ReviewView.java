@@ -13,6 +13,10 @@ public record ReviewView(
         UUID auctionId,
         int rating,
         String comment,
+        // EN: Optional stars per aspect. / VI: Số sao tuỳ chọn cho từng khía cạnh.
+        Integer packaging,
+        Integer accuracy,
+        Integer speed,
         String reviewer,
         String lotName,
         Instant createdAt) {

@@ -124,6 +124,18 @@ public class Auction {
     @Column(name = "bought_now", nullable = false)
     private boolean boughtNow;
 
+    /** EN: The seller pays the parcel; the buyer pays only the goods. / VI: Người bán trả tiền gửi kiện; người mua chỉ trả tiền hàng. */
+    @Column(name = "free_shipping", nullable = false)
+    private boolean freeShipping;
+
+    // EN: When a draft goes for approval on its own; written by LotBatch only. / VI: Lúc bản nháp tự gửi duyệt; chỉ LotBatch ghi.
+    @Column(name = "submit_at", insertable = false, updatable = false)
+    private Instant submitAt;
+
+    public Instant getSubmitAt() {
+        return submitAt;
+    }
+
     @Enumerated(EnumType.STRING)
     @Column(name = "reserve_decision", length = 16)
     private ReserveDecision reserveDecision;
@@ -384,6 +396,14 @@ public class Auction {
 
     public void setReservePrice(BigDecimal reservePrice) {
         this.reservePrice = reservePrice;
+    }
+
+    public boolean isFreeShipping() {
+        return freeShipping;
+    }
+
+    public void setFreeShipping(boolean freeShipping) {
+        this.freeShipping = freeShipping;
     }
 
     public BigDecimal getBuyNowPrice() {

@@ -238,10 +238,12 @@ export function LoginForm({ audience = "marketplace" }: LoginFormProps) {
             </Label>
           </div>
 
-          {/* Recovery is out of scope for this build. */}
-          <span className="text-muted-foreground cursor-not-allowed text-sm">
+          <Link
+            href="/forgot-password"
+            className="text-muted-foreground hover:text-foreground text-sm underline-offset-4 hover:underline"
+          >
             {t("forgotPassword")}
-          </span>
+          </Link>
         </div>
 
         {formError ? (

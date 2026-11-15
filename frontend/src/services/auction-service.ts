@@ -57,6 +57,12 @@ export async function listAuctions(query: AuctionQuery = {}): Promise<AuctionLis
  * `GET /api/auctions/{id}/similar` — open or upcoming lots in the same
  * category, other sellers first. Empty when it cannot be asked.
  */
+/** `GET /api/auctions/calendar` — lots opening between two Vietnam dates, soonest first. */
+export async function listCalendar(from: string, to: string): Promise<AuctionSummary[]> {
+  const items = await api<ApiAuctionSummary[]>("/api/auctions/calendar", { query: { from, to } });
+  return items.map((item) => toSummary(item));
+}
+
 export async function listSimilarLots(auctionId: string): Promise<AuctionSummary[]> {
   try {
     const items = await api<ApiAuctionSummary[]>(`/api/auctions/${auctionId}/similar`);
@@ -103,6 +109,9 @@ export async function getAuction(auctionId: string): Promise<AuctionDetail | nul
       name: detail.product.name,
       description: detail.product.description,
       condition: detail.product.condition,
+      items: detail.product.items ?? [],
+      videoUrl: detail.product.videoUrl ?? null,
+      spinView: detail.product.spinView ?? false,
       status: "IN_AUCTION",
       images: detail.images.map((image) => toImage(image, detail.product.name)),
       createdAt: auction.createdAt,
@@ -125,6 +134,39 @@ export async function getAuction(auctionId: string): Promise<AuctionDetail | nul
 export async function getSellerReputation(sellerId: string, latest = 3): Promise<SellerReputation | null> {
   try {
     return toReputation(await api<ApiSellerReviews>(`/api/sellers/${sellerId}/reviews`, { query: { size: latest } }));
+  } catch {
+    return null;
+  }
+}
+
+/** EN: A seller's public page. / VI: Trang công khai của người bán. */
+export interface SellerProfile {
+  id: string;
+  displayName: string;
+  verified: boolean;
+  memberSince: string;
+  followers: number;
+  score: SellerReputation;
+  onSale: AuctionSummary[];
+  sold: AuctionSummary[];
+}
+
+/** `GET /api/sellers/{id}/profile` — null when there is no such seller. */
+export async function getSellerProfile(sellerId: string): Promise<SellerProfile | null> {
+  try {
+    const data = await api<
+      Omit<SellerProfile, "score" | "onSale" | "sold"> & {
+        score: ApiSellerReviews;
+        onSale: ApiAuctionSummary[];
+        sold: ApiAuctionSummary[];
+      }
+    >(`/api/sellers/${sellerId}/profile`);
+    return {
+      ...data,
+      score: toReputation(data.score),
+      onSale: data.onSale.map((item) => toSummary(item)),
+      sold: data.sold.map((item) => toSummary(item)),
+    };
   } catch {
     return null;
   }

@@ -2,6 +2,7 @@ package com.nexbid.product.dto;
 
 import java.util.UUID;
 
+import com.nexbid.product.BundleItem;
 import com.nexbid.product.Parcel;
 import com.nexbid.product.ProductCondition;
 
@@ -40,5 +41,14 @@ public record CreateProductRequest(
 
         /** EN: Optional packed size, for shipping quotes. / VI: Kích thước kiện, không bắt buộc, để báo phí ship. */
         @Valid
-        Parcel parcel) {
+        Parcel parcel,
+
+        /** EN: The pieces of a set; empty or left out for a single item. / VI: Các món của một bộ; rỗng hoặc bỏ trống với món đơn lẻ. */
+        @jakarta.validation.constraints.Size(max = 30, message = "A set has at most 30 kinds of item")
+        java.util.List<@Valid BundleItem> items) {
+
+    public CreateProductRequest(String name, String description, UUID categoryId, ProductCondition condition,
+            Boolean publishNow, Parcel parcel) {
+        this(name, description, categoryId, condition, publishNow, parcel, null);
+    }
 }

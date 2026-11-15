@@ -95,6 +95,11 @@ public interface AuctionRepository
             + "AND a.startTime > :from AND a.startTime <= :to")
     List<UUID> findIdsOpeningBetween(@Param("from") Instant from, @Param("to") Instant to);
 
+    @Query("SELECT a.id FROM Auction a WHERE a.status = com.nexbid.auction.AuctionStatus.SCHEDULED "
+            + "AND a.startTime >= :from AND a.startTime < :to ORDER BY a.startTime, a.lotNumber")
+    List<UUID> findScheduledOpeningIn(@Param("from") Instant from, @Param("to") Instant to,
+            org.springframework.data.domain.Pageable page);
+
     @Query("SELECT a.id FROM Auction a WHERE a.status = com.nexbid.auction.AuctionStatus.ACTIVE "
             + "AND a.endTime > :from AND a.endTime <= :to")
     List<UUID> findIdsClosingBetween(@Param("from") Instant from, @Param("to") Instant to);

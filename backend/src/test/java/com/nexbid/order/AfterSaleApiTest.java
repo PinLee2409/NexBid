@@ -310,6 +310,30 @@ class AfterSaleApiTest {
         assertThat(statusOf("orders", sale.orderId())).isEqualTo("PAID");
     }
 
+    @Autowired
+    private com.nexbid.payout.PayoutService payoutService;
+
+    /**
+     * EN: A new seller's first sales carry no platform fee (one here; three by default). The other tests run with none
+     *     free, so they show the fee charged.
+     * VI: Giao dịch đầu của người bán mới không tính phí sàn (ở đây là một; mặc định là ba). Các test khác chạy với số
+     *     giao dịch miễn phí bằng 0, nên chúng cho thấy phí được tính.
+     */
+    @Test
+    void aNewSellersFirstSaleCarriesNoFee() throws Exception {
+        org.springframework.test.util.ReflectionTestUtils.setField(payoutService, "newSellerFreeSales", 1);
+        try {
+            Sale first = paidSale("feefree");
+            ship(first).andExpect(status().isOk());
+            mockMvc.perform(post("/api/users/me/orders/" + first.orderId() + "/received")
+                    .header("Authorization", "Bearer " + first.buyer())).andExpect(status().isOk());
+            assertThat(jdbc.queryForObject("SELECT fee FROM seller_earnings WHERE order_id = ?::uuid", BigDecimal.class,
+                    first.orderId())).isEqualByComparingTo("0");
+        } finally {
+            org.springframework.test.util.ReflectionTestUtils.setField(payoutService, "newSellerFreeSales", 0);
+        }
+    }
+
     @Test
     void aShipmentTheBuyerNeverConfirmsCompletesOnItsOwn() throws Exception {
         Sale sale = paidSale("silent");
@@ -397,6 +421,109 @@ class AfterSaleApiTest {
     private ResultActions rateBuyer(String token, String orderId, String body) throws Exception {
         return mockMvc.perform(post("/api/seller/orders/" + orderId + "/buyer-review")
                 .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(body));
+    }
+
+    /**
+     * EN: A buyer rates packing, accuracy and speed; the seller's public page shows the score per aspect and the lot as
+     *     sold, and the month's statement lists the sale.
+     * VI: Người mua chấm đóng gói, đúng mô tả và tốc độ; trang công khai của người bán hiện điểm từng khía cạnh và lô đã
+     *     bán, và bảng kê tháng liệt kê giao dịch.
+     */
+    @Test
+    void detailedStarsShowOnTheSellersPublicPageAndTheSaleOnTheirStatement() throws Exception {
+        Sale sale = paidSale("profile");
+        ship(sale).andExpect(status().isOk());
+        mockMvc.perform(post("/api/users/me/orders/" + sale.orderId() + "/received")
+                .header("Authorization", "Bearer " + sale.buyer())).andExpect(status().isOk());
+        String review = "/api/users/me/orders/" + sale.orderId() + "/review";
+        mockMvc.perform(post(review).header("Authorization", "Bearer " + sale.buyer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rating\":5,\"packaging\":9}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post(review).header("Authorization", "Bearer " + sale.buyer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rating\":5,\"packaging\":4,\"accuracy\":5,\"speed\":3,\"comment\":\"Lovely\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.packaging").value(4));
+
+        mockMvc.perform(get("/api/sellers/" + sale.sellerId() + "/profile"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.displayName").value("Seller profile"))
+                .andExpect(jsonPath("$.data.score.average").value(5.0))
+                .andExpect(jsonPath("$.data.score.aspects.packaging").value(4.0))
+                .andExpect(jsonPath("$.data.score.aspects.speed").value(3.0))
+                .andExpect(jsonPath("$.data.sold[0].auction.id").value(sale.auctionId()))
+                .andExpect(jsonPath("$.data.score.reviews.items[0].accuracy").value(5));
+        mockMvc.perform(get("/api/sellers/" + sale.buyerId() + "/profile")).andExpect(status().isNotFound());
+
+        String month = java.time.YearMonth.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")).toString();
+        mockMvc.perform(get("/api/seller/statements").param("month", month)
+                        .header("Authorization", "Bearer " + sale.seller()))
+                .andExpect(jsonPath("$.data.lines.length()").value(1))
+                .andExpect(jsonPath("$.data.lines[0].lot").value("After sale profile"))
+                .andExpect(jsonPath("$.data.gross").value(12000000));
+        String csv = mockMvc.perform(get("/api/seller/statements.csv").param("month", month)
+                        .header("Authorization", "Bearer " + sale.seller()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(csv).contains("date,order,lot,sale_price,platform_fee,shipping,owed_to_you,paid_out",
+                "After sale profile");
+        mockMvc.perform(get("/api/seller/statements").param("month", month)
+                        .header("Authorization", "Bearer " + sale.buyer()))
+                .andExpect(status().isForbidden());
+    }
+
+    /**
+     * EN: With three similar lots sold, a seller listing another gets a starting price: 60% of the median, to 10,000₫.
+     * VI: Khi đã có ba lô tương tự bán được, người bán đăng lô khác được gợi ý giá khởi điểm: 60% trung vị, tròn 10.000₫.
+     */
+    @Test
+    void aStartingPriceIsSuggestedFromSimilarSales() throws Exception {
+        String categoryId = null;
+        for (String tag : List.of("hint-a", "hint-b", "hint-c")) {
+            Sale sale = paidSale(tag);
+            ship(sale).andExpect(status().isOk());
+            categoryId = jdbc.queryForObject("""
+                    SELECT p.category_id::text FROM auctions a JOIN products p ON p.id = a.product_id WHERE a.id = ?::uuid
+                    """, String.class, sale.auctionId());
+        }
+        String seller = tokenFor("as.seller.hint-new@nexbid.com", "Hint Seller", RoleName.SELLER);
+        String product = objectMapper.readTree(mockMvc.perform(post("/api/seller/products")
+                        .header("Authorization", "Bearer " + seller).contentType(MediaType.APPLICATION_JSON).content("""
+                                {"name":"After sale hint-d","description":"A long description of the item.",
+                                 "categoryId":"%s","condition":"GOOD","publishNow":true}""".formatted(categoryId)))
+                .andReturn().getResponse().getContentAsString()).get("data").get("id").asString();
+        mockMvc.perform(get("/api/seller/auctions/price-hint").param("productId", product)
+                        .header("Authorization", "Bearer " + seller))
+                .andExpect(jsonPath("$.data.basis").value("SIMILAR"))
+                .andExpect(jsonPath("$.data.median").value(12000000))
+                .andExpect(jsonPath("$.data.suggestedStart").value(7200000));
+        String other = tokenFor("as.seller.hint-other@nexbid.com", "Hint Other", RoleName.SELLER);
+        mockMvc.perform(get("/api/seller/auctions/price-hint").param("productId", product)
+                        .header("Authorization", "Bearer " + other))
+                .andExpect(status().isNotFound());
+    }
+
+    /**
+     * EN: An open thread marks what arrives as seen, and "typing" goes only to the other side of the order.
+     * VI: Cuộc trò chuyện đang mở đánh dấu tin tới là đã xem, và "đang gõ" chỉ tới bên kia của đơn.
+     */
+    @Test
+    void seenAndTypingStayBetweenTheTwoSides() throws Exception {
+        Sale sale = paidSale("seen");
+        String stranger = tokenFor("as.stranger.seen@nexbid.com", "Stranger Seen", RoleName.BUYER);
+        message(sale.buyer(), sale.orderId(), "Is it boxed?").andExpect(status().isCreated());
+        String base = "/api/orders/" + sale.orderId() + "/messages/";
+        mockMvc.perform(post(base + "typing").header("Authorization", "Bearer " + sale.seller()))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(post(base + "typing").header("Authorization", "Bearer " + stranger))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post(base + "read").header("Authorization", "Bearer " + stranger))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post(base + "read").header("Authorization", "Bearer " + sale.seller()))
+                .andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject("SELECT read_at IS NOT NULL FROM order_messages WHERE order_id = ?::uuid",
+                Boolean.class, sale.orderId())).isTrue();
+        mockMvc.perform(get("/api/orders/" + sale.orderId() + "/messages").header("Authorization", "Bearer " + sale.buyer()))
+                .andExpect(jsonPath("$.data.messages[0].readAt").isNotEmpty());
     }
 
     @Test
@@ -618,6 +745,14 @@ class AfterSaleApiTest {
                     parcels.put(code, "ready_to_pick");
                     body = "{\"code\":200,\"data\":{\"order_code\":\"" + code + "\",\"total_fee\":41000}}";
                 }
+            } else if (path.equals("/v2/switch-status/cancel")) {
+                String code = objectMapper.readTree(sent).path("order_codes").get(0).asString();
+                boolean waiting = "ready_to_pick".equals(parcels.get(code));
+                if (waiting) {
+                    parcels.put(code, "cancel");
+                }
+                body = "{\"code\":200,\"data\":[{\"order_code\":\"" + code + "\",\"result\":" + waiting
+                        + ",\"message\":\"" + (waiting ? "OK" : "Đơn hàng đã lấy, không thể huỷ") + "\"}]}";
             } else {
                 body = switch (path) {
                     case "/v2/a5/gen-token" -> "{\"code\":200,\"data\":{\"token\":\"print-tok\"}}";
@@ -753,11 +888,62 @@ class AfterSaleApiTest {
                     .header("Authorization", "Bearer " + sale.seller()))
                     .andExpect(status().isNotFound());
 
-            // EN: NexBid paid GHN, so the seller gets the goods less the fee and no shipping. / VI: NexBid đã trả GHN, nên người bán nhận tiền hàng trừ phí, không có phí ship.
+            // EN: Booked by mistake: cancelled before pickup, the order waits to ship again and the buyer hears.
+            // VI: Đặt nhầm: huỷ trước khi lấy hàng, đơn chờ gửi lại và người mua được báo.
+            String cancel = "/api/seller/orders/" + booked.orderId() + "/ghn/cancel";
+            mockMvc.perform(post(cancel).header("Authorization", "Bearer " + sale.seller()))
+                    .andExpect(status().isNotFound());
+            mockMvc.perform(post("/api/users/me/orders/" + booked.orderId() + "/address")
+                    .header("Authorization", "Bearer " + booked.buyer()))
+                    .andExpect(jsonPath("$.code").value("ORDER_STATUS_INVALID"));
+            mockMvc.perform(post(cancel).header("Authorization", "Bearer " + booked.seller()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.order.status").value("PAID"))
+                    .andExpect(jsonPath("$.data.order.trackingNumber").value(org.hamcrest.Matchers.nullValue()))
+                    .andExpect(jsonPath("$.data.order.ghnBooked").value(false));
+            assertThat(jdbc.queryForObject("SELECT carrier_fee FROM orders WHERE id = ?::uuid", BigDecimal.class,
+                    booked.orderId())).isNull();
+            assertThat(jdbc.queryForObject("""
+                    SELECT COUNT(*) FROM notifications WHERE user_id = ? AND type = 'SHIPMENT_CANCELLED'
+                    """, Integer.class, booked.buyerId())).isOne();
+            mockMvc.perform(post(cancel).header("Authorization", "Bearer " + booked.seller()))
+                    .andExpect(jsonPath("$.code").value("ORDER_STATUS_INVALID"));
+
+            // EN: The buyer moved: the paid order follows the new address, and the seller hears.
+            // VI: Người mua chuyển chỗ: đơn đã trả theo địa chỉ mới, và người bán được báo.
+            mockMvc.perform(put("/api/users/me/address").header("Authorization", "Bearer " + booked.buyer())
+                    .contentType(MediaType.APPLICATION_JSON).content("""
+                            {"recipient":"Moved Buyer","phone":"0912345678","line":"9 Kim Mã","ward":"Kim Mã",
+                             "district":"Ba Đình","province":"Hà Nội","provinceId":201,"districtId":1484,
+                             "wardCode":"1A0102"}""")).andExpect(status().isOk());
+            mockMvc.perform(post("/api/users/me/orders/" + booked.orderId() + "/address")
+                    .header("Authorization", "Bearer " + booked.buyer()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.order.shipping.recipient").value("Moved Buyer"));
+            assertThat(jdbc.queryForObject("SELECT ship_ward_code FROM orders WHERE id = ?::uuid", String.class,
+                    booked.orderId())).isEqualTo("1A0102");
+            assertThat(jdbc.queryForObject("""
+                    SELECT COUNT(*) FROM notifications WHERE user_id = ? AND type = 'ORDER_ADDRESS_CHANGED'
+                    """, Integer.class, booked.sellerId())).isOne();
+
+            mockMvc.perform(post(book).header("Authorization", "Bearer " + booked.seller()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.order.status").value("PROCESSING"));
+            assertThat(calls.stream().filter(call -> call.startsWith("/v2/shipping-order/create")
+                    && call.contains("1A0102")).count()).isOne();
+            // EN: Picked up now: GHN refuses to cancel. / VI: Đã lấy hàng: GHN từ chối huỷ.
+            parcels.replaceAll((code, state) -> state.equals("ready_to_pick") ? "picked" : state);
+            mockMvc.perform(post(cancel).header("Authorization", "Bearer " + booked.seller()))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.code").value("GHN_REFUSED"));
+
+            // EN: The seller offered free shipping and NexBid paid GHN, so GHN's fee comes out of the payout.
+            // VI: Người bán miễn phí vận chuyển và NexBid đã trả GHN, nên phí GHN trừ vào tiền chi.
+            jdbc.update("UPDATE orders SET seller_pays_shipping = TRUE WHERE id = ?::uuid", booked.orderId());
             mockMvc.perform(post("/api/users/me/orders/" + booked.orderId() + "/received")
                     .header("Authorization", "Bearer " + booked.buyer())).andExpect(status().isOk());
             assertThat(jdbc.queryForObject("SELECT shipping || ' ' || net FROM seller_earnings WHERE order_id = ?::uuid",
-                    String.class, booked.orderId())).isEqualTo("0.00 11400000.00");
+                    String.class, booked.orderId())).isEqualTo("-41000.00 11359000.00");
         } finally {
             org.springframework.test.util.ReflectionTestUtils.setField(orderService, "ghn", offGhn);
             org.springframework.test.util.ReflectionTestUtils.setField(estimates, "ghn", offGhn);

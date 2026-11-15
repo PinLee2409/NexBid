@@ -38,6 +38,7 @@ function subscribeToScroll(onChange: () => void) {
 const PRIMARY_NAV = [
   { key: "live", href: "/auctions?status=ACTIVE", live: true },
   { key: "discover", href: "/auctions", live: false },
+  { key: "calendar", href: "/calendar", live: false },
   { key: "sell", href: "/seller/products/create", live: false },
 ] as const;
 

@@ -17,6 +17,9 @@ import { useApiErrorMessage } from "@/hooks/use-labels";
 import { cn } from "@/lib/utils";
 import {
   listThreads,
+  announceTyping,
+  markThreadSeen,
+  onConversationSignal,
   onMessageArrival,
   openThread,
   sendMessage,
@@ -133,6 +136,8 @@ function Conversation({
   const errorMessage = useApiErrorMessage();
   const { state } = useAsyncData(`message-thread-${orderId}`, () => openThread(orderId));
   const [live, setLive] = useState<OrderMessage[]>([]);
+  const [typing, setTyping] = useState(false);
+  const [seenAt, setSeenAt] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -143,14 +148,38 @@ function Conversation({
       onMessageArrival((message) => {
         if (message.orderId !== orderId) return;
         setLive((current) => (current.some((each) => each.id === message.id) ? current : [...current, message]));
-        // EN: Seen on screen: read it, so the count stays right. / VI: Đã hiện trên màn hình: đánh dấu đã đọc để con số đúng.
-        void openThread(orderId).catch(() => undefined);
+        setTyping(false);
+        // EN: Seen on screen: read it, so the count stays right and the writer sees "seen". / VI: Đã hiện trên màn hình: đánh dấu đã đọc để con số đúng và người viết thấy "đã xem".
+        void markThreadSeen(orderId).catch(() => undefined);
       }),
     [orderId],
   );
 
+  useEffect(() => {
+    let quiet: ReturnType<typeof setTimeout> | undefined;
+    const stop = onConversationSignal((signal) => {
+      if (signal.orderId !== orderId) return;
+      if (signal.kind === "read") {
+        setSeenAt(signal.readAt);
+      } else {
+        setTyping(true);
+        clearTimeout(quiet);
+        quiet = setTimeout(() => setTyping(false), 5000);
+      }
+    });
+    return () => {
+      stop();
+      clearTimeout(quiet);
+    };
+  }, [orderId]);
+
   const loaded = state.status === "success" ? state.data.messages : [];
   const messages = [...loaded, ...live.filter((message) => !loaded.some((each) => each.id === message.id))];
+  // EN: "Seen" sits under my last message once the other side read it. / VI: "Đã xem" nằm dưới tin cuối của mình khi bên kia đã đọc.
+  const lastMine = [...messages].reverse().find((message) => message.mine);
+  const lastMineSeen =
+    lastMine !== undefined &&
+    (Boolean(lastMine.readAt) || (seenAt !== null && new Date(seenAt) >= new Date(lastMine.createdAt)));
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: "end" });
@@ -208,9 +237,19 @@ function Conversation({
                 {message.mine ? t("you") : message.sender} ·{" "}
                 {format.dateTime(new Date(message.createdAt), { dateStyle: "short", timeStyle: "short" })}
               </p>
+              {message === lastMine && lastMineSeen ? (
+                <p className="mono-figure mt-0.5 text-right text-[10px] opacity-70" data-testid="message-seen">
+                  {t("seen")}
+                </p>
+              ) : null}
             </div>
           </li>
         ))}
+        {typing ? (
+          <li className="text-dim text-xs italic" data-testid="message-typing">
+            {t("typing", { name: thread.counterpart })}
+          </li>
+        ) : null}
         <div ref={bottom} />
       </ol>
 
@@ -229,6 +268,7 @@ function Conversation({
             onChange={(event) => {
               setDraft(event.target.value);
               setError(null);
+              if (event.target.value.trim()) announceTyping(orderId);
             }}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {

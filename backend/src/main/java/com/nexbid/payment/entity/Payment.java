@@ -48,6 +48,14 @@ public class Payment {
     @Column(name = "shipping_address_key", length = 64)
     private String shippingAddressKey;
 
+    // EN: Taken off the shipping by a voucher; the platform pays it, the seller still gets the full shipping.
+    // VI: Phần voucher trừ vào phí ship; sàn trả phần này, người bán vẫn nhận đủ phí ship.
+    @Column(name = "shipping_discount", nullable = false, precision = 15, scale = 2)
+    private BigDecimal shippingDiscount = BigDecimal.ZERO;
+
+    @Column(name = "promo_code", length = 32)
+    private String promoCode;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private PaymentStatus status = PaymentStatus.PENDING;
@@ -100,9 +108,26 @@ public class Payment {
         return shippingSource != null && addressKey.equals(shippingAddressKey);
     }
 
-    /** EN: Goods plus shipping: what VNPay charges and what a refund gives back. / VI: Tiền hàng cộng phí ship: số VNPay thu và số hoàn lại. */
+    /**
+     * EN: Goods plus shipping less the voucher: what VNPay charges and what a refund gives back.
+     * VI: Tiền hàng cộng phí ship trừ voucher: số VNPay thu và số hoàn lại.
+     */
     public BigDecimal getTotal() {
-        return amount.add(shippingFee);
+        return amount.add(shippingFee).subtract(getShippingDiscount());
+    }
+
+    /** EN: Never more than the shipping, whatever the address. / VI: Không bao giờ quá phí ship, dù địa chỉ nào. */
+    public BigDecimal getShippingDiscount() {
+        return shippingDiscount.min(shippingFee);
+    }
+
+    public String getPromoCode() {
+        return promoCode;
+    }
+
+    public void applyPromo(String code, BigDecimal discount) {
+        this.promoCode = code;
+        this.shippingDiscount = discount == null ? BigDecimal.ZERO : discount;
     }
 
     public BigDecimal getShippingFee() {

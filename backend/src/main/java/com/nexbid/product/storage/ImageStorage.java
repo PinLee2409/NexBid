@@ -89,6 +89,36 @@ public class ImageStorage {
     }
 
     /**
+     * EN: Saves a short video (MP4 or WebM, recognised by its first bytes) and returns its public path.
+     * VI: Lưu một video ngắn (MP4 hoặc WebM, nhận dạng bằng các byte đầu) và trả về đường dẫn công khai.
+     */
+    public String storeVideo(MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new BusinessException(ErrorCode.VIDEO_INVALID, "The uploaded file is empty");
+        }
+        if (file.getSize() > properties.maxVideoBytes()) {
+            throw new BusinessException(ErrorCode.VIDEO_INVALID,
+                    "Videos must be at most %d MB".formatted(properties.maxVideoBytes() / 1_048_576));
+        }
+        String extension;
+        try (InputStream in = file.getInputStream()) {
+            extension = MagicBytes.videoExtensionOf(in.readNBytes(12));
+        } catch (IOException ex) {
+            throw new BusinessException(ErrorCode.VIDEO_INVALID, "The uploaded file could not be read");
+        }
+        if (extension == null) {
+            throw new BusinessException(ErrorCode.VIDEO_INVALID, "Only MP4 and WebM videos are accepted");
+        }
+        String storedName = UUID.randomUUID() + extension;
+        try (InputStream in = file.getInputStream()) {
+            Files.copy(in, properties.imagesDir().resolve(storedName), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Could not store video " + storedName, ex);
+        }
+        return properties.publicPath() + "/" + storedName;
+    }
+
+    /**
      * EN: Best effort. A row removed from the database while its file lingers is untidy; a file removed
      *     while the row survives would show a broken image, which is worse.
      * VI: Cố gắng hết sức. Xoá dòng trong DB mà file còn sót lại thì chỉ là rác; ngược lại, xoá file mà

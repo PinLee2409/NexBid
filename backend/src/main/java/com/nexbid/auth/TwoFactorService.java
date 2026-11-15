@@ -57,9 +57,11 @@ public class TwoFactorService {
     private final ApplicationEventPublisher events;
     private final SecretKey challengeKey;
     private final SecretKeySpec secretKey;
+    private final LoginAttempts attempts;
 
-    TwoFactorService(JdbcTemplate jdbc, ApplicationEventPublisher events, JwtProperties jwt) {
+    TwoFactorService(JdbcTemplate jdbc, ApplicationEventPublisher events, JwtProperties jwt, LoginAttempts attempts) {
         this.jdbc = jdbc;
+        this.attempts = attempts;
         this.events = events;
         // EN: Both keys come from the JWT secret but differ from the access token key, so neither token can pass as the other.
         // VI: Cả hai khoá suy ra từ JWT secret nhưng khác khoá của access token, nên token này không giả làm token kia được.
@@ -127,7 +129,9 @@ public class TwoFactorService {
     /** EN: Turns it off; a current code or a recovery code is needed. / VI: Tắt; cần một mã hiện tại hoặc mã khôi phục. */
     @Transactional
     public void disable(UUID userId, String code, Instant now) {
+        attempts.checkCodes(userId);
         if (!verify(userId, code, now)) {
+            attempts.recordCodeFailure(userId);
             throw new BusinessException(ErrorCode.TWO_FACTOR_CODE_INVALID, "That code does not match");
         }
         jdbc.update("DELETE FROM user_totp WHERE user_id = ?", userId);

@@ -79,6 +79,8 @@ export interface ApiAuction {
   reserveMet?: boolean | null;
   buyNowPrice?: number | null;
   boughtNow?: boolean;
+  freeShipping?: boolean;
+  submitAt?: IsoDateString | null;
   reserveDecision?: ReserveDecision | null;
   reserveDecisionUntil?: IsoDateString | null;
   createdAt: IsoDateString;
@@ -116,7 +118,15 @@ export interface ApiAnalyticsReport {
 
 export interface ApiAuctionDetail {
   auction: ApiAuction;
-  product: { id: string; name: string; description: string; condition: ProductCondition };
+  product: {
+    id: string;
+    name: string;
+    description: string;
+    condition: ProductCondition;
+    items?: { name: string; quantity: number }[];
+    videoUrl?: string | null;
+    spinView?: boolean;
+  };
   category: ApiCategory | null;
   images: ApiImage[];
   seller: { id: string; displayName: string; verified?: boolean };
@@ -191,8 +201,10 @@ export interface ApiPaymentDetails {
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
   shippingFee?: number | null;
-  shippingSource?: "GHN" | "FLAT" | null;
+  shippingSource?: "GHN" | "FLAT" | "SELLER" | null;
   total?: number;
+  shippingDiscount?: number;
+  promoCode?: string | null;
 }
 
 export interface ApiPayment {
@@ -232,6 +244,9 @@ export interface ApiReview {
   auctionId: string;
   rating: number;
   comment?: string | null;
+  packaging?: number | null;
+  accuracy?: number | null;
+  speed?: number | null;
   reviewer: string;
   lotName?: string | null;
   createdAt: IsoDateString;
@@ -242,6 +257,7 @@ export interface ApiSellerReviews {
   average?: number | string | null;
   reviewCount: number;
   sales: number;
+  aspects?: { packaging?: number | string | null; accuracy?: number | string | null; speed?: number | string | null };
   reviews: ApiPage<ApiReview>;
 }
 
@@ -287,6 +303,9 @@ export interface ApiProduct {
   condition: ProductCondition;
   status: ProductStatus;
   parcel?: Parcel | null;
+  items?: { name: string; quantity: number }[];
+  videoUrl?: string | null;
+  spinView?: boolean;
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
 }

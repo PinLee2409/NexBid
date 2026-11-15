@@ -56,5 +56,9 @@ public enum MailKind {
     // EN: To the seller: NexBid refunded the buyer outside a dispute and cancelled the sale. / VI: Gửi người bán: NexBid đã hoàn tiền cho người mua ngoài khiếu nại và huỷ giao dịch.
     SALE_REFUNDED,
     // EN: To the seller: an admin took the lot down, with the reason. / VI: Gửi người bán: admin đã gỡ lô, kèm lý do.
-    LOT_REMOVED
+    LOT_REMOVED,
+    // EN: A link to set a new password; the link travels in the reason field. / VI: Link đặt mật khẩu mới; link nằm trong trường reason.
+    PASSWORD_RESET,
+    // EN: The password was changed, by reset or from the profile. / VI: Mật khẩu đã được đổi, bằng link đặt lại hoặc từ hồ sơ.
+    PASSWORD_CHANGED
 }

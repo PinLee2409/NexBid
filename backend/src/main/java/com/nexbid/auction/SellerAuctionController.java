@@ -33,6 +33,18 @@ public class SellerAuctionController {
     private final AuctionService auctions;
     private final LotInsights insights;
     private final LotImport lotImport;
+    private LotBatch batch;
+    private PriceHints priceHints;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setPriceHints(PriceHints priceHints) {
+        this.priceHints = priceHints;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setBatch(LotBatch batch) {
+        this.batch = batch;
+    }
 
     public SellerAuctionController(AuctionService auctions, LotInsights insights, LotImport lotImport) {
         this.auctions = auctions;
@@ -50,6 +62,28 @@ public class SellerAuctionController {
             @org.springframework.web.bind.annotation.RequestPart(name = "images", required = false)
             List<org.springframework.web.multipart.MultipartFile> images) {
         return ApiResponse.of(lotImport.run(seller.id(), file, images));
+    }
+
+    /** EN: A starting price to suggest, from what similar lots sold for. / VI: Giá khởi điểm gợi ý, từ giá bán của các lô tương tự. */
+    @GetMapping("/price-hint")
+    public ApiResponse<PriceHints.Hint> priceHint(@AuthenticationPrincipal CurrentUser seller,
+            @org.springframework.web.bind.annotation.RequestParam UUID productId) {
+        return ApiResponse.of(priceHints.forProduct(seller.id(), productId, java.time.Instant.now()));
+    }
+
+    public record BatchRequest(@jakarta.validation.constraints.NotEmpty List<UUID> auctionIds,
+            java.time.Instant startTime, java.time.Instant endTime, java.time.Instant submitAt, Boolean submit) {
+    }
+
+    /**
+     * EN: Many drafts at once: the same times for all, and approval now, at a set time, or not yet.
+     * VI: Nhiều bản nháp một lúc: cùng giờ cho tất cả, và gửi duyệt ngay, hẹn giờ, hoặc chưa gửi.
+     */
+    @PostMapping("/batch")
+    public ApiResponse<List<LotBatch.Row>> batch(@AuthenticationPrincipal CurrentUser seller,
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody BatchRequest request) {
+        return ApiResponse.of(batch.apply(seller.id(), new LotBatch.Request(request.auctionIds(), request.startTime(),
+                request.endTime(), request.submitAt(), Boolean.TRUE.equals(request.submit())), java.time.Instant.now()));
     }
 
     /** EN: Views, watchers, bids per lot, and how many closed lots sold. / VI: Lượt xem, theo dõi, trả giá từng lô, và tỉ lệ lô đã đóng bán được. */

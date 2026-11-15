@@ -10,6 +10,8 @@ import {
   Gavel,
   Heart,
   Landmark,
+  FileText,
+  TicketPercent,
   LayoutDashboard,
   ListChecks,
   Package,
@@ -64,6 +66,7 @@ export const SELLER_NAV: AccountNavItem[] = [
   { labelKey: "stats", href: "/seller/stats", icon: BarChart3 },
   { labelKey: "orders", href: "/seller/orders", icon: Receipt },
   { labelKey: "earnings", href: "/seller/earnings", icon: Wallet },
+  { labelKey: "statements", href: "/seller/statements", icon: FileText },
   { labelKey: "messages", href: "/messages", icon: MessagesSquare },
 ];
 
@@ -80,6 +83,7 @@ export const ADMIN_NAV: AccountNavItem[] = [
   { labelKey: "trust", href: "/admin/trust", icon: ShieldQuestion },
   { labelKey: "payouts", href: "/admin/payouts", icon: Banknote },
   { labelKey: "finance", href: "/admin/finance", icon: Landmark },
+  { labelKey: "promos", href: "/admin/promos", icon: TicketPercent },
   { labelKey: "emails", href: "/admin/emails", icon: Mail },
   { labelKey: "auditLogs", href: "/admin/audit-logs", icon: ListChecks },
 ];
@@ -96,6 +100,7 @@ export const FOOTER_COLUMNS: FooterColumn[] = [
     links: [
       { labelKey: "liveAuctions", href: "/auctions?status=ACTIVE" },
       { labelKey: "upcoming", href: "/auctions?status=SCHEDULED" },
+      { labelKey: "calendar", href: "/calendar" },
       { labelKey: "endingSoon", href: "/auctions?sort=ENDING_SOON" },
       { labelKey: "categories", href: "/auctions#categories" },
     ],

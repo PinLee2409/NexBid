@@ -78,5 +78,9 @@ public enum NotificationType {
     /** EN: To the seller: an admin verified their account. / VI: Gửi người bán: admin đã xác minh tài khoản. */
     SELLER_VERIFIED,
     /** EN: A new message about an order. / VI: Tin nhắn mới về một đơn hàng. */
-    NEW_MESSAGE
+    NEW_MESSAGE,
+    /** EN: To the buyer: the seller cancelled the GHN pickup; the order waits to ship again. / VI: Gửi người mua: người bán huỷ đơn GHN; đơn chờ gửi lại. */
+    SHIPMENT_CANCELLED,
+    /** EN: To the seller: the buyer changed the delivery address of a paid order. / VI: Gửi người bán: người mua đổi địa chỉ nhận của đơn đã trả. */
+    ORDER_ADDRESS_CHANGED
 }

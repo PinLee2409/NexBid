@@ -122,6 +122,7 @@ jobs:
           # EN: So the second-chance test does not wait a minute for an unpaid sale to lapse.
           # VI: Để test cơ hội thứ hai không phải chờ một phút cho giao dịch chưa trả hết hạn.
           NEXBID_PAYMENT_EXPIRY_INTERVAL_MS: "5000"
+          NEXBID_NEW_SELLER_FREE_SALES: "0"
       - name: Install Playwright and Chromium
         working-directory: frontend
         run: npm ci && npx playwright install --with-deps chromium

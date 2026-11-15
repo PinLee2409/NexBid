@@ -35,6 +35,7 @@ export default function CreateAuctionPage(
         minimumIncrement: previous.minimumIncrement,
         reservePrice: previous.reservePrice ?? null,
         buyNowPrice: previous.buyNowPrice,
+        freeShipping: previous.freeShipping,
         antiSniping: previous.antiSniping,
       }
     : undefined;

@@ -50,6 +50,12 @@ public class PaymentService {
     private final AddressBook addresses;
     private final ObjectProvider<ShippingQuoter> quoters;
     private final BigDecimal flatShippingFee;
+    private PromoCodes promos;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setPromos(PromoCodes promos) {
+        this.promos = promos;
+    }
 
     PaymentService(
             PaymentRepository payments,
@@ -103,15 +109,45 @@ public class PaymentService {
         Payment payment = payments.findByIdForUpdate(paymentId).orElseThrow(() -> notFound(paymentId));
 
         String key = addressKey(address);
-        if (!payment.isQuotedFor(key)) {
+        if (!payment.isQuotedFor(key) && auctions.freeShipping(payment.getAuctionId())) {
+            payment.quoteShipping(BigDecimal.ZERO, ShippingQuote.SELLER, key);
+            payments.saveAndFlush(payment);
+        } else if (!payment.isQuotedFor(key)) {
             Optional<BigDecimal> carrier = Optional.ofNullable(quoters.getIfAvailable())
                     .flatMap(quoter -> quoter.quote(payment.getAuctionId(), userId, payment.getAmount()));
             payment.quoteShipping(carrier.orElse(flatShippingFee),
                     carrier.isPresent() ? ShippingQuote.GHN : ShippingQuote.FLAT, key);
             payments.saveAndFlush(payment);
         }
+        return quoteOf(payment);
+    }
+
+    private static ShippingQuote quoteOf(Payment payment) {
         return new ShippingQuote(payment.getAmount(), payment.getShippingFee(), payment.getShippingSource(),
-                payment.getTotal());
+                payment.getTotal(), payment.getShippingDiscount(), payment.getPromoCode());
+    }
+
+    /**
+     * EN: Applies a shipping voucher to an open payment, or removes it with a blank code. Checked again nowhere: a code
+     *     that ran out between now and the payment still honours what the buyer was shown.
+     * VI: Áp voucher phí ship cho một khoản đang mở, hoặc gỡ khi mã để trống. Không kiểm lại ở đâu nữa: mã hết lượt giữa
+     *     lúc này và lúc thanh toán vẫn giữ đúng số người mua đã thấy.
+     */
+    @Transactional
+    public ShippingQuote applyPromo(UUID userId, UUID paymentId, String code) {
+        quoteShipping(userId, paymentId);
+        Payment payment = payments.findByIdForUpdate(paymentId).orElseThrow(() -> notFound(paymentId));
+        if (code == null || code.isBlank()) {
+            payment.applyPromo(null, BigDecimal.ZERO);
+        } else {
+            PromoCodes.Valid valid = promos.check(code, userId, Instant.now());
+            if (payment.getShippingFee().signum() == 0) {
+                throw new BusinessException(ErrorCode.PROMO_INVALID, "There is no shipping to take a voucher off");
+            }
+            payment.applyPromo(valid.code(), valid.amount());
+        }
+        payments.saveAndFlush(payment);
+        return quoteOf(payment);
     }
 
     /** EN: Changes whenever the parcel's destination does. / VI: Đổi mỗi khi nơi nhận kiện hàng đổi. */
@@ -263,7 +299,13 @@ public class PaymentService {
         // EN: An attempt started before the buyer changed address charged the shipping quoted then; that is what was paid.
         // VI: Lần thử bắt đầu trước khi người mua đổi địa chỉ đã thu phí ship báo lúc đó; đó là số đã thực trả.
         if (success && charged.compareTo(payment.getTotal()) != 0) {
+            // EN: That attempt was started without the voucher now on the payment, so the voucher is not spent.
+            // VI: Lần thử đó bắt đầu khi chưa có voucher đang gắn trên khoản, nên voucher không bị dùng.
+            payment.applyPromo(null, BigDecimal.ZERO);
             payment.quoteShipping(charged.subtract(payment.getAmount()), payment.getShippingSource(), null);
+        }
+        if (success && payment.getPromoCode() != null) {
+            promos.redeem(payment.getPromoCode(), payment.getUserId(), payment.getId(), payment.getShippingDiscount(), now);
         }
         payments.saveAndFlush(payment);
 
@@ -329,7 +371,9 @@ public class PaymentService {
                         payment.getUpdatedAt(),
                         payment.getShippingSource() == null ? null : payment.getShippingFee(),
                         payment.getShippingSource(),
-                        payment.getTotal()),
+                        payment.getTotal(),
+                        payment.getShippingDiscount(),
+                        payment.getPromoCode()),
                 lot);
     }
 

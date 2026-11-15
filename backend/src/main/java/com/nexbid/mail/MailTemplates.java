@@ -379,6 +379,25 @@ final class MailTemplates {
                                     + " stars</b>. Reviews show on all your lots and help future buyers trust you.",
                             "See the review"));
             case LOT_DIGEST -> digestBody(List.of(), 0);
+            case PASSWORD_RESET -> build(kind, facts, "Đặt lại mật khẩu NexBid", "Reset your NexBid password", reason,
+                    new Half("Đặt mật khẩu mới",
+                            "Có người (hy vọng là bạn) vừa yêu cầu đặt lại mật khẩu cho tài khoản này. Link dùng được"
+                                    + " 30 phút và một lần. Nếu không phải bạn, cứ bỏ qua email này; mật khẩu không đổi.",
+                            "Đặt mật khẩu mới"),
+                    new Half("Choose a new password",
+                            "Someone (hopefully you) asked to reset this account's password. The link works for"
+                                    + " 30 minutes, once. If it was not you, ignore this email; nothing changes.",
+                            "Set a new password"));
+            case PASSWORD_CHANGED -> build(kind, facts, "Mật khẩu NexBid đã được đổi", "Your NexBid password was changed",
+                    siteUrl + "/forgot-password",
+                    new Half("Mật khẩu đã được đổi",
+                            "Mật khẩu tài khoản của bạn vừa được đổi và mọi phiên đăng nhập khác đã kết thúc. Nếu không"
+                                    + " phải bạn, hãy đặt lại mật khẩu ngay.",
+                            "Đặt lại mật khẩu"),
+                    new Half("Your password was changed",
+                            "Your account's password was just changed and every other session was signed out. If this"
+                                    + " was not you, reset your password now.",
+                            "Reset password"));
             case LOT_REMOVED -> build(kind, facts, "Lô đã bị gỡ: " + lot, "Lot taken down: " + lot,
                     siteUrl + "/seller/auctions",
                     new Half("NexBid đã gỡ lô của bạn",
@@ -516,6 +535,8 @@ final class MailTemplates {
             case QUESTION_ANSWERED -> new Tag("Đã trả lời · Answered", false);
             case LOT_DIGEST -> new Tag("Lô mới · New lots", false);
             case LOT_REMOVED -> new Tag("Lô bị gỡ · Lot removed", true);
+            case PASSWORD_RESET -> new Tag("Mật khẩu · Password", false);
+            case PASSWORD_CHANGED -> new Tag("Bảo mật · Security", true);
             case STRAY_CHARGE -> new Tag("Thu thừa · Extra charge", true);
             case STRAY_REFUNDED -> new Tag("Hoàn tiền · Refund", false);
             case SALE_REFUNDED -> new Tag("Đã hoàn tiền · Refunded", true);

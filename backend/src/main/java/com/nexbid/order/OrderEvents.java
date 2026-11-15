@@ -14,6 +14,14 @@ public final class OrderEvents {
     }
 
     /** EN: The seller shipped it: PAID → PROCESSING. / VI: Người bán đã gửi hàng: PAID → PROCESSING. */
+    /** EN: A GHN booking cancelled before pickup; the order is PAID again. / VI: Đơn GHN đã huỷ trước khi lấy hàng; đơn lại là PAID. */
+    public record ShipmentCancelled(UUID orderId, UUID actorId, UUID buyerId, UUID auctionId, String trackingNumber) {
+    }
+
+    /** EN: The buyer pointed a paid order at their current address. / VI: Người mua đổi địa chỉ nhận của đơn đã trả sang địa chỉ hiện tại. */
+    public record AddressChanged(UUID orderId, UUID buyerId, UUID sellerId, UUID auctionId) {
+    }
+
     public record Shipped(UUID orderId, UUID actorId, UUID buyerId, UUID auctionId, String carrier, String trackingNumber) {
     }
 

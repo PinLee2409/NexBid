@@ -99,6 +99,8 @@ export function toAuction(auction: ApiAuction): Auction {
     reserveMet: auction.reserveMet ?? null,
     buyNowPrice: auction.buyNowPrice === null || auction.buyNowPrice === undefined ? null : Number(auction.buyNowPrice),
     boughtNow: auction.boughtNow ?? false,
+    freeShipping: auction.freeShipping ?? false,
+    submitAt: auction.submitAt ?? null,
     reserveDecision: auction.reserveDecision ?? null,
     reserveDecisionUntil: auction.reserveDecisionUntil ?? null,
     createdAt: auction.createdAt,
@@ -162,6 +164,7 @@ function hrefFor(notification: ApiNotification): string | undefined {
     case "PAYMENT_EXPIRED":
     case "DISPUTE_RESOLVED":
     case "ORDER_COMPLETING":
+    case "SHIPMENT_CANCELLED":
       return "/orders";
     case "NEW_QUESTION":
     case "QUESTION_ANSWERED":
@@ -174,6 +177,7 @@ function hrefFor(notification: ApiNotification): string | undefined {
     case "SELLER_VERIFIED":
       return "/seller/dashboard";
     case "SALE_REFUNDED":
+    case "ORDER_ADDRESS_CHANGED":
       return "/seller/orders";
     case "LOT_REMOVED":
       return "/seller/auctions";
@@ -226,6 +230,11 @@ export function toReputation(view: ApiSellerReviews): SellerReputation {
     average: view.average === null || view.average === undefined ? null : Number(view.average),
     reviewCount: view.reviewCount,
     sales: view.sales,
+    aspects: {
+      packaging: view.aspects?.packaging == null ? null : Number(view.aspects.packaging),
+      accuracy: view.aspects?.accuracy == null ? null : Number(view.aspects.accuracy),
+      speed: view.aspects?.speed == null ? null : Number(view.aspects.speed),
+    },
     reviews: view.reviews.items.map(toReview),
   };
 }
@@ -244,6 +253,8 @@ export function toPayment(payment: ApiPaymentDetails): Payment {
     shippingFee,
     shippingSource: payment.shippingSource ?? null,
     total: payment.total == null ? amount + (shippingFee ?? 0) : Number(payment.total),
+    shippingDiscount: Number(payment.shippingDiscount ?? 0),
+    promoCode: payment.promoCode ?? null,
   };
 }
 
@@ -275,6 +286,9 @@ export function toProduct(product: ApiProduct, images: ProductImage[] = []): Pro
     condition: product.condition,
     status: product.status,
     parcel: product.parcel ?? null,
+    items: product.items ?? [],
+    videoUrl: product.videoUrl ?? null,
+    spinView: product.spinView ?? false,
     images,
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,

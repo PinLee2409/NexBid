@@ -59,6 +59,20 @@ public class MessageController {
         return ApiResponse.of(messages.send(me.id(), orderId, request.body()), "Message sent");
     }
 
+    /** EN: The open thread saw what just arrived. / VI: Cuộc trò chuyện đang mở đã thấy tin vừa tới. */
+    @PostMapping("/api/orders/{orderId}/messages/read")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void markSeen(@AuthenticationPrincipal CurrentUser me, @PathVariable UUID orderId) {
+        messages.markSeen(me.id(), orderId);
+    }
+
+    /** EN: "Typing…" for the other side; nothing is stored. / VI: "Đang gõ…" cho bên kia; không lưu gì. */
+    @PostMapping("/api/orders/{orderId}/messages/typing")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void typing(@AuthenticationPrincipal CurrentUser me, @PathVariable UUID orderId) {
+        messages.typing(me.id(), orderId);
+    }
+
     @GetMapping("/api/admin/orders/{orderId}/messages")
     public ApiResponse<List<MessageService.AdminMessageView>> read(@AuthenticationPrincipal CurrentUser me,
             @PathVariable UUID orderId) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleAlert, Loader2, PackageCheck, Receipt, Star } from "lucide-react";
+import { CircleAlert, Loader2, MapPin, PackageCheck, Receipt, Star } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -31,7 +31,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage } from "@/hooks/use-labels";
 import { getMyBankAccount, saveMyBankAccount, type BankAccount } from "@/services/bank-account-service";
-import { confirmReceipt, listOrders, openDispute, reviewOrder, type OrderEntry } from "@/services/order-service";
+import {
+  confirmReceipt,
+  listOrders,
+  openDispute,
+  reviewOrder,
+  shipToCurrentAddress,
+  type OrderEntry,
+} from "@/services/order-service";
 import type { DisputeReason } from "@/types";
 import { PayWithVnpay } from "@/components/payment/pay-with-vnpay";
 
@@ -73,6 +80,7 @@ export default function OrdersPage() {
                 key={entry.order.id}
                 entry={entry}
                 messages
+                receipt="buyer"
                 action={
                   <OrderActions
                     entry={entry}
@@ -156,7 +164,14 @@ function OrderActions({
       {t("reportProblem")}
     </Button>
   );
-  if (entry.order.status === "PAID") return report;
+  if (entry.order.status === "PAID") {
+    return (
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <UseCurrentAddressButton orderId={entry.order.id} onChanged={onReceived} />
+        {report}
+      </div>
+    );
+  }
   if (entry.order.status !== "PROCESSING") return null;
 
   // EN: The seller has shipped; only the buyer can say it arrived. / VI: Người bán đã gửi; chỉ người mua mới xác nhận được là đã nhận.
@@ -181,6 +196,36 @@ function OrderActions({
       </Button>
       {report}
     </div>
+  );
+}
+
+/**
+ * EN: Moved since paying? Before the seller ships, the order can follow the address now in the profile.
+ * VI: Đã chuyển chỗ sau khi trả tiền? Trước khi người bán gửi, đơn có thể theo địa chỉ hiện có trong hồ sơ.
+ */
+function UseCurrentAddressButton({ orderId, onChanged }: { orderId: string; onChanged: () => void }) {
+  const t = useTranslations("account");
+  const errorMessage = useApiErrorMessage();
+  const [isPending, startTransition] = useTransition();
+
+  function apply() {
+    startTransition(async () => {
+      try {
+        await shipToCurrentAddress(orderId);
+      } catch (error) {
+        toast.error(errorMessage(error));
+        return;
+      }
+      toast.success(t("orderAddressUpdated"));
+      onChanged();
+    });
+  }
+
+  return (
+    <Button size="sm" variant="ghost" onClick={apply} disabled={isPending} title={t("useCurrentAddressHint")}>
+      {isPending ? <Loader2 className="size-4 animate-spin" /> : <MapPin className="size-4" />}
+      {t("useCurrentAddress")}
+    </Button>
   );
 }
 
@@ -347,6 +392,7 @@ function ReviewDialog({
   const tc = useTranslations("common");
   const errorMessage = useApiErrorMessage();
   const [rating, setRating] = useState(0);
+  const [aspects, setAspects] = useState({ packaging: 0, accuracy: 0, speed: 0 });
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -359,7 +405,7 @@ function ReviewDialog({
     }
     startTransition(async () => {
       try {
-        await reviewOrder(entry.order.id, rating, comment);
+        await reviewOrder(entry.order.id, rating, comment, aspects);
       } catch (failure) {
         setError(errorMessage(failure));
         return;
@@ -393,6 +439,22 @@ function ReviewDialog({
               }}
             />
           </div>
+          <fieldset className="space-y-3">
+            <legend className="label-sm text-dim">{t("reviewAspects")}</legend>
+            {(["packaging", "accuracy", "speed"] as const).map((aspect) => (
+              <div key={aspect} className="flex flex-wrap items-center justify-between gap-2">
+                <span id={`review-${aspect}-label`} className="text-sm">
+                  {t(`reviewAspect.${aspect}`)}
+                </span>
+                <StarInput
+                  name={`review-${aspect}`}
+                  value={aspects[aspect]}
+                  labelledBy={`review-${aspect}-label`}
+                  onChange={(value) => setAspects((current) => ({ ...current, [aspect]: value }))}
+                />
+              </div>
+            ))}
+          </fieldset>
           <FormField label={t("reviewComment")} hint={t("reviewCommentHint")}>
             {(field) => (
               <Textarea {...field} rows={3} maxLength={500} value={comment} onChange={(event) => setComment(event.target.value)} />

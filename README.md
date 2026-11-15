@@ -364,6 +364,17 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | Alerts | `GET`/`POST /api/alerts/searches`, `DELETE /api/alerts/searches/{id}` (saved catalogue searches, 10 each), `GET /api/alerts/sellers`, `GET`/`PUT`/`DELETE /api/alerts/sellers/{id}` (follow a seller) |
 | Sign-in extras | `POST /api/auth/login/2fa` (the code step), `POST /api/auth/google` (Google ID token), `GET /api/auth/providers`, `GET /api/users/me/2fa`, `POST /api/users/me/2fa/setup`, `…/enable`, `…/disable` |
 | Finance | `GET /api/admin/finance/reconciliation?from=&to=`, `GET /api/admin/finance/charges.csv`, `GET /api/admin/finance/revenue`, `GET /api/admin/finance/revenue.csv` |
+| Passwords | `POST /api/auth/password/forgot`, `POST /api/auth/password/reset`, `POST /api/users/me/password` |
+| Seller page | `GET /api/sellers/{id}/profile` (public) |
+| Product media | `PUT/DELETE /api/seller/products/{id}/video` (MP4/WebM, 20 MB), `PUT /api/seller/products/{id}/spin` |
+| Chat signals | `POST /api/orders/{id}/messages/read`, `POST /api/orders/{id}/messages/typing` |
+| Price hint | `GET /api/seller/auctions/price-hint?productId=` |
+| Statements | `GET /api/seller/statements?month=yyyy-MM`, `GET /api/seller/statements.csv?month=` |
+| Seller batch | `POST /api/seller/auctions/batch` (same times for many drafts; submit now, at `submitAt`, or not yet) |
+| Push | `GET /api/users/me/push/key`, `POST /api/users/me/push` (subscribe this browser), `POST /api/users/me/push/status`, `POST /api/users/me/push/unsubscribe` |
+| Vouchers | `GET/POST /api/admin/promo-codes`, `POST /api/admin/promo-codes/{code}/active`, `POST /api/payments/{id}/promo` |
+| Calendar | `GET /api/auctions/calendar?from=&to=` (Vietnam dates, at most 62 days) |
+| GHN changes | `POST /api/seller/orders/{id}/ghn/cancel` (before pickup), `POST /api/users/me/orders/{id}/address` (paid, not yet shipped) |
 | Seller import | `POST /api/seller/auctions/import` (multipart: `file` CSV and `images`; template at `/templates/nexbid-lots.csv`) |
 | Trust | `GET /api/admin/shill-suspects` (seller–bidder pairs whose bidding looks like shill bidding, with the signals), `POST /api/admin/shill-suspects/clear` (audited) |
 | Lot extras | `GET /api/auctions/{id}/similar` (open lots in the same category), `GET /api/auctions/cards?ids=…` (recently viewed), `POST /api/auctions/{id}/views` (one visit a day per viewer), `GET /api/seller/auctions/stats` (the seller's figures) |

@@ -253,6 +253,8 @@
     text-transform: uppercase;
     letter-spacing: -0.015em;
     line-height: 0.86;
+    /* Big uppercase type: a long unbroken name (a model number, a run of letters) breaks rather than widening the page. */
+    overflow-wrap: anywhere;
   }
 
   /*

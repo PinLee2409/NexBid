@@ -473,3 +473,73 @@ Phần khoá dòng, chống trùng và chạy nhiều máy đã chắc; sửa 6 
   (dấu phẩy hoặc chấm phẩy, có hoặc không BOM) kèm ảnh, tối đa 50 dòng; mỗi dòng thành sản phẩm đã đăng kèm ảnh và lô
   nháp trong transaction riêng, dòng lỗi được báo từng lỗi và bỏ qua. Giá viết 1500000 hoặc 1.500.000; giờ
   `yyyy-MM-dd HH:mm` theo giờ Việt Nam. File mẫu ở `/templates/nexbid-lots.csv`.
+
+## Đã làm (15/11/2026) — đợt 27: bảo mật, vận chuyển, thông báo đẩy, voucher, bộ nhiều món, lịch, biên nhận
+
+- **Rà bảo mật** đăng nhập hai bước, đăng nhập Google, nhập CSV và upload ảnh. Đã sửa:
+  - Mã hai bước sai được đếm theo tài khoản, không theo địa chỉ: 10 mã sai trong khung giới hạn đăng nhập là bước nhập
+    mã dừng ở mọi nơi (trước đây chia lượt đoán ra nhiều IP thì đoán tiếp được). Tắt hai bước cũng chịu giới hạn này.
+  - Đăng nhập Google lần đầu vào tài khoản mật khẩu có sẵn cùng email: mật khẩu cũ bị thay bằng mật khẩu ngẫu nhiên và mọi
+    phiên bị kết thúc, vì NexBid chưa từng kiểm người đăng ký email đó có sở hữu nó không (chống chiếm tài khoản trước).
+    Từ đó tài khoản đăng nhập bằng Google.
+  - Khoá Google: id khoá lạ chỉ làm tải lại danh sách khoá tối đa mỗi phút một lần.
+  - Nhập CSV: lỗi bất ngờ của một dòng (vd. xung đột DB) chỉ làm hỏng dòng đó.
+  - Không thấy vấn đề: so mã TOTP thời gian hằng, secret mã hoá AES-GCM, challenge ký bằng khoá riêng, X-Forwarded-For
+    chỉ tin từ proxy nội bộ, ảnh kiểm magic bytes và tên file do server sinh.
+  - Sửa thêm lỗi có sẵn ở form sản phẩm: ô kích thước kiện lọc chữ "D" thay vì lọc ký tự không phải số.
+- **Index tìm không dấu** (V43): GIN trigram trên `fold(name)`. Đo trên 200.000 sản phẩm: từ khoảng 180 ms xuống 12 ms. Từ
+  khoá dưới ba ký tự vẫn đọc gần hết bảng.
+- **Miễn phí vận chuyển** (V44, tuỳ chọn trong form đăng lô và cột `free_shipping` trong CSV): người mua chỉ trả tiền hàng
+  (nguồn phí `SELLER`). Nếu NexBid đặt GHN cho đơn như vậy, phí GHN trừ vào tiền chi cho người bán.
+- **Huỷ đơn GHN** (`POST /api/seller/orders/{id}/ghn/cancel`): khi GHN chưa lấy hàng, đơn quay lại PAID để đặt lại hoặc gửi
+  cách khác; người mua được báo. **Đổi địa chỉ** (`POST /api/users/me/orders/{id}/address`): đơn đã trả mà chưa gửi theo địa
+  chỉ hiện tại trong hồ sơ; người bán được báo. Phí ship đã thu giữ nguyên.
+- **Thông báo đẩy trên trình duyệt** (V45, `/api/users/me/push`): mọi thông báo rung chuông cũng được gửi tới các trình duyệt
+  đã bật, kể cả khi đóng tab. Tự hiện thực Web Push bằng JDK (mã hoá RFC 8291, VAPID RFC 8292); cặp khoá VAPID tự tạo lần
+  đầu và lưu trong DB. Chỉ gửi tới dịch vụ push đã biết (Google, Mozilla, Microsoft, Apple) để không thành SSRF. Đăng ký
+  mà dịch vụ báo 404/410 thì bị xoá. Tiêu đề tiếng Việt theo loại thông báo; nội dung là tên lô.
+- **Voucher phí ship** (V46, `/api/admin/promo-codes`, `POST /api/payments/{id}/promo`): admin tạo mã giảm số tiền cố định vào
+  phí ship (từ 1.000₫), số lượt, ngày hết hạn; mỗi người mua một lần; tính là đã
+  dùng khi thanh toán thành công. Người bán vẫn nhận đủ phí ship; sàn chịu phần giảm (cột "Voucher" trong doanh thu).
+  **Miễn phí sàn cho người bán mới**: `NEXBID_NEW_SELLER_FREE_SALES` (mặc định 3) giao dịch đầu không tính phí.
+- **Lô nhiều món** (V47): sản phẩm có danh sách món (tên, số lượng, tối đa 30 loại); trang lô hiện "Trong bộ này"; CSV có cột
+  `items` dạng `Tách x6|Đĩa x6`.
+- **Lịch đấu giá** (`GET /api/auctions/calendar?from=&to=`, trang /calendar): lô đã duyệt sắp mở, theo ngày giờ Việt Nam,
+  tối đa 62 ngày mỗi lần; nút theo dõi là đặt nhắc (thông báo "sắp mở" có sẵn).
+- **Lên lịch hàng loạt** (V48, `POST /api/seller/auctions/batch`): cùng giờ mở/đóng cho nhiều lô nháp, gửi duyệt ngay, hẹn giờ
+  (bộ lập lịch phiên gửi khi tới giờ), hoặc chưa gửi. Mỗi lô xử lý riêng, lô lỗi được báo.
+- **Biểu đồ**: phí sàn theo tháng ở trang Tài chính, 10 lô được xem nhiều nhất ở trang Thống kê người bán (một dãy cột, có
+  tooltip khi rê chuột hoặc focus; bảng số vẫn ở dưới).
+- **Biên nhận** (/receipts/{orderId}, `?as=seller` cho bảng kê người bán): trang in được, "Lưu dưới dạng PDF" trong hộp thoại
+  in tạo file PDF; link "Biên nhận" ở mỗi đơn đã thanh toán. Không thêm thư viện PDF.
+
+## Đã làm (15/11/2026) — đợt 28: tài khoản, người bán, media, chat, PWA, bảng kê
+
+- **Quên mật khẩu** (`POST /api/auth/password/forgot`, `POST /api/auth/password/reset`, trang /forgot-password và
+  /reset-password; V49): luôn trả lời giống nhau để không lộ email nào có tài khoản; tính vào giới hạn đăng nhập theo email
+  và địa chỉ, tối đa 3 link còn hiệu lực mỗi tài khoản. Token 32 byte ngẫu nhiên, chỉ lưu SHA-256, dùng được 30 phút và
+  một lần. Đặt lại xong: mọi link khác mất hiệu lực, mọi phiên kết thúc, email "mật khẩu đã đổi" được gửi. Link nằm
+  trong thân email của hàng đợi gửi mail (bảng `email_outbox`) cho tới khi gửi xong; trang admin không hiện thân email.
+- **Đổi mật khẩu** (`POST /api/users/me/password`, mục "Mật khẩu" trong Hồ sơ): cần mật khẩu hiện tại (sai thì tính vào
+  giới hạn đăng nhập); thiết bị này nhận cookie refresh mới, mọi thiết bị khác bị đăng xuất. Tài khoản tạo bằng Google
+  dùng link đặt lại để có mật khẩu.
+- **Mã QR** cho đăng nhập hai bước: vẽ ngay trong trình duyệt bằng thư viện `qrcode` 1.5.4, secret không đi đâu.
+- **Lô trên điện thoại**: thẻ lô cho tên dài xuống dòng và hàng giá/đồng hồ xuống dòng; lưới lô dùng `minmax(0,1fr)`.
+  Test E2E kiểm trang bằng một lô có từ dài không ngắt.
+- **Đánh giá chi tiết** (V50): sao tuỳ chọn cho đóng gói, đúng mô tả, tốc độ gửi; điểm trung bình từng khía cạnh.
+  **Trang người bán** (`GET /api/sellers/{id}/profile`, trang /sellers/{id}, link từ tên người bán trên trang lô): tên,
+  xác minh, tham gia từ, người theo dõi, lượt bán, điểm, lô đang bán, 12 lô bán gần nhất, đánh giá mới nhất, nút theo dõi.
+- **Video và xem 360°** (V51, `PUT/DELETE /api/seller/products/{id}/video`, `PUT /api/seller/products/{id}/spin`): một video
+  MP4/WebM tối đa 20 MB mỗi sản phẩm, nhận dạng bằng byte đầu (không nhận AVIF/HEIF giả làm MP4), tên file do server sinh.
+  Bật "ảnh là một vòng xoay 360°" thì trang lô hiện trình xem kéo để xoay (chuột, ngón tay, phím mũi tên).
+- **Chat**: tin nhắn đã realtime từ trước; thêm "đang gõ…" (`POST /api/orders/{id}/messages/typing`, tối đa 2 giây một lần,
+  không lưu gì) và "đã xem" (đánh dấu khi mở hoặc khi tin tới lúc đang mở, `POST /api/orders/{id}/messages/read`). Cả hai
+  đi qua hàng đợi WebSocket riêng của người nhận; client vẫn không được gửi gì qua socket.
+- **Gợi ý giá khởi điểm** (`GET /api/seller/auctions/price-hint?productId=`): lô đã hoàn tất trong 12 tháng, cùng danh mục,
+  tên gần giống (độ giống trigram ≥ 0,3 trên tên không dấu) nếu có ít nhất 3, không thì cả danh mục. Gợi ý 60% trung vị,
+  tròn xuống 10.000₫.
+- **PWA**: manifest (tên, icon 192/512 và icon maskable, phím tắt), service worker đăng ký ở bản production, trang offline
+  khi mất mạng; không cache gì khác nên giá luôn mới. E2E chặn service worker.
+- **Bảng kê tháng** (`GET /api/seller/statements?month=`, `/statements.csv`, trang /seller/statements): giao dịch hoàn tất
+  trong tháng (giờ Việt Nam) với giá bán, phí sàn, phí ship, số được nhận, đã chi chưa, và các lần chuyển khoản; CSV
+  hoặc in PDF. Không phải hoá đơn thuế.

@@ -95,6 +95,13 @@ export const ERROR_CODES = [
   "GOOGLE_SIGN_IN_OFF",
   "GOOGLE_SIGN_IN_FAILED",
   "IMPORT_INVALID",
+  "PUSH_SUBSCRIPTION_INVALID",
+  "PROMO_INVALID",
+  "PROMO_EXISTS",
+  "PASSWORD_RESET_INVALID",
+  "PASSWORD_INCORRECT",
+  "PASSWORD_UNCHANGED",
+  "VIDEO_INVALID",
   "QUESTION_NOT_FOUND",
   "QUESTION_NOT_ALLOWED",
   "QUESTION_LIMIT",
@@ -200,6 +207,10 @@ export interface SellerReview {
   /** 1–5 stars. */
   rating: number;
   comment: string | null;
+  /** EN: Optional stars per aspect. / VI: Số sao tuỳ chọn cho từng khía cạnh. */
+  packaging?: number | null;
+  accuracy?: number | null;
+  speed?: number | null;
   reviewer: string;
   lotName: string | null;
   createdAt: IsoDateString;
@@ -211,6 +222,8 @@ export interface SellerReputation {
   average: number | null;
   reviewCount: number;
   sales: number;
+  /** EN: Average stars per aspect; null where nobody rated it. / VI: Sao trung bình mỗi khía cạnh; null nếu chưa ai chấm. */
+  aspects: { packaging: number | null; accuracy: number | null; speed: number | null };
   reviews: SellerReview[];
 }
 
@@ -262,6 +275,12 @@ export interface Parcel {
   heightCm: number;
 }
 
+/** EN: One piece of a set sold as one lot. / VI: Một món trong một bộ bán chung một lô. */
+export interface BundleItem {
+  name: string;
+  quantity: number;
+}
+
 export interface Product {
   id: Id;
   sellerId: Id;
@@ -272,6 +291,12 @@ export interface Product {
   status: ProductStatus;
   /** EN: Packed size for shipping quotes; null when not given. / VI: Kích thước kiện để báo phí ship; null khi chưa khai. */
   parcel?: Parcel | null;
+  /** EN: The pieces of a set; empty for a single item. / VI: Các món của một bộ; rỗng với món đơn lẻ. */
+  items?: BundleItem[];
+  /** EN: A short video, or null. / VI: Một video ngắn, hoặc null. */
+  videoUrl?: string | null;
+  /** EN: The photos are frames of a 360° turn. / VI: Các ảnh là khung hình của một vòng xoay 360°. */
+  spinView?: boolean;
   images: ProductImage[];
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
@@ -339,6 +364,10 @@ export interface Auction {
   /** EN: Offered until the first bid. / VI: Có hiệu lực tới lượt trả giá đầu tiên. */
   buyNowPrice: number | null;
   boughtNow: boolean;
+  /** EN: The seller pays the parcel. / VI: Người bán trả tiền gửi kiện. */
+  freeShipping: boolean;
+  /** EN: A draft timed to go for approval. / VI: Bản nháp hẹn giờ gửi duyệt. */
+  submitAt?: IsoDateString | null;
   /** EN: Set once the lot closed below its reserve. / VI: Có giá trị khi lô đã đóng dưới giá sàn. */
   reserveDecision: ReserveDecision | null;
   reserveDecisionUntil: IsoDateString | null;
@@ -543,7 +572,9 @@ export type NotificationType =
   | "LOT_REMOVED"
   | "REPORT_RESOLVED"
   | "SELLER_VERIFIED"
-  | "NEW_MESSAGE";
+  | "NEW_MESSAGE"
+  | "SHIPMENT_CANCELLED"
+  | "ORDER_ADDRESS_CHANGED";
 
 export interface AppNotification {
   id: Id;
@@ -576,9 +607,11 @@ export interface Payment {
   updatedAt: IsoDateString;
   /** EN: Null until quoted at checkout. / VI: Null tới khi báo phí lúc thanh toán. */
   shippingFee: number | null;
-  shippingSource: "GHN" | "FLAT" | null;
-  /** EN: Goods plus shipping: what VNPay charges. / VI: Tiền hàng cộng phí ship: số VNPay thu. */
+  shippingSource: "GHN" | "FLAT" | "SELLER" | null;
+  /** EN: Goods plus shipping less any voucher: what VNPay charges. / VI: Tiền hàng cộng phí ship trừ voucher: số VNPay thu. */
   total: number;
+  shippingDiscount?: number;
+  promoCode?: string | null;
 }
 
 /** Order status (spec §5.3). */

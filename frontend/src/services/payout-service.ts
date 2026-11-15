@@ -65,6 +65,40 @@ function toPayout(payout: Payout): Payout {
   return { ...payout, amount: Number(payout.amount) };
 }
 
+/** EN: One month's statement for a seller. / VI: Bảng kê một tháng của người bán. */
+export interface Statement {
+  month: string;
+  seller: string;
+  lines: { at: string; orderId: string; lot: string; gross: number; fee: number; shipping: number; net: number; paidOut: boolean }[];
+  gross: number;
+  fees: number;
+  shipping: number;
+  net: number;
+  transfers: { at: string; amount: number; reference: string }[];
+  transferred: number;
+}
+
+/** `GET /api/seller/statements?month=yyyy-MM` */
+export async function getStatement(month: string): Promise<Statement> {
+  const data = await api<Statement>("/api/seller/statements", { query: { month } });
+  return {
+    ...data,
+    lines: data.lines.map((line) => ({
+      ...line,
+      gross: Number(line.gross),
+      fee: Number(line.fee),
+      shipping: Number(line.shipping),
+      net: Number(line.net),
+    })),
+    gross: Number(data.gross),
+    fees: Number(data.fees),
+    shipping: Number(data.shipping),
+    net: Number(data.net),
+    transfers: data.transfers.map((transfer) => ({ ...transfer, amount: Number(transfer.amount) })),
+    transferred: Number(data.transferred),
+  };
+}
+
 /** `GET /api/seller/earnings` */
 export async function getEarnings(): Promise<SellerEarnings> {
   const data = await api<Omit<SellerEarnings, "earnings"> & { earnings: ApiEarning[] }>("/api/seller/earnings");

@@ -68,6 +68,27 @@ public class SellerProductController {
         return ApiResponse.of(products.update(seller.id(), id, request), "Product updated");
     }
 
+    /** EN: One short video (MP4 or WebM, up to 20 MB), replacing any earlier one. / VI: Một video ngắn (MP4 hoặc WebM, tối đa 20 MB), thay video cũ nếu có. */
+    @PutMapping(value = "/{id}/video", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<ProductView> video(@AuthenticationPrincipal CurrentUser seller, @PathVariable UUID id,
+            @org.springframework.web.bind.annotation.RequestPart("file") org.springframework.web.multipart.MultipartFile file) {
+        return ApiResponse.of(products.setVideo(seller.id(), id, file), "Video saved");
+    }
+
+    @DeleteMapping("/{id}/video")
+    public ApiResponse<ProductView> removeVideo(@AuthenticationPrincipal CurrentUser seller, @PathVariable UUID id) {
+        return ApiResponse.of(products.removeVideo(seller.id(), id), "Video removed");
+    }
+
+    public record SpinRequest(@jakarta.validation.constraints.NotNull Boolean enabled) {
+    }
+
+    @PutMapping("/{id}/spin")
+    public ApiResponse<ProductView> spin(@AuthenticationPrincipal CurrentUser seller, @PathVariable UUID id,
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody SpinRequest request) {
+        return ApiResponse.of(products.setSpinView(seller.id(), id, request.enabled()));
+    }
+
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(
             @AuthenticationPrincipal CurrentUser seller, @PathVariable UUID id) {

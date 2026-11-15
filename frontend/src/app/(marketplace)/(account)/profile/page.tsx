@@ -7,6 +7,8 @@ import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { DeliveryAndEmailSettings } from "@/components/account/delivery-and-email-settings";
+import { ChangePassword } from "@/components/account/change-password";
+import { PushSettings } from "@/components/account/push-settings";
 import { TwoFactorSettings } from "@/components/account/two-factor-settings";
 import { FormField } from "@/components/common/form-field";
 import { StatTileSkeleton } from "@/components/common/loading-skeleton";
@@ -183,6 +185,10 @@ export default function ProfilePage() {
       </section>
 
       <DeliveryAndEmailSettings />
+
+      <PushSettings />
+
+      <ChangePassword />
 
       <TwoFactorSettings />
     </>

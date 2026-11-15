@@ -56,6 +56,16 @@ export async function listOrders(): Promise<OrderEntry[]> {
   return orders.map(toEntry);
 }
 
+/** `GET /api/users/me/orders/{id}` */
+export async function getOrder(orderId: string): Promise<OrderEntry> {
+  return toEntry(await api<ApiOrder>(`/api/users/me/orders/${orderId}`));
+}
+
+/** `POST /api/users/me/orders/{id}/address` — a paid, unshipped order goes to the address now in the profile. */
+export async function shipToCurrentAddress(orderId: string): Promise<OrderEntry> {
+  return toEntry(await api<ApiOrder>(`/api/users/me/orders/${orderId}/address`, { method: "POST" }));
+}
+
 /** `POST /api/users/me/orders/{id}/received` — the buyer confirms the goods arrived. */
 export async function confirmReceipt(orderId: string): Promise<OrderEntry> {
   return toEntry(await api<ApiOrder>(`/api/users/me/orders/${orderId}/received`, { method: "POST" }));
@@ -78,11 +88,22 @@ export async function openDispute(orderId: string, reason: DisputeReason, detail
  * EN: `POST /api/users/me/orders/{id}/review` — once the goods arrived, once per order.
  * VI: `POST /api/users/me/orders/{id}/review` — khi đã nhận hàng, mỗi đơn một lần.
  */
-export async function reviewOrder(orderId: string, rating: number, comment: string): Promise<SellerReview> {
+export async function reviewOrder(
+  orderId: string,
+  rating: number,
+  comment: string,
+  aspects: { packaging?: number; accuracy?: number; speed?: number } = {},
+): Promise<SellerReview> {
   return toReview(
     await api<ApiReview>(`/api/users/me/orders/${orderId}/review`, {
       method: "POST",
-      body: { rating, comment: comment.trim() || undefined },
+      body: {
+        rating,
+        comment: comment.trim() || undefined,
+        packaging: aspects.packaging || undefined,
+        accuracy: aspects.accuracy || undefined,
+        speed: aspects.speed || undefined,
+      },
     }),
   );
 }

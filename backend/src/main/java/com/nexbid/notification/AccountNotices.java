@@ -234,6 +234,21 @@ class AccountNotices {
                         .withTracking(event.carrier(), event.trackingNumber()));
     }
 
+    @EventListener
+    void onShipmentCancelled(OrderEvents.ShipmentCancelled event) {
+        notifications.notify(event.buyerId(), NotificationType.SHIPMENT_CANCELLED, "Shipment cancelled",
+                clip(auctions.lotTitleOf(event.auctionId()) + ": the seller cancelled GHN order "
+                        + event.trackingNumber() + "; your order waits to be shipped again."),
+                event.auctionId(), java.time.Instant.now());
+    }
+
+    @EventListener
+    void onAddressChanged(OrderEvents.AddressChanged event) {
+        notifications.notify(event.sellerId(), NotificationType.ORDER_ADDRESS_CHANGED, "Delivery address changed",
+                clip(auctions.lotTitleOf(event.auctionId()) + ": the buyer changed where to deliver. Check it before shipping."),
+                event.auctionId(), java.time.Instant.now());
+    }
+
     /** EN: The seller hears each question while the lot is open. / VI: Người bán được báo mỗi câu hỏi khi lô còn mở. */
     @EventListener
     void onQuestion(QuestionEvents.Asked event) {

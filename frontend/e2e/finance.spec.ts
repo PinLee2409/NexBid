@@ -40,5 +40,5 @@ test("an admin opens reconciliation and revenue", async ({ page }) => {
   expect((await download).suggestedFilename()).toMatch(/^nexbid-vnpay-.*\.csv$/);
 
   await page.getByRole("tab", { name: "Revenue" }).click();
-  await expect(page.getByRole("heading", { name: "By month" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "By month", exact: true })).toBeVisible();
 });

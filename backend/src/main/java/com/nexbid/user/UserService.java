@@ -103,6 +103,14 @@ public class UserService {
     }
 
     /**
+     * EN: Replaces the password hash; the caller hashes. / VI: Thay hash mật khẩu; bên gọi tự hash.
+     */
+    @Transactional
+    public void replacePassword(java.util.UUID id, String passwordHash) {
+        users.findById(id).ifPresent(user -> user.setPassword(passwordHash));
+    }
+
+    /**
      * EN: Renames an account. The id comes from the token, never from the request body.
      * VI: Đổi tên tài khoản. Id lấy từ token, không bao giờ lấy từ body của request.
      */

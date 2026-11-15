@@ -43,6 +43,12 @@ export interface MessageThread {
 
 const unreadStore = createStore<number>(0);
 const arrivals = new Set<(message: OrderMessage) => void>();
+const signals = new Set<(signal: ConversationSignal) => void>();
+
+/** EN: Not a message: the other side read up to a time, or is typing. / VI: Không phải tin nhắn: bên kia đã đọc tới một lúc, hoặc đang gõ. */
+export type ConversationSignal =
+  | { kind: "read"; orderId: string; readAt: IsoDateString }
+  | { kind: "typing"; orderId: string };
 let started = false;
 let leave: Unsubscribe | null = null;
 
@@ -53,6 +59,11 @@ function start(): void {
     if (user) {
       void refreshUnreadMessages();
       leave ??= subscribeToMessages((raw) => {
+        const kind = (raw as { kind?: string }).kind;
+        if (kind === "read" || kind === "typing") {
+          for (const listener of signals) listener(raw as ConversationSignal);
+          return;
+        }
         const message = raw as OrderMessage;
         for (const listener of arrivals) listener(message);
         // EN: The server knows best: an open thread may already have marked it read. / VI: Server biết chính xác nhất: cuộc trò chuyện đang mở có thể đã đánh dấu đã đọc.
@@ -86,6 +97,29 @@ export function onMessageArrival(listener: (message: OrderMessage) => void): Uns
   start();
   arrivals.add(listener);
   return () => arrivals.delete(listener);
+}
+
+/** EN: Read receipts and "typing…" from the other side. / VI: Báo đã xem và "đang gõ…" từ bên kia. */
+export function onConversationSignal(listener: (signal: ConversationSignal) => void): Unsubscribe {
+  start();
+  signals.add(listener);
+  return () => signals.delete(listener);
+}
+
+/** `POST /api/orders/{id}/messages/read` — the open thread saw what just arrived. */
+export async function markThreadSeen(orderId: string): Promise<void> {
+  await api(`/api/orders/${orderId}/messages/read`, { method: "POST" });
+  void refreshUnreadMessages();
+}
+
+let lastTyping = 0;
+
+/** `POST /api/orders/{id}/messages/typing` — at most every three seconds. */
+export function announceTyping(orderId: string): void {
+  const now = Date.now();
+  if (now - lastTyping < 3000) return;
+  lastTyping = now;
+  void api(`/api/orders/${orderId}/messages/typing`, { method: "POST" }).catch(() => undefined);
 }
 
 /** `GET /api/messages` — the caller's conversations, latest first. */

@@ -106,6 +106,11 @@ public class AuditLogService {
     }
 
     @EventListener
+    void onShipmentCancelled(OrderEvents.ShipmentCancelled event) {
+        record(event.actorId(), AuditAction.ORDER_SHIPMENT_CANCELLED, "Order", event.orderId(), "PROCESSING", "PAID");
+    }
+
+    @EventListener
     void onShipped(OrderEvents.Shipped event) {
         record(event.actorId(), AuditAction.ORDER_SHIPPED, "Order", event.orderId(), "PAID", "PROCESSING");
     }

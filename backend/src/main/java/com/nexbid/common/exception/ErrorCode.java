@@ -142,6 +142,13 @@ public enum ErrorCode {
     // EN: A CSV of lots that cannot be read at all (rows with problems are reported one by one instead).
     // VI: File CSV lô không đọc được (dòng có lỗi thì được báo từng dòng).
     IMPORT_INVALID(HttpStatus.BAD_REQUEST),
+    PUSH_SUBSCRIPTION_INVALID(HttpStatus.BAD_REQUEST),
+    PROMO_INVALID(HttpStatus.UNPROCESSABLE_ENTITY),
+    PROMO_EXISTS(HttpStatus.CONFLICT),
+    PASSWORD_RESET_INVALID(HttpStatus.UNPROCESSABLE_ENTITY),
+    PASSWORD_INCORRECT(HttpStatus.UNPROCESSABLE_ENTITY),
+    PASSWORD_UNCHANGED(HttpStatus.UNPROCESSABLE_ENTITY),
+    VIDEO_INVALID(HttpStatus.BAD_REQUEST),
     // EN: Questions on a lot: none such, closed lot or own lot, too many waiting, or already answered.
     // VI: Hỏi đáp trên lô: không có câu hỏi, lô đã đóng hoặc lô của chính mình, quá nhiều câu đang chờ, hoặc đã trả lời.
     QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND),

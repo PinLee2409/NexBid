@@ -91,6 +91,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auctions/*/auto-bid").authenticated()
                         // EN: A seller's reviews are shown on public lot pages. / VI: Đánh giá người bán hiện trên trang lô công khai.
                         .requestMatchers(HttpMethod.GET, "/api/sellers/*/reviews").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/sellers/*/profile").permitAll()
                         // EN: VNPay's server and the buyer returning from VNPay carry no token; the signature is the check.
                         // VI: Server của VNPay và người mua quay về từ VNPay không mang token; chữ ký mới là thứ được kiểm.
                         .requestMatchers(HttpMethod.GET, "/api/payments/vnpay/ipn", "/api/payments/vnpay/return")

@@ -46,6 +46,12 @@ public class ReviewService {
     private final UserService users;
     private final AuctionService auctions;
     private final ApplicationEventPublisher events;
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setJdbc(org.springframework.jdbc.core.JdbcTemplate jdbc) {
+        this.jdbc = jdbc;
+    }
 
     ReviewService(
             OrderRepository orders,
@@ -66,6 +72,12 @@ public class ReviewService {
      */
     @Transactional
     public ReviewView review(UUID buyerId, UUID orderId, int rating, String comment) {
+        return review(buyerId, orderId, rating, comment, null, null, null);
+    }
+
+    @Transactional
+    public ReviewView review(UUID buyerId, UUID orderId, int rating, String comment, Integer packaging,
+            Integer accuracy, Integer speed) {
         Order order = orders.findLockedById(orderId)
                 .filter(found -> found.getBuyerId().equals(buyerId))
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.ORDER_NOT_FOUND, "No order with id " + orderId));
@@ -77,7 +89,9 @@ public class ReviewService {
         }
 
         String text = comment == null || comment.isBlank() ? null : comment.trim();
-        Review saved = reviews.saveAndFlush(new Review(order, rating, text, Instant.now()));
+        Review review = new Review(order, rating, text, Instant.now());
+        review.rateAspects(packaging, accuracy, speed);
+        Review saved = reviews.saveAndFlush(review);
         events.publishEvent(new OrderEvents.Reviewed(saved.getId(), orderId, order.getAuctionId(),
                 order.getSellerId(), buyerId, rating, saved.getCreatedAt()));
         return views(List.of(saved)).getFirst();
@@ -96,7 +110,18 @@ public class ReviewService {
         BigDecimal average = score.getAverage() == null
                 ? null
                 : BigDecimal.valueOf(score.getAverage()).setScale(1, RoundingMode.HALF_UP);
-        return new SellerReviewsView(average, score.getCount(), sales, PageView.of(found, review -> byId.get(review.getId())));
+        return new SellerReviewsView(average, score.getCount(), sales, aspectsOf(sellerId),
+                PageView.of(found, review -> byId.get(review.getId())));
+    }
+
+    /** EN: Average stars per aspect, one decimal; null for an aspect nobody rated. / VI: Số sao trung bình mỗi khía cạnh, một chữ số thập phân; null nếu chưa ai chấm. */
+    SellerReviewsView.Aspects aspectsOf(UUID sellerId) {
+        return jdbc.queryForObject("""
+                SELECT ROUND(AVG(packaging)::numeric, 1) AS packaging, ROUND(AVG(accuracy)::numeric, 1) AS accuracy,
+                       ROUND(AVG(speed)::numeric, 1) AS speed
+                FROM seller_reviews WHERE seller_id = ?
+                """, (rs, n) -> new SellerReviewsView.Aspects(rs.getBigDecimal("packaging"),
+                rs.getBigDecimal("accuracy"), rs.getBigDecimal("speed")), sellerId);
     }
 
     /** EN: The reviews behind a list of orders, for order pages. / VI: Các đánh giá của một danh sách đơn, cho trang đơn hàng. */
@@ -121,6 +146,9 @@ public class ReviewService {
                 review.getAuctionId(),
                 review.getRating(),
                 review.getComment(),
+                review.getPackaging(),
+                review.getAccuracy(),
+                review.getSpeed(),
                 UserService.handleOf(names.get(review.getBuyerId())),
                 lots.containsKey(review.getAuctionId()) ? lots.get(review.getAuctionId()).product().name() : null,
                 review.getCreatedAt())).toList();

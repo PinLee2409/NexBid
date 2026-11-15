@@ -63,6 +63,16 @@ public class PaymentController {
         return ApiResponse.of(payments.quoteShipping(me.id(), id));
     }
 
+    public record PromoRequest(@jakarta.validation.constraints.Size(max = 32) String code) {
+    }
+
+    /** EN: Applies (or with a blank code removes) a shipping voucher. / VI: Áp (hoặc gỡ khi để trống) voucher phí ship. */
+    @PostMapping("/api/payments/{id}/promo")
+    public ApiResponse<ShippingQuote> promo(@AuthenticationPrincipal CurrentUser me, @PathVariable UUID id,
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody PromoRequest request) {
+        return ApiResponse.of(payments.applyPromo(me.id(), id, request.code()));
+    }
+
     public record CheckoutRequest(String locale) {
     }
 

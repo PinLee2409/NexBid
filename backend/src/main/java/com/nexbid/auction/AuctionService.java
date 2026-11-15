@@ -369,6 +369,11 @@ public class AuctionService {
         return new UnpaidLot(auction.getId(), auction.getSellerId(), auction.getProductId(), auction.getWinnerId());
     }
 
+    /** EN: Whether the seller pays the parcel. / VI: Người bán có trả tiền gửi kiện không. */
+    public boolean freeShipping(UUID auctionId) {
+        return auctions.findById(auctionId).map(Auction::isFreeShipping).orElse(false);
+    }
+
     public UUID sellerOf(UUID auctionId) {
         return auctions.findById(auctionId)
                 .map(Auction::getSellerId)
@@ -406,6 +411,7 @@ public class AuctionService {
                 request.extensionSeconds() == null ? 120 : request.extensionSeconds());
         auction.setReservePrice(request.reservePrice());
         auction.setBuyNowPrice(request.buyNowPrice());
+        auction.setFreeShipping(Boolean.TRUE.equals(request.freeShipping()));
 
         try {
             // EN: Flushed here so the unique index answers inside this try, and the lot number comes back.
@@ -460,6 +466,7 @@ public class AuctionService {
         auction.setStartingPrice(request.startingPrice());
         auction.setReservePrice(request.reservePrice());
         auction.setBuyNowPrice(request.buyNowPrice());
+        auction.setFreeShipping(Boolean.TRUE.equals(request.freeShipping()));
         auction.setMinimumIncrement(request.minimumIncrement());
         auction.setStartTime(request.startTime());
         auction.setEndTime(request.endTime());
@@ -597,6 +604,21 @@ public class AuctionService {
      */
     public List<UUID> openingBetween(Instant from, Instant to) {
         return auctions.findIdsOpeningBetween(from, to);
+    }
+
+    /**
+     * EN: The auction calendar: approved lots opening from {@code from} (inclusive) to {@code to}, soonest first, at most
+     *     300. Any span longer than 62 days is cut to 62.
+     * VI: Lịch đấu giá: các lô đã duyệt mở từ {@code from} (tính cả) tới {@code to}, sớm nhất trước, tối đa 300. Khoảng
+     *     dài hơn 62 ngày bị cắt còn 62.
+     */
+    public List<AuctionSummaryView> calendar(Instant from, Instant to) {
+        Instant until = to.isAfter(from.plus(java.time.Duration.ofDays(62))) ? from.plus(java.time.Duration.ofDays(62)) : to;
+        if (!until.isAfter(from)) {
+            return List.of();
+        }
+        return publicSummariesOf(auctions.findScheduledOpeningIn(from, until,
+                org.springframework.data.domain.PageRequest.of(0, 300)));
     }
 
     /** EN: Running lots closing in (from, to]. / VI: Các lô đang chạy sẽ đóng trong khoảng (from, to]. */
@@ -840,7 +862,9 @@ public class AuctionService {
 
         return new AuctionDetailPublicView(
                 toPublicView(auction),
-                new AuctionDetailPublicView.Product(card.productId(), card.name(), card.description(), card.condition()),
+                new AuctionDetailPublicView.Product(card.productId(), card.name(), card.description(), card.condition(),
+                        card.items() == null ? List.of() : card.items(), card.videoUrl(),
+                        Boolean.TRUE.equals(card.spinView())),
                 card.category(),
                 card.images(),
                 new AuctionDetailPublicView.Seller(auction.getSellerId(), card.sellerName(),
@@ -865,6 +889,24 @@ public class AuctionService {
             case PRICE_DESC -> Sort.by(Sort.Order.desc("currentPrice"), Sort.Order.asc("id"));
             case MOST_BIDS -> Sort.by(Sort.Order.desc("bidCount"), Sort.Order.asc("id"));
         };
+    }
+
+    /**
+     * EN: New opening and closing times for a draft the caller owns.
+     * VI: Giờ mở và giờ đóng mới cho một bản nháp của người gọi.
+     */
+    @Transactional
+    public AuctionView rescheduleDraft(UUID sellerId, UUID auctionId, Instant startTime, Instant endTime) {
+        Auction auction = auctions.findByIdAndSellerId(auctionId, sellerId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+        if (auction.getStatus() != AuctionStatus.DRAFT) {
+            throw new BusinessException(ErrorCode.AUCTION_NOT_EDITABLE, "Only a draft can be rescheduled");
+        }
+        requireSaneSchedule(startTime, endTime);
+        auction.setStartTime(startTime);
+        auction.setEndTime(endTime);
+        return toView(auctions.save(auction));
     }
 
     /**
@@ -1144,6 +1186,8 @@ public class AuctionService {
                 auction.reserveMet(),
                 auction.getBuyNowPrice(),
                 auction.isBoughtNow(),
+                auction.isFreeShipping(),
+                auction.getSubmitAt(),
                 auction.getReserveDecision(),
                 auction.getReserveDecisionUntil(),
                 auction.getCreatedAt(),

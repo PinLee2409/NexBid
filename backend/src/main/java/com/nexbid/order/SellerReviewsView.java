@@ -10,5 +10,10 @@ import com.nexbid.auction.PageView;
  * VI: Uy tín của người bán: số sao trung bình (một chữ số thập phân, null khi chưa có đánh giá), số đánh giá và số lượt
  *     bán, kèm một trang đánh giá mới nhất trước. Lượt bán tính mọi đơn đã trả tiền, có đánh giá hay không.
  */
-public record SellerReviewsView(BigDecimal average, long reviewCount, long sales, PageView<ReviewView> reviews) {
+public record SellerReviewsView(BigDecimal average, long reviewCount, long sales, Aspects aspects,
+        PageView<ReviewView> reviews) {
+
+    /** EN: Average stars per aspect; null where nobody rated it. / VI: Sao trung bình mỗi khía cạnh; null nếu chưa ai chấm. */
+    public record Aspects(BigDecimal packaging, BigDecimal accuracy, BigDecimal speed) {
+    }
 }

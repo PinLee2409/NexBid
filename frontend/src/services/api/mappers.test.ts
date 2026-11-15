@@ -134,10 +134,20 @@ describe("a seller's reputation from the API", () => {
   const page = { items: [review], page: 1, pageSize: 3, totalItems: 1, totalPages: 1 };
 
   it("reads the average as a number and fills the blanks of a review", () => {
-    expect(toReputation({ average: decimal("4.5"), reviewCount: 2, sales: 3, reviews: page })).toEqual({
+    expect(
+      toReputation({
+        average: decimal("4.5"),
+        reviewCount: 2,
+        sales: 3,
+        aspects: { packaging: "4.0", accuracy: null },
+        reviews: page,
+      }),
+    ).toEqual({
       average: 4.5,
       reviewCount: 2,
       sales: 3,
+      // EN: Aspects arrive as decimals or not at all. / VI: Các khía cạnh tới dạng số thập phân hoặc không có.
+      aspects: { packaging: 4, accuracy: null, speed: null },
       reviews: [{ ...review, comment: null, lotName: null }],
     });
   });

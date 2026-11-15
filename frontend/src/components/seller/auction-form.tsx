@@ -25,6 +25,7 @@ import { useApiErrorMessage } from "@/hooks/use-labels";
 import { createAuction } from "@/services/seller-service";
 import type { ProductWithMeta } from "@/services/seller-service";
 import { useMoney } from "@/hooks/use-money";
+import { PriceHint } from "@/components/seller/price-hint";
 
 /** EN: A lot to list again, its settings copied; the dates start fresh. / VI: Lô đăng lại, sao chép cài đặt; ngày giờ đặt mới. */
 export interface RelistFrom {
@@ -33,6 +34,7 @@ export interface RelistFrom {
   minimumIncrement: number;
   reservePrice: number | null;
   buyNowPrice: number | null;
+  freeShipping?: boolean;
   antiSniping: { enabled: boolean; windowSeconds: number; extensionSeconds: number };
 }
 
@@ -95,6 +97,7 @@ export function AuctionForm({ products, initialProductId, relist }: AuctionFormP
   const [endDate, setEndDate] = useState(schedule.endDate);
   const [endTime, setEndTime] = useState(schedule.endTime);
   const [antiSniping, setAntiSniping] = useState(relist?.antiSniping.enabled ?? true);
+  const [freeShipping, setFreeShipping] = useState(relist?.freeShipping ?? false);
   const [snipeWindow, setSnipeWindow] = useState(
     String(relist?.antiSniping.windowSeconds ?? AUCTION_CONFIG.defaultAntiSnipingWindowSeconds),
   );
@@ -156,6 +159,7 @@ export function AuctionForm({ products, initialProductId, relist }: AuctionFormP
             extensionSeconds: Number(extension),
             reservePrice: reservePrice ? Number(reservePrice) : undefined,
             buyNowPrice: buyNowPrice ? Number(buyNowPrice) : undefined,
+            freeShipping,
           },
           submitForApproval,
         );
@@ -262,6 +266,13 @@ export function AuctionForm({ products, initialProductId, relist }: AuctionFormP
                 />
               )}
             </FormField>
+            <PriceHint
+              productId={productId}
+              onUse={(price) => {
+                setStartingPrice(String(price));
+                setErrors((c) => ({ ...c, startingPrice: undefined }));
+              }}
+            />
 
             <FormField
               label={t("incrementLabel")}
@@ -305,6 +316,16 @@ export function AuctionForm({ products, initialProductId, relist }: AuctionFormP
                 />
               )}
             </FormField>
+          </div>
+
+          <div className="border-line mt-6 flex items-start justify-between gap-6 border-t pt-6">
+            <div>
+              <Label htmlFor="free-shipping" className="label">
+                {t("freeShippingLabel")}
+              </Label>
+              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">{t("freeShippingHint")}</p>
+            </div>
+            <Switch id="free-shipping" checked={freeShipping} onCheckedChange={setFreeShipping} />
           </div>
         </FormSection>
 
@@ -452,6 +473,10 @@ export function AuctionForm({ products, initialProductId, relist }: AuctionFormP
               <SummaryRow
                 label={t("summaryBuyNow")}
                 value={buyNowPrice ? money.currency(Number(buyNowPrice)) : t("summaryNone")}
+              />
+              <SummaryRow
+                label={t("summaryShipping")}
+                value={freeShipping ? t("summaryShippingFree") : t("summaryShippingBuyer")}
               />
               {startIso ? (
                 <SummaryRow

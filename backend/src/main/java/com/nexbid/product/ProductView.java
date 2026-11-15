@@ -17,6 +17,12 @@ public record ProductView(
         ProductStatus status,
         /** EN: Null when the seller gave no size. / VI: Null khi người bán chưa khai kích thước. */
         Parcel parcel,
+        /** EN: The pieces of a set; empty for a single item. / VI: Các món của một bộ; rỗng với món đơn lẻ. */
+        java.util.List<BundleItem> items,
+        /** EN: A short video, or null. / VI: Một video ngắn, hoặc null. */
+        String videoUrl,
+        /** EN: The photos are frames of a 360° turn. / VI: Các ảnh là khung hình của một vòng xoay 360°. */
+        boolean spinView,
         Instant createdAt,
         Instant updatedAt) {
 }

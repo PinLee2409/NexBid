@@ -55,5 +55,15 @@ public record CreateAuctionRequest(
 
         // EN: Optional. Offered until the first bid. / VI: Không bắt buộc. Có hiệu lực tới lượt trả giá đầu tiên.
         @DecimalMin(value = "0", inclusive = false, message = "Buy-now price must be greater than zero")
-        BigDecimal buyNowPrice) {
+        BigDecimal buyNowPrice,
+
+        // EN: Optional; the seller pays the parcel. / VI: Không bắt buộc; người bán trả tiền gửi kiện.
+        Boolean freeShipping) {
+
+    public CreateAuctionRequest(UUID productId, BigDecimal startingPrice, BigDecimal minimumIncrement,
+            Instant startTime, Instant endTime, Boolean antiSnipingEnabled, Integer antiSnipingWindowSeconds,
+            Integer extensionSeconds, BigDecimal reservePrice, BigDecimal buyNowPrice) {
+        this(productId, startingPrice, minimumIncrement, startTime, endTime, antiSnipingEnabled,
+                antiSnipingWindowSeconds, extensionSeconds, reservePrice, buyNowPrice, null);
+    }
 }

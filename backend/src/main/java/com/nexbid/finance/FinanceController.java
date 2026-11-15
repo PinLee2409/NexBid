@@ -1,15 +1,10 @@
 package com.nexbid.finance;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -61,14 +56,7 @@ public class FinanceController {
      * VI: UTF-8 kèm dấu BOM, để Excel hiện đúng tên tiếng Việt khi mở file trực tiếp.
      */
     static ResponseEntity<byte[]> csv(String filename, List<List<String>> rows) {
-        String body = "﻿" + rows.stream()
-                .map(row -> row.stream().map(FinanceController::cell).collect(Collectors.joining(",")))
-                .collect(Collectors.joining("\r\n")) + "\r\n";
-        return ResponseEntity.ok()
-                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        ContentDisposition.attachment().filename(filename).build().toString())
-                .body(body.getBytes(StandardCharsets.UTF_8));
+        return com.nexbid.common.CsvExport.download(filename, rows);
     }
 
     /**
@@ -76,12 +64,6 @@ public class FinanceController {
      * VI: Đặt trong ngoặc kép khi cần; ký tự đầu =, +, - hoặc @ được vô hiệu để bảng tính không chạy nó như công thức.
      */
     static String cell(String value) {
-        String text = value == null || value.equals("null") ? "" : value;
-        if (!text.isEmpty() && "=+-@".indexOf(text.charAt(0)) >= 0 && !text.matches("-?\\d+(\\.\\d+)?")) {
-            text = "'" + text;
-        }
-        return text.matches(".*[\",\r\n].*") || text.contains("\n")
-                ? "\"" + text.replace("\"", "\"\"") + "\""
-                : text;
+        return com.nexbid.common.CsvExport.cell(value);
     }
 }

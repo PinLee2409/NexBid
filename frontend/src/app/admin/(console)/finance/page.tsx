@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { BarChart } from "@/components/charts/bar-chart";
 import { ApiErrorState } from "@/components/common/api-error-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { PageHeader } from "@/components/layout/page-header";
@@ -192,15 +193,27 @@ function RevenuePanel() {
             {t("financeRevenueCsv")}
           </Button>
         </div>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[560px] text-sm">
+        <h3 className="label-sm text-dim mt-6">{t("financeFeesChart")}</h3>
+        <BarChart
+          className="mt-3"
+          label={t("financeFeesChart")}
+          format={(value) => money.currency(value)}
+          bars={months.map((month) => ({
+            key: month.month,
+            label: format.dateTime(new Date(`${month.month}-15T12:00:00+07:00`), { month: "short" }),
+            value: month.fees,
+          }))}
+        />
+        <div className="mt-8 overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-line text-dim border-b text-left">
                 <th className="label-sm py-3 pr-4 font-normal">{t("financeMonth")}</th>
                 <th className="label-sm py-3 pr-4 text-right font-normal">{t("financeSales")}</th>
                 <th className="label-sm py-3 pr-4 text-right font-normal">{t("financeGross")}</th>
                 <th className="label-sm py-3 pr-4 text-right font-normal">{t("financeFees")}</th>
-                <th className="label-sm py-3 text-right font-normal">{t("financeShipping")}</th>
+                <th className="label-sm py-3 pr-4 text-right font-normal">{t("financeShipping")}</th>
+                <th className="label-sm py-3 text-right font-normal">{t("financeDiscounts")}</th>
               </tr>
             </thead>
             <tbody>
@@ -212,7 +225,8 @@ function RevenuePanel() {
                   <td className="mono-figure py-2.5 pr-4 text-right">{month.sales}</td>
                   <td className="mono-figure py-2.5 pr-4 text-right">{money.currency(month.gross)}</td>
                   <td className="mono-figure py-2.5 pr-4 text-right">{money.currency(month.fees)}</td>
-                  <td className="mono-figure py-2.5 text-right">{money.currency(month.shipping)}</td>
+                  <td className="mono-figure py-2.5 pr-4 text-right">{money.currency(month.shipping)}</td>
+                  <td className="mono-figure py-2.5 text-right">{money.currency(month.discounts)}</td>
                 </tr>
               ))}
             </tbody>

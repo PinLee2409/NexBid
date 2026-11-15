@@ -42,6 +42,34 @@ public class Review {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    // EN: Optional stars per aspect. / VI: Số sao tuỳ chọn cho từng khía cạnh.
+    @Column(updatable = false)
+    private Short packaging;
+
+    @Column(updatable = false)
+    private Short accuracy;
+
+    @Column(updatable = false)
+    private Short speed;
+
+    public void rateAspects(Integer packaging, Integer accuracy, Integer speed) {
+        this.packaging = packaging == null ? null : packaging.shortValue();
+        this.accuracy = accuracy == null ? null : accuracy.shortValue();
+        this.speed = speed == null ? null : speed.shortValue();
+    }
+
+    public Integer getPackaging() {
+        return packaging == null ? null : packaging.intValue();
+    }
+
+    public Integer getAccuracy() {
+        return accuracy == null ? null : accuracy.intValue();
+    }
+
+    public Integer getSpeed() {
+        return speed == null ? null : speed.intValue();
+    }
+
     protected Review() {
         // EN: Required by JPA. / VI: JPA bắt buộc phải có.
     }

@@ -16,7 +16,15 @@ import org.springframework.transaction.event.TransactionalEventListener;
 class MessagePusher {
 
     /** EN: What the socket carries; {@code mine} is always false for the recipient. / VI: Nội dung socket mang theo. */
-    record Pushed(UUID id, UUID orderId, boolean mine, String sender, String body, Instant createdAt) {
+    record Pushed(String kind, UUID id, UUID orderId, boolean mine, String sender, String body, Instant createdAt) {
+    }
+
+    /** EN: The other side read up to {@code readAt}. / VI: Bên kia đã đọc tới {@code readAt}. */
+    record ReadReceipt(String kind, UUID orderId, Instant readAt) {
+    }
+
+    /** EN: The other side is typing. / VI: Bên kia đang gõ. */
+    record TypingSignal(String kind, UUID orderId) {
     }
 
     private final SimpMessagingTemplate messages;
@@ -28,6 +36,19 @@ class MessagePusher {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     void onSent(MessageEvents.Sent event) {
         messages.convertAndSendToUser(event.recipientId().toString(), MessageChannel.QUEUE,
-                new Pushed(event.messageId(), event.orderId(), false, event.sender(), event.body(), event.at()));
+                new Pushed("message", event.messageId(), event.orderId(), false, event.sender(), event.body(),
+                        event.at()));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    void onRead(MessageEvents.Read event) {
+        messages.convertAndSendToUser(event.writerId().toString(), MessageChannel.QUEUE,
+                new ReadReceipt("read", event.orderId(), event.at()));
+    }
+
+    @org.springframework.context.event.EventListener
+    void onTyping(MessageEvents.Typing event) {
+        messages.convertAndSendToUser(event.toId().toString(), MessageChannel.QUEUE,
+                new TypingSignal("typing", event.orderId()));
     }
 }

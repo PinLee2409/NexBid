@@ -130,7 +130,8 @@ public class FinanceReports {
      * EN: Completed sales by the month they completed: goods sold, the platform's fee, shipping passed to sellers.
      * VI: Giao dịch hoàn tất theo tháng hoàn tất: tiền hàng đã bán, phí sàn, phí ship chuyển cho người bán.
      */
-    public record Month(YearMonth month, int sales, BigDecimal gross, BigDecimal fees, BigDecimal shipping) {
+    public record Month(YearMonth month, int sales, BigDecimal gross, BigDecimal fees, BigDecimal shipping,
+            BigDecimal discounts) {
     }
 
     public record Share(String name, int sales, BigDecimal gross, BigDecimal fees) {
@@ -149,15 +150,21 @@ public class FinanceReports {
                     SELECT generate_series(?::date, date_trunc('month', now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date,
                                            interval '1 month')::date AS month
                 ), sold AS (
-                    SELECT date_trunc('month', created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AS month,
-                           COUNT(*) AS sales, SUM(gross) AS gross, SUM(fee) AS fees, SUM(shipping) AS shipping
-                    FROM seller_earnings WHERE created_at >= ? GROUP BY 1
+                    SELECT date_trunc('month', e.created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AS month,
+                           COUNT(*) AS sales, SUM(e.gross) AS gross, SUM(e.fee) AS fees, SUM(e.shipping) AS shipping,
+                           SUM(COALESCE(p.shipping_discount, 0)) AS discounts
+                    FROM seller_earnings e
+                    LEFT JOIN orders o ON o.id = e.order_id
+                    LEFT JOIN payments p ON p.id = o.payment_id
+                    WHERE e.created_at >= ? GROUP BY 1
                 )
                 SELECT m.month, COALESCE(s.sales, 0) AS sales, COALESCE(s.gross, 0) AS gross,
-                       COALESCE(s.fees, 0) AS fees, COALESCE(s.shipping, 0) AS shipping
+                       COALESCE(s.fees, 0) AS fees, COALESCE(s.shipping, 0) AS shipping,
+                       COALESCE(s.discounts, 0) AS discounts
                 FROM months m LEFT JOIN sold s ON s.month = m.month ORDER BY m.month
                 """, (rs, n) -> new Month(YearMonth.from(rs.getObject("month", LocalDate.class)), rs.getInt("sales"),
-                rs.getBigDecimal("gross"), rs.getBigDecimal("fees"), rs.getBigDecimal("shipping")), first, since);
+                rs.getBigDecimal("gross"), rs.getBigDecimal("fees"), rs.getBigDecimal("shipping"),
+                rs.getBigDecimal("discounts")), first, since);
         List<Share> byCategory = jdbc.query("""
                 SELECT c.name, COUNT(*) AS sales, SUM(e.gross) AS gross, SUM(e.fee) AS fees
                 FROM seller_earnings e
@@ -219,10 +226,12 @@ public class FinanceReports {
 
     static List<List<String>> revenueRows(Revenue revenue) {
         List<List<String>> rows = new ArrayList<>();
-        rows.add(List.of("month", "sales", "gross", "platform_fees", "shipping_to_sellers"));
+        rows.add(List.of("month", "sales", "gross", "platform_fees", "shipping_to_sellers",
+                "voucher_discounts"));
         for (Month month : revenue.months()) {
             rows.add(List.of(month.month().toString(), String.valueOf(month.sales()), month.gross().toPlainString(),
-                    month.fees().toPlainString(), month.shipping().toPlainString()));
+                    month.fees().toPlainString(), month.shipping().toPlainString(),
+                    month.discounts().toPlainString()));
         }
         return rows;
     }

@@ -30,7 +30,8 @@ public record AuctionDetailPublicView(
         Integer viewerCount,
         Instant serverTime) {
 
-    public record Product(UUID id, String name, String description, String condition) {
+    public record Product(UUID id, String name, String description, String condition,
+            List<com.nexbid.product.BundleItem> items, String videoUrl, boolean spinView) {
     }
 
     public record Seller(UUID id, String displayName, boolean verified) {

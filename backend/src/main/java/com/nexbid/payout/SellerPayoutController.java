@@ -19,9 +19,25 @@ import com.nexbid.common.security.CurrentUser;
 public class SellerPayoutController {
 
     private final PayoutService payouts;
+    private final SellerStatements statements;
 
-    public SellerPayoutController(PayoutService payouts) {
+    public SellerPayoutController(PayoutService payouts, SellerStatements statements) {
         this.payouts = payouts;
+        this.statements = statements;
+    }
+
+    /** EN: One month's statement, e.g. ?month=2026-11. / VI: Bảng kê của một tháng, ví dụ ?month=2026-11. */
+    @GetMapping("/statements")
+    public ApiResponse<SellerStatements.Statement> statement(@AuthenticationPrincipal CurrentUser me,
+            @org.springframework.web.bind.annotation.RequestParam java.time.YearMonth month) {
+        return ApiResponse.of(statements.of(me.id(), month));
+    }
+
+    @GetMapping("/statements.csv")
+    public org.springframework.http.ResponseEntity<byte[]> statementCsv(@AuthenticationPrincipal CurrentUser me,
+            @org.springframework.web.bind.annotation.RequestParam java.time.YearMonth month) {
+        return com.nexbid.common.CsvExport.download("nexbid-statement-" + month + ".csv",
+                SellerStatements.rows(statements.of(me.id(), month)));
     }
 
     @GetMapping("/earnings")

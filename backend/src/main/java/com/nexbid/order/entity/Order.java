@@ -92,6 +92,10 @@ public class Order {
     @Column(name = "carrier_fee", precision = 15, scale = 2)
     private BigDecimal carrierFee;
 
+    // EN: Free shipping: the seller pays the parcel. / VI: Miễn phí vận chuyển: người bán trả tiền gửi kiện.
+    @Column(name = "seller_pays_shipping", nullable = false)
+    private boolean sellerPaysShipping;
+
     // EN: Shipping the buyer paid on top of the amount; it goes to the seller with the goods. / VI: Phí ship người mua trả thêm ngoài số tiền hàng; trả cho người bán cùng tiền hàng.
     @Column(name = "shipping_fee", nullable = false, precision = 15, scale = 2)
     private BigDecimal shippingFee = BigDecimal.ZERO;
@@ -170,11 +174,24 @@ public class Order {
     }
 
     /**
-     * EN: What the seller is paid for shipping: the buyer's shipping, unless NexBid booked GHN and paid for the parcel.
+     * EN: What the seller is paid for shipping: the buyer's shipping, unless NexBid booked GHN and paid for the parcel; minus
+     *     that parcel when the seller offered free shipping.
      * VI: Phần phí ship trả cho người bán: phí ship người mua đã trả, trừ khi NexBid đặt GHN và đã trả tiền cho kiện.
      */
     public BigDecimal getSellerShipping() {
-        return ghnBooked ? BigDecimal.ZERO : shippingFee;
+        if (ghnBooked) {
+            // EN: With free shipping the seller owes the platform what GHN charged. / VI: Khi miễn phí vận chuyển, người bán nợ sàn số GHN đã thu.
+            return sellerPaysShipping && carrierFee != null ? carrierFee.negate() : BigDecimal.ZERO;
+        }
+        return shippingFee;
+    }
+
+    public boolean isSellerPaysShipping() {
+        return sellerPaysShipping;
+    }
+
+    public void sellerPaysShipping(boolean pays) {
+        this.sellerPaysShipping = pays;
     }
 
     public Integer getShipDistrictId() {
@@ -213,6 +230,16 @@ public class Order {
         this.shipRecipient = recipient;
         this.shipPhone = phone;
         this.shipAddress = address;
+    }
+
+    /** EN: A GHN booking was cancelled before pickup: the order waits to ship again. / VI: Đơn GHN đã huỷ trước khi lấy hàng: đơn chờ gửi lại. */
+    public void cancelShipment() {
+        this.carrier = null;
+        this.trackingNumber = null;
+        this.shippedAt = null;
+        this.shippingStatus = null;
+        this.ghnBooked = false;
+        this.carrierFee = null;
     }
 
     public void recordShipment(String carrier, String trackingNumber, Instant at) {

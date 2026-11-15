@@ -43,8 +43,27 @@ export async function listPayments(): Promise<PaymentEntry[]> {
 export interface ShippingQuote {
   amount: number;
   shippingFee: number;
-  source: "GHN" | "FLAT";
+  source: "GHN" | "FLAT" | "SELLER";
   total: number;
+  /** EN: Taken off the shipping by a voucher. / VI: Phần voucher trừ vào phí ship. */
+  shippingDiscount: number;
+  promoCode: string | null;
+}
+
+function toQuote(quote: ShippingQuote): ShippingQuote {
+  return {
+    ...quote,
+    amount: Number(quote.amount),
+    shippingFee: Number(quote.shippingFee),
+    total: Number(quote.total),
+    shippingDiscount: Number(quote.shippingDiscount ?? 0),
+    promoCode: quote.promoCode ?? null,
+  };
+}
+
+/** `POST /api/payments/{id}/promo` — applies a shipping voucher, or removes it with an empty code. */
+export async function applyPromo(paymentId: string, code: string): Promise<ShippingQuote> {
+  return toQuote(await api<ShippingQuote>(`/api/payments/${paymentId}/promo`, { method: "POST", body: { code } }));
 }
 
 /**
@@ -53,13 +72,7 @@ export interface ShippingQuote {
  * and returns the total VNPay will charge. Kept until the address changes.
  */
 export async function quoteShipping(paymentId: string): Promise<ShippingQuote> {
-  const quote = await api<ShippingQuote>(`/api/payments/${paymentId}/shipping-quote`, { method: "POST" });
-  return {
-    ...quote,
-    amount: Number(quote.amount),
-    shippingFee: Number(quote.shippingFee),
-    total: Number(quote.total),
-  };
+  return toQuote(await api<ShippingQuote>(`/api/payments/${paymentId}/shipping-quote`, { method: "POST" }));
 }
 
 /**

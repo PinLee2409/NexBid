@@ -112,6 +112,12 @@ public class RefreshTokenService {
                 .ifPresent(token -> tokens.revokeFamily(token.getFamilyId(), Instant.now()));
     }
 
+    /** EN: Ends every session of an account, on every device. / VI: Kết thúc mọi phiên của một tài khoản, trên mọi thiết bị. */
+    @Transactional
+    public int endAll(UUID userId) {
+        return tokens.revokeAllOf(userId, Instant.now());
+    }
+
     /**
      * EN: Blocking an account ends every session it has, in the same transaction as the block itself.
      * VI: Khoá một tài khoản sẽ kết thúc mọi phiên của nó, trong cùng transaction với việc khoá.

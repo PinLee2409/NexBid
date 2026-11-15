@@ -104,15 +104,16 @@ export function AuctionCatalogueItem({
 
           <h3
             className={cn(
-              "display group-hover:text-signal-text transition-colors duration-300",
+              "display group-hover:text-signal-text transition-colors duration-300 [overflow-wrap:anywhere]",
               TITLES[scale],
             )}
           >
             {auction.product.name}
           </h3>
 
-          <div className="mt-4 flex items-end justify-between gap-4">
-            <div>
+          {/* EN: Wraps rather than widening the page when a big price meets a long clock. / VI: Xuống dòng thay vì làm trang rộng ra khi giá lớn gặp đồng hồ dài. */}
+          <div className="mt-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+            <div className="min-w-0">
               <p className="label-sm text-dim mb-1.5">
                 {isUpcoming ? t("openingLot") : t("current")}
               </p>

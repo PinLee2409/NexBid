@@ -73,10 +73,51 @@ public class MessageService {
     @Transactional
     public ThreadDetail open(UUID userId, UUID orderId) {
         OrderService.Parties order = partyTo(userId, orderId);
-        Instant now = Instant.now();
-        jdbc.update("UPDATE order_messages SET read_at = ? WHERE order_id = ? AND sender_id <> ? AND read_at IS NULL",
-                utc(now), orderId, userId);
+        markRead(userId, order, Instant.now());
         return new ThreadDetail(thread(userId, order), messages(userId, orderId));
+    }
+
+    /**
+     * EN: Marks what the other side wrote as read, for a thread already open when a message arrives; the writer hears.
+     * VI: Đánh dấu tin bên kia viết là đã đọc, cho cuộc trò chuyện đang mở khi tin tới; người viết được báo.
+     */
+    @Transactional
+    public void markSeen(UUID userId, UUID orderId) {
+        markRead(userId, partyTo(userId, orderId), Instant.now());
+    }
+
+    private void markRead(UUID userId, OrderService.Parties order, Instant now) {
+        int read = jdbc.update(
+                "UPDATE order_messages SET read_at = ? WHERE order_id = ? AND sender_id <> ? AND read_at IS NULL",
+                utc(now), order.orderId(), userId);
+        if (read > 0) {
+            events.publishEvent(new MessageEvents.Read(order.orderId(), userId, otherOf(userId, order), now));
+        }
+    }
+
+    private final java.util.Map<String, Instant> lastTyping = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * EN: Tells the other side someone is typing, at most every two seconds per person and order. Nothing is stored.
+     * VI: Báo bên kia là đang có người gõ, tối đa hai giây một lần cho mỗi người và mỗi đơn. Không lưu gì cả.
+     */
+    public void typing(UUID userId, UUID orderId) {
+        OrderService.Parties order = partyTo(userId, orderId);
+        Instant now = Instant.now();
+        String key = userId + "|" + orderId;
+        Instant last = lastTyping.get(key);
+        if (last != null && last.plusSeconds(2).isAfter(now)) {
+            return;
+        }
+        if (lastTyping.size() > 10_000) {
+            lastTyping.clear();
+        }
+        lastTyping.put(key, now);
+        events.publishEvent(new MessageEvents.Typing(orderId, userId, otherOf(userId, order)));
+    }
+
+    private static UUID otherOf(UUID userId, OrderService.Parties order) {
+        return userId.equals(order.buyerId()) ? order.sellerId() : order.buyerId();
     }
 
     /**

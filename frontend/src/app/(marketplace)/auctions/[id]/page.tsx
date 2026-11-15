@@ -14,6 +14,7 @@ import { RecentlyViewed } from "@/components/nexbid/recently-viewed";
 import { ReportLotButton } from "@/components/nexbid/report-lot-button";
 import { LotQuestions } from "@/components/nexbid/lot-questions";
 import { ProductStage } from "@/components/nexbid/product-stage";
+import { SpinViewer } from "@/components/nexbid/spin-viewer";
 import { SectionHead } from "@/components/nexbid/section-head";
 import { ShippingEstimateRow } from "@/components/nexbid/shipping-estimate-row";
 import type { Locale } from "@/i18n/config";
@@ -75,10 +76,26 @@ export default async function AuctionDetailPage(
         <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)] lg:gap-12">
           {/* Left column: what the lot is. */}
           <div className="min-w-0">
-            <ProductStage
-              images={auction.product.images}
-              lotNumber={auction.lotNumber}
-            />
+            {auction.product.spinView && auction.product.images.length > 1 ? (
+              <SpinViewer images={auction.product.images} />
+            ) : (
+              <ProductStage
+                images={auction.product.images}
+                lotNumber={auction.lotNumber}
+              />
+            )}
+            {auction.product.videoUrl ? (
+              <video
+                src={auction.product.videoUrl}
+                controls
+                preload="metadata"
+                playsInline
+                className="bg-surface mt-4 aspect-video w-full"
+                data-testid="lot-video"
+              >
+                <track kind="captions" />
+              </video>
+            ) : null}
 
             <div className="mt-8">
               <p className="label text-muted-foreground">
@@ -104,7 +121,7 @@ export default async function AuctionDetailPage(
                   value={formatCurrency(auction.startingPrice, locale)}
                 />
                 {auction.status === "ACTIVE" || auction.status === "SCHEDULED" ? (
-                  <ShippingEstimateRow auctionId={auction.id} />
+                  <ShippingEstimateRow auctionId={auction.id} free={auction.freeShipping} />
                 ) : null}
                 <SpecRow
                   label={tf("provenance")}
@@ -119,6 +136,21 @@ export default async function AuctionDetailPage(
               <p className="text-muted-foreground mt-6 max-w-2xl text-[15px] leading-[1.75] whitespace-pre-line">
                 {auction.product.description}
               </p>
+              {auction.product.items && auction.product.items.length > 0 ? (
+                <div className="mt-8 max-w-2xl" data-testid="lot-set">
+                  <h3 className="label-sm text-dim">
+                    {tf("setContents", { count: auction.product.items.reduce((sum, item) => sum + item.quantity, 0) })}
+                  </h3>
+                  <ul className="border-line divide-line mt-3 divide-y border-y text-sm">
+                    {auction.product.items.map((item, index) => (
+                      <li key={index} className="flex justify-between gap-4 py-2">
+                        <span>{item.name}</span>
+                        <span className="mono-figure text-dim">× {item.quantity}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
 
               <div className="border-line mt-10 flex items-center gap-4 border-t pt-6">
                 <span
@@ -129,7 +161,9 @@ export default async function AuctionDetailPage(
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-1.5 text-sm font-semibold">
-                    {auction.seller.displayName}
+                    <Link href={`/sellers/${auction.seller.id}`} className="hover:text-signal-text underline-offset-4 hover:underline">
+                      {auction.seller.displayName}
+                    </Link>
                     {auction.seller.verified ? (
                       <BadgeCheck
                         className="text-signal-text size-4"

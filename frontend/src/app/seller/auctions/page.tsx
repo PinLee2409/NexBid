@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { PageHeader } from "@/components/layout/page-header";
 import { ImportLotsDialog } from "@/components/seller/import-lots-dialog";
+import { ScheduleDraftsDialog } from "@/components/seller/schedule-drafts-dialog";
 import { Button } from "@/components/ui/button";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage } from "@/hooks/use-labels";
@@ -37,6 +38,12 @@ export default function SellerAuctionsPage() {
         actions={
           <div className="flex flex-wrap gap-2">
             <ImportLotsDialog onImported={refresh} />
+            {state.status === "success" ? (
+              <ScheduleDraftsDialog
+                drafts={state.data.filter((auction) => auction.status === "DRAFT")}
+                onDone={refresh}
+              />
+            ) : null}
             <Button asChild>
               <Link href="/seller/auctions/create">
                 <Plus className="size-4" />
@@ -88,6 +95,7 @@ function SellerAuctionRow({
 }) {
   const t = useTranslations("seller");
   const tc = useTranslations("common");
+  const format = useFormatter();
   const [isPending, startTransition] = useTransition();
   const errorMessage = useApiErrorMessage();
 
@@ -112,6 +120,14 @@ function SellerAuctionRow({
     <>
       <AuctionListItem
         auction={auction}
+        meta={
+          auction.status === "DRAFT" && auction.submitAt
+            ? {
+                label: t("submitAtMeta"),
+                value: format.dateTime(new Date(auction.submitAt), { dateStyle: "short", timeStyle: "short" }),
+              }
+            : undefined
+        }
         actions={
           <>
             {canSubmit ? (

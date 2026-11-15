@@ -57,6 +57,12 @@ public class SellerOrderController {
         return ApiResponse.of(orders.shipWithGhn(me.id(), id), "GHN booked");
     }
 
+    /** EN: Cancels NexBid's GHN booking before pickup. / VI: Huỷ đơn GHN NexBid đã đặt, trước khi lấy hàng. */
+    @PostMapping("/{id}/ghn/cancel")
+    public ApiResponse<OrderView> cancelGhn(@AuthenticationPrincipal CurrentUser me, @PathVariable UUID id) {
+        return ApiResponse.of(orders.cancelGhn(me.id(), id), "GHN booking cancelled");
+    }
+
     /** EN: A link to GHN's printable label. / VI: Link tới phiếu in của GHN. */
     @GetMapping("/{id}/ghn-label")
     public ApiResponse<java.util.Map<String, String>> ghnLabel(@AuthenticationPrincipal CurrentUser me,

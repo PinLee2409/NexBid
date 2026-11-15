@@ -174,7 +174,10 @@ class LotCache {
                     product.category(),
                     new ArrayList<>(imagesByProduct.getOrDefault(product.id(), List.of())),
                     lot.getSellerId(),
-                    sellerNames.getOrDefault(lot.getSellerId(), "Unknown seller")));
+                    sellerNames.getOrDefault(lot.getSellerId(), "Unknown seller"),
+                    product.items(),
+                    product.videoUrl(),
+                    product.spinView()));
         }
         return built;
     }
