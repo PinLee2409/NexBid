@@ -158,6 +158,10 @@ nexbid:
     # VI: Câu trả lời "tài khoản đang hoạt động" được dùng lại bao lâu trước khi hỏi lại database. Khoá tài khoản
     #     có hiệu lực ngay trên server này; server khác sẽ thấy trong khoảng thời gian này.
     status-cache-ttl: ${NEXBID_STATUS_CACHE_TTL:10s}
+    google:
+      # EN: The OAuth client id from Google Cloud (Web application). Empty turns Google sign-in off.
+      # VI: OAuth client id lấy từ Google Cloud (Web application). Để trống thì tắt đăng nhập Google.
+      client-id: ${NEXBID_GOOGLE_CLIENT_ID:}
     refresh:
       # EN: A session lasts this long after its last use: each refresh starts the clock again.
       # VI: Một phiên đăng nhập sống chừng này kể từ lần dùng cuối: mỗi lần refresh tính lại từ đầu.

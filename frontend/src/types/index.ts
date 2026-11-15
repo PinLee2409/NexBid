@@ -86,6 +86,15 @@ export const ERROR_CODES = [
   "MESSAGE_LIMIT",
   "SHIPPING_UNAVAILABLE",
   "TRACKING_NOT_FOUND",
+  "GHN_REFUSED",
+  "GHN_ADDRESS_REQUIRED",
+  "TWO_FACTOR_ALREADY_ON",
+  "TWO_FACTOR_NOT_SET_UP",
+  "TWO_FACTOR_CODE_INVALID",
+  "TWO_FACTOR_CHALLENGE_EXPIRED",
+  "GOOGLE_SIGN_IN_OFF",
+  "GOOGLE_SIGN_IN_FAILED",
+  "IMPORT_INVALID",
   "QUESTION_NOT_FOUND",
   "QUESTION_NOT_ALLOWED",
   "QUESTION_LIMIT",
@@ -617,6 +626,10 @@ export interface Order {
   /** EN: The carrier's latest status (GHN), and when it delivered. / VI: Trạng thái mới nhất của đơn vị vận chuyển (GHN), và lúc giao. */
   shippingStatus: string | null;
   deliveredAt: IsoDateString | null;
+  /** EN: NexBid booked GHN for it (a label can be printed). / VI: NexBid đã đặt GHN cho đơn này (in được phiếu). */
+  ghnBooked: boolean;
+  /** EN: The address paid for was picked from GHN's lists. / VI: Địa chỉ đã trả tiền được chọn từ danh sách GHN. */
+  ghnAddress: boolean;
 }
 
 interface OrderShipping {
@@ -676,7 +689,10 @@ export type AuditAction =
   | "STRAY_CHARGE_REFUNDED"
   | "AUCTION_REMOVED"
   | "SELLER_VERIFIED"
-  | "ORDER_MESSAGES_READ";
+  | "ORDER_MESSAGES_READ"
+  | "SHILL_PAIR_CLEARED"
+  | "TWO_FACTOR_ENABLED"
+  | "TWO_FACTOR_DISABLED";
 
 export interface AuditLog {
   id: Id;

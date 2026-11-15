@@ -10,6 +10,7 @@ import { StarRating } from "@/components/common/star-rating";
 import { AuctionRoomView } from "@/components/nexbid/auction-room";
 import { AuctionCatalogueItem } from "@/components/nexbid/catalogue-item";
 import { FollowSellerButton } from "@/components/nexbid/follow-seller-button";
+import { RecentlyViewed } from "@/components/nexbid/recently-viewed";
 import { ReportLotButton } from "@/components/nexbid/report-lot-button";
 import { LotQuestions } from "@/components/nexbid/lot-questions";
 import { ProductStage } from "@/components/nexbid/product-stage";
@@ -17,7 +18,7 @@ import { SectionHead } from "@/components/nexbid/section-head";
 import { ShippingEstimateRow } from "@/components/nexbid/shipping-estimate-row";
 import type { Locale } from "@/i18n/config";
 import { formatCurrency } from "@/lib/format";
-import { getAuction, getSellerReputation, listAuctions } from "@/services/auction-service";
+import { getAuction, getSellerReputation, listSimilarLots } from "@/services/auction-service";
 import { listQuestions } from "@/services/question-service";
 
 export const dynamic = "force-dynamic";
@@ -52,19 +53,13 @@ export default async function AuctionDetailPage(
     getTranslations("auction"),
     getTranslations("focus"),
     getFormatter(),
-    listAuctions({
-      categorySlugs: [auction.category.slug],
-      statuses: ["ACTIVE"],
-      pageSize: 5,
-    }),
+    listSimilarLots(auction.id),
     getSellerReputation(auction.seller.id),
     listQuestions(auction.id),
   ]);
 
   const serverTime = new Date().toISOString();
-  const relatedLots = related.items
-    .filter((item) => item.id !== auction.id)
-    .slice(0, 4);
+  const relatedLots = related.slice(0, 4);
 
   return (
     <>
@@ -211,6 +206,7 @@ export default async function AuctionDetailPage(
         {relatedLots.length > 0 ? (
           <section className="mt-20" aria-labelledby="related-heading">
             <SectionHead
+              id="related-heading"
               title={t("similarLots", { category: auction.category.name })}
               action={{
                 label: t("backToAuctions"),
@@ -222,13 +218,15 @@ export default async function AuctionDetailPage(
                 <AuctionCatalogueItem
                   key={lot.id}
                   auction={lot}
-                  serverTime={related.serverTime}
+                  serverTime={serverTime}
                   scale="standard"
                 />
               ))}
             </div>
           </section>
         ) : null}
+
+        <RecentlyViewed auctionId={auction.id} serverTime={serverTime} />
       </div>
     </>
   );

@@ -116,6 +116,11 @@ public class ShippingEstimates implements ShippingQuoter {
         return fee(from.get(), to.get(), declared, price, auctionId);
     }
 
+    /** EN: What a parcel at this price is insured for with GHN. / VI: Giá khai bảo hiểm GHN cho kiện ở mức giá này. */
+    public long insuranceFor(BigDecimal price) {
+        return Math.min(insuranceCap, price.divide(MILLION, 0, RoundingMode.CEILING).multiply(MILLION).longValueExact());
+    }
+
     /**
      * EN: Insured at the price rounded up to the next million, so one quote serves every bid within that million, and
      *     never above the cap: about 0.5% of the insured value is added to the fee.
@@ -125,8 +130,7 @@ public class ShippingEstimates implements ShippingQuoter {
     private Optional<BigDecimal> fee(ShippingAddress from, ShippingAddress to, Parcel declared, BigDecimal price,
             UUID auctionId) {
         Parcel parcel = declared == null ? Parcel.DEFAULT : declared;
-        long insured = Math.min(insuranceCap,
-                price.divide(MILLION, 0, RoundingMode.CEILING).multiply(MILLION).longValueExact());
+        long insured = insuranceFor(price);
         try {
             return Optional.of(ghn.fee(new GhnClient.FeeQuery(from.districtId(), to.districtId(), to.wardCode(),
                     parcel.weightGrams(), parcel.lengthCm(), parcel.widthCm(), parcel.heightCm(), insured)));

@@ -86,6 +86,19 @@ export interface ProductInput {
 }
 
 /**
+ * `POST /api/seller/orders/{id}/ghn` — NexBid books GHN to pick the parcel up
+ * and marks the order shipped with GHN's code.
+ */
+export async function bookGhn(orderId: string): Promise<OrderEntry> {
+  return toEntry(await api<ApiOrder>(`/api/seller/orders/${orderId}/ghn`, { method: "POST" }));
+}
+
+/** `GET /api/seller/orders/{id}/ghn-label` — a link to GHN's printable label. */
+export async function ghnLabelUrl(orderId: string): Promise<string> {
+  return (await api<{ url: string }>(`/api/seller/orders/${orderId}/ghn-label`)).url;
+}
+
+/**
  * EN: Makes the product's photos match the form: uploads new files, deletes removed photos, and sets
  *     the first one as the cover.
  * VI: Làm cho ảnh của sản phẩm khớp với form: tải ảnh mới lên, xoá ảnh bị bỏ, và đặt ảnh đầu làm ảnh bìa.
@@ -307,4 +320,19 @@ export async function rateBuyer(orderId: string, rating: number, comment: string
     method: "POST",
     body: { rating, comment: comment.trim() || null },
   });
+}
+
+/** EN: What became of each CSV row; line 1 is the header. / VI: Mỗi dòng CSV ra sao; dòng 1 là tiêu đề. */
+export interface ImportResult {
+  created: number;
+  failed: number;
+  rows: { line: number; name: string; auctionId: string | null; errors: string[] }[];
+}
+
+/** `POST /api/seller/auctions/import` — a CSV of lots and their photos; each row becomes a draft lot or errors. */
+export async function importLots(csv: File, photos: File[]): Promise<ImportResult> {
+  const form = new FormData();
+  form.append("file", csv);
+  for (const photo of photos) form.append("images", photo);
+  return api<ImportResult>("/api/seller/auctions/import", { method: "POST", form });
 }

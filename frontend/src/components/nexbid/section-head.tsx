@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 
 interface SectionHeadProps {
   title: string;
+  /** EN: For aria-labelledby on the section. / VI: Cho aria-labelledby của section. */
+  id?: string;
   description?: string;
   action?: { label: string; href: string };
   /** Small element beside the title, e.g. a live count. */
@@ -18,6 +20,7 @@ interface SectionHeadProps {
  */
 export function SectionHead({
   title,
+  id,
   description,
   action,
   badge,
@@ -27,7 +30,7 @@ export function SectionHead({
     <div className={cn("border-line border-t pt-6", className)}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-4">
         <div className="flex items-baseline gap-4">
-          <h2 className="display text-[clamp(2rem,5vw,4rem)]">{title}</h2>
+          <h2 id={id} className="display text-[clamp(2rem,5vw,4rem)]">{title}</h2>
           {badge}
         </div>
 

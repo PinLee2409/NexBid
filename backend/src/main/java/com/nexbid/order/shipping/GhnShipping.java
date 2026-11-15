@@ -110,6 +110,18 @@ public class GhnShipping {
         return Optional.ofNullable(found.status()).map(status -> status.trim().toLowerCase(Locale.ROOT));
     }
 
+    /** EN: Books a pickup with GHN on the shop's account. / VI: Đặt GHN lấy hàng bằng tài khoản của shop. */
+    GhnClient.Booked book(GhnClient.Booking booking) {
+        requireEnabled();
+        return client.book(booking);
+    }
+
+    /** EN: Where the seller prints GHN's label. / VI: Nơi người bán in phiếu GHN. */
+    public String labelUrl(String orderCode) {
+        requireEnabled();
+        return client.labelUrl(orderCode);
+    }
+
     /** EN: The fee for one parcel, between GHN districts; kept a while. / VI: Phí cho một kiện, giữa các quận của GHN; giữ một lúc. */
     public BigDecimal fee(GhnClient.FeeQuery query) {
         requireEnabled();

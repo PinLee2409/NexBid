@@ -260,6 +260,8 @@ export function toOrder(order: ApiOrder["order"]): Order {
     dispute: order.dispute ?? null,
     shippingStatus: order.shippingStatus ?? null,
     deliveredAt: order.deliveredAt ?? null,
+    ghnBooked: order.ghnBooked ?? false,
+    ghnAddress: order.ghnAddress ?? false,
   };
 }
 

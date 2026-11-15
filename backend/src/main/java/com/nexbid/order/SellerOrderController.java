@@ -51,6 +51,19 @@ public class SellerOrderController {
                 request == null ? null : request.trackingNumber()), "Order marked as shipped");
     }
 
+    /** EN: NexBid books GHN to pick the parcel up. / VI: NexBid đặt GHN đến lấy kiện. */
+    @PostMapping("/{id}/ghn")
+    public ApiResponse<OrderView> shipWithGhn(@AuthenticationPrincipal CurrentUser me, @PathVariable UUID id) {
+        return ApiResponse.of(orders.shipWithGhn(me.id(), id), "GHN booked");
+    }
+
+    /** EN: A link to GHN's printable label. / VI: Link tới phiếu in của GHN. */
+    @GetMapping("/{id}/ghn-label")
+    public ApiResponse<java.util.Map<String, String>> ghnLabel(@AuthenticationPrincipal CurrentUser me,
+            @PathVariable UUID id) {
+        return ApiResponse.of(java.util.Map.of("url", orders.ghnLabel(me.id(), id)));
+    }
+
     /**
      * EN: Rates the buyer of a completed order, once. Same shape as a buyer's review of the seller.
      * VI: Đánh giá người mua của một đơn đã hoàn tất, một lần. Cùng dạng với đánh giá người mua dành cho người bán.

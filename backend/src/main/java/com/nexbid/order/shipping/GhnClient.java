@@ -36,11 +36,29 @@ class GhnClient {
             int heightCm, long insuranceValue) {
     }
 
+    /**
+     * EN: A parcel for GHN to pick up from the seller and deliver to the buyer. The shop (NexBid) pays GHN; nothing is
+     *     collected on delivery. {@code clientOrderCode} is NexBid's order id, which GHN keeps unique per shop.
+     * VI: Một kiện để GHN lấy từ người bán và giao cho người mua. Shop (NexBid) trả tiền cho GHN; không thu hộ khi giao.
+     *     {@code clientOrderCode} là id đơn của NexBid, GHN giữ duy nhất trong mỗi shop.
+     */
+    record Booking(String clientOrderCode, String fromName, String fromPhone, String fromAddress, String fromWard,
+            String fromDistrict, String fromProvince, String toName, String toPhone, String toAddress, int toDistrictId,
+            String toWardCode, String item, int weightGrams, int lengthCm, int widthCm, int heightCm,
+            long insuranceValue) {
+    }
+
+    /** EN: GHN's order code and what GHN charges the shop. / VI: Mã đơn GHN và số GHN thu của shop. */
+    record Booked(String orderCode, BigDecimal fee) {
+    }
+
     private final RestClient http;
+    private final String baseUrl;
     private final String token;
     private final String shopId;
 
     GhnClient(String baseUrl, String token, String shopId) {
+        this.baseUrl = baseUrl;
         var timeouts = new SimpleClientHttpRequestFactory();
         timeouts.setConnectTimeout(Duration.ofSeconds(5));
         timeouts.setReadTimeout(Duration.ofSeconds(10));
@@ -62,6 +80,67 @@ class GhnClient {
                 "height", query.heightCm(),
                 "insurance_value", query.insuranceValue()), true);
         return data.get("total").decimalValue();
+    }
+
+    /**
+     * EN: Books the pickup. GHN's own refusals (a phone it does not accept, an address it cannot reach) come back with
+     *     GHN's message as GHN_REFUSED; GHN being down is SHIPPING_UNAVAILABLE.
+     * VI: Đặt lấy hàng. GHN từ chối (số điện thoại không nhận, địa chỉ không tới được) trả về kèm lời của GHN dưới mã
+     *     GHN_REFUSED; GHN sập là SHIPPING_UNAVAILABLE.
+     */
+    Booked book(Booking booking) {
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("payment_type_id", 1);
+        body.put("required_note", "CHOXEMHANGKHONGTHU");
+        body.put("client_order_code", booking.clientOrderCode());
+        body.put("from_name", booking.fromName());
+        body.put("from_phone", booking.fromPhone());
+        body.put("from_address", booking.fromAddress());
+        body.put("from_ward_name", booking.fromWard());
+        body.put("from_district_name", booking.fromDistrict());
+        body.put("from_province_name", booking.fromProvince());
+        body.put("to_name", booking.toName());
+        body.put("to_phone", booking.toPhone());
+        body.put("to_address", booking.toAddress());
+        body.put("to_ward_code", booking.toWardCode());
+        body.put("to_district_id", booking.toDistrictId());
+        body.put("cod_amount", 0);
+        body.put("weight", booking.weightGrams());
+        body.put("length", booking.lengthCm());
+        body.put("width", booking.widthCm());
+        body.put("height", booking.heightCm());
+        body.put("insurance_value", booking.insuranceValue());
+        body.put("service_type_id", 2);
+        body.put("items", List.of(Map.of("name", booking.item(), "quantity", 1, "weight", booking.weightGrams())));
+
+        JsonNode reply;
+        try {
+            reply = http.post().uri("/v2/shipping-order/create").header("Token", token).header("ShopId", shopId)
+                    .contentType(MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_JSON).body(body)
+                    .exchange((request, response) -> response.getStatusCode().is5xxServerError()
+                            ? null
+                            : response.bodyTo(JsonNode.class));
+        } catch (RestClientException ex) {
+            throw new BusinessException(ErrorCode.SHIPPING_UNAVAILABLE, "GHN could not be reached: " + ex.getMessage());
+        }
+        if (reply == null) {
+            throw new BusinessException(ErrorCode.SHIPPING_UNAVAILABLE, "GHN did not answer");
+        }
+        JsonNode data = reply.path("data");
+        if (reply.path("code").asInt() != 200 || !data.path("order_code").isString()) {
+            throw new BusinessException(ErrorCode.GHN_REFUSED, "GHN refused the order: " + reply.path("message").asString(""));
+        }
+        return new Booked(data.path("order_code").asString(), data.path("total_fee").decimalValue());
+    }
+
+    /**
+     * EN: A link to GHN's printable A5 label for an order, valid for a while.
+     * VI: Link tới phiếu A5 in được của GHN cho một đơn, còn hiệu lực một lúc.
+     */
+    String labelUrl(String orderCode) {
+        String printToken = post("/v2/a5/gen-token", Map.of("order_codes", List.of(orderCode)), false)
+                .path("token").asString();
+        return baseUrl.replaceFirst("/shiip/public-api/?$", "") + "/a5/public-api/printA5?token=" + printToken;
     }
 
     /** EN: The parcel's status word, e.g. "delivering" or "delivered". / VI: Trạng thái của kiện, ví dụ "delivering" hay "delivered". */

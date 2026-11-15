@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  BarChart3,
   Banknote,
   Bell,
   BellRing,
@@ -8,11 +9,13 @@ import {
   MessagesSquare,
   Gavel,
   Heart,
+  Landmark,
   LayoutDashboard,
   ListChecks,
   Package,
   Receipt,
   ShieldAlert,
+  ShieldQuestion,
   Store,
   Tags,
   Trophy,
@@ -58,6 +61,7 @@ export const SELLER_NAV: AccountNavItem[] = [
   { labelKey: "dashboard", href: "/seller/dashboard", icon: LayoutDashboard },
   { labelKey: "products", href: "/seller/products", icon: Package },
   { labelKey: "auctions", href: "/seller/auctions", icon: Gavel },
+  { labelKey: "stats", href: "/seller/stats", icon: BarChart3 },
   { labelKey: "orders", href: "/seller/orders", icon: Receipt },
   { labelKey: "earnings", href: "/seller/earnings", icon: Wallet },
   { labelKey: "messages", href: "/messages", icon: MessagesSquare },
@@ -73,7 +77,9 @@ export const ADMIN_NAV: AccountNavItem[] = [
   { labelKey: "orders", href: "/admin/orders", icon: Receipt },
   { labelKey: "disputes", href: "/admin/disputes", icon: ShieldAlert },
   { labelKey: "reports", href: "/admin/reports", icon: Flag },
+  { labelKey: "trust", href: "/admin/trust", icon: ShieldQuestion },
   { labelKey: "payouts", href: "/admin/payouts", icon: Banknote },
+  { labelKey: "finance", href: "/admin/finance", icon: Landmark },
   { labelKey: "emails", href: "/admin/emails", icon: Mail },
   { labelKey: "auditLogs", href: "/admin/audit-logs", icon: ListChecks },
 ];

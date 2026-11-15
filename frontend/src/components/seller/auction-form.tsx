@@ -26,10 +26,22 @@ import { createAuction } from "@/services/seller-service";
 import type { ProductWithMeta } from "@/services/seller-service";
 import { useMoney } from "@/hooks/use-money";
 
+/** EN: A lot to list again, its settings copied; the dates start fresh. / VI: Lô đăng lại, sao chép cài đặt; ngày giờ đặt mới. */
+export interface RelistFrom {
+  productId: string;
+  startingPrice: number;
+  minimumIncrement: number;
+  reservePrice: number | null;
+  buyNowPrice: number | null;
+  antiSniping: { enabled: boolean; windowSeconds: number; extensionSeconds: number };
+}
+
 interface AuctionFormProps {
   products: ProductWithMeta[];
   /** Preselected from `?productId=` when coming from the catalogue. */
   initialProductId?: string;
+  /** EN: From `?relist=`: the lot being listed again. / VI: Từ `?relist=`: lô đang được đăng lại. */
+  relist?: RelistFrom;
 }
 
 interface FieldErrors {
@@ -64,7 +76,7 @@ function defaultSchedule() {
   };
 }
 
-export function AuctionForm({ products, initialProductId }: AuctionFormProps) {
+export function AuctionForm({ products, initialProductId, relist }: AuctionFormProps) {
   const money = useMoney();
   const t = useTranslations("seller");
   const tc = useTranslations("common");
@@ -73,21 +85,21 @@ export function AuctionForm({ products, initialProductId }: AuctionFormProps) {
 
   const schedule = defaultSchedule();
 
-  const [productId, setProductId] = useState(initialProductId ?? "");
-  const [startingPrice, setStartingPrice] = useState("1000000");
-  const [minimumIncrement, setMinimumIncrement] = useState("100000");
-  const [reservePrice, setReservePrice] = useState("");
-  const [buyNowPrice, setBuyNowPrice] = useState("");
+  const [productId, setProductId] = useState(relist?.productId ?? initialProductId ?? "");
+  const [startingPrice, setStartingPrice] = useState(String(relist?.startingPrice ?? 1000000));
+  const [minimumIncrement, setMinimumIncrement] = useState(String(relist?.minimumIncrement ?? 100000));
+  const [reservePrice, setReservePrice] = useState(relist?.reservePrice ? String(relist.reservePrice) : "");
+  const [buyNowPrice, setBuyNowPrice] = useState(relist?.buyNowPrice ? String(relist.buyNowPrice) : "");
   const [startDate, setStartDate] = useState(schedule.startDate);
   const [startTime, setStartTime] = useState(schedule.startTime);
   const [endDate, setEndDate] = useState(schedule.endDate);
   const [endTime, setEndTime] = useState(schedule.endTime);
-  const [antiSniping, setAntiSniping] = useState(true);
+  const [antiSniping, setAntiSniping] = useState(relist?.antiSniping.enabled ?? true);
   const [snipeWindow, setSnipeWindow] = useState(
-    String(AUCTION_CONFIG.defaultAntiSnipingWindowSeconds),
+    String(relist?.antiSniping.windowSeconds ?? AUCTION_CONFIG.defaultAntiSnipingWindowSeconds),
   );
   const [extension, setExtension] = useState(
-    String(AUCTION_CONFIG.defaultExtensionSeconds),
+    String(relist?.antiSniping.extensionSeconds ?? AUCTION_CONFIG.defaultExtensionSeconds),
   );
 
   const [errors, setErrors] = useState<FieldErrors>({});

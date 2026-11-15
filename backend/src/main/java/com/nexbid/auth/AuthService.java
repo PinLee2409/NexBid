@@ -20,6 +20,10 @@ import com.nexbid.auth.refresh.RefreshTokenService;
 import com.nexbid.common.exception.BusinessException;
 import com.nexbid.common.exception.ErrorCode;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.UUID;
+
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.nexbid.mail.MailFacts;
 import com.nexbid.mail.MailKind;
@@ -45,6 +49,12 @@ public class AuthService {
     private final RefreshTokenService refreshTokens;
     private final LoginAttempts attempts;
     private final Mailer mailer;
+    private final TwoFactorService twoFactor;
+    private final GoogleSignIn google;
+    private final JdbcTemplate jdbc;
+
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
 
     /**
      * EN: What a sign-in or a renewal hands back: the access token in the body, the refresh token for the cookie.
@@ -62,7 +72,13 @@ public class AuthService {
             ApplicationEventPublisher events,
             RefreshTokenService refreshTokens,
             LoginAttempts attempts,
-            Mailer mailer) {
+            Mailer mailer,
+            TwoFactorService twoFactor,
+            GoogleSignIn google,
+            JdbcTemplate jdbc) {
+        this.twoFactor = twoFactor;
+        this.google = google;
+        this.jdbc = jdbc;
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -119,9 +135,7 @@ public class AuthService {
 
             UserCredentials user = ((NexbidUserDetails) authentication.getPrincipal()).credentials();
             attempts.clear(email, clientAddress);
-            events.publishEvent(new SuccessfulLoginEvent(user.id()));
-
-            return new Session(accessFor(user), refreshTokens.start(user.id(), request.remember()));
+            return begin(user, request.remember());
 
         } catch (LockedException ex) {
             throw new BusinessException(ErrorCode.ACCOUNT_BLOCKED, "This account has been blocked");
@@ -134,6 +148,81 @@ public class AuthService {
             //     này thành công cụ dò xem địa chỉ nào đã có tài khoản.
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS, "Email or password is incorrect");
         }
+    }
+
+    /**
+     * EN: Signs in, or — with two-step sign-in on — hands back a challenge for the code step, and no session yet.
+     * VI: Đăng nhập, hoặc — khi bật đăng nhập hai bước — trả về challenge cho bước nhập mã, chưa có phiên.
+     */
+    private Session begin(UserCredentials user, boolean remember) {
+        if (twoFactor.enabled(user.id())) {
+            return new Session(LoginResponse.challenge(twoFactor.challengeFor(user.id(), remember, Instant.now())), null);
+        }
+        events.publishEvent(new SuccessfulLoginEvent(user.id()));
+        return new Session(accessFor(user), refreshTokens.start(user.id(), remember));
+    }
+
+    /**
+     * EN: The code step: the challenge from the password step plus a code from the app (or a recovery code). Wrong
+     *     codes count towards the same sign-in limit as wrong passwords.
+     * VI: Bước nhập mã: challenge từ bước mật khẩu cộng một mã từ ứng dụng (hoặc mã khôi phục). Mã sai được tính vào cùng
+     *     giới hạn đăng nhập như mật khẩu sai.
+     */
+    @Transactional
+    public Session completeTwoFactor(String challenge, String code, String clientAddress) {
+        TwoFactorService.Challenge found = twoFactor.readChallenge(challenge).orElseThrow(() ->
+                new BusinessException(ErrorCode.TWO_FACTOR_CHALLENGE_EXPIRED, "Sign in again"));
+        UserCredentials user = users.findCredentialsById(found.userId()).orElseThrow(() ->
+                new BusinessException(ErrorCode.TWO_FACTOR_CHALLENGE_EXPIRED, "Sign in again"));
+        if (user.status() == com.nexbid.user.UserStatus.BLOCKED) {
+            throw new BusinessException(ErrorCode.ACCOUNT_BLOCKED, "This account has been blocked");
+        }
+        attempts.checkAllowed(user.email(), clientAddress);
+        if (!twoFactor.verify(user.id(), code, Instant.now())) {
+            attempts.recordFailure(user.email(), clientAddress);
+            throw new BusinessException(ErrorCode.TWO_FACTOR_CODE_INVALID, "That code does not match");
+        }
+        attempts.clear(user.email(), clientAddress);
+        events.publishEvent(new SuccessfulLoginEvent(user.id()));
+        return new Session(accessFor(user), refreshTokens.start(user.id(), found.remember()));
+    }
+
+    /** EN: Google's client id, or null when Google sign-in is off. / VI: Client id Google, hoặc null khi tắt đăng nhập Google. */
+    public String googleClientId() {
+        return google.enabled() ? google.clientId() : null;
+    }
+
+    /**
+     * EN: Signs in with Google. The account is found by Google's id, then by the verified email (and linked), or
+     *     created as a buyer with an unusable random password. Two-step sign-in still applies.
+     * VI: Đăng nhập bằng Google. Tài khoản được tìm theo id Google, rồi theo email đã xác minh (và liên kết), hoặc tạo mới
+     *     là người mua với mật khẩu ngẫu nhiên không dùng được. Đăng nhập hai bước vẫn áp dụng.
+     */
+    @Transactional
+    public Session google(String credential, boolean remember) {
+        GoogleSignIn.Identity identity = google.verify(credential);
+        UUID linked = jdbc.query("SELECT user_id FROM user_identities WHERE provider = 'GOOGLE' AND subject = ?",
+                rs -> rs.next() ? rs.getObject(1, UUID.class) : null, identity.subject());
+        UserCredentials user = linked != null
+                ? users.findCredentialsById(linked).orElseThrow()
+                : users.findCredentialsByEmail(identity.email()).orElseGet(() -> {
+                    UserAccount created = users.create(identity.name(), identity.email(),
+                            passwordEncoder.encode(UUID.randomUUID().toString()), RoleName.BUYER);
+                    mailer.send(created.id(), MailKind.WELCOME, MailFacts.none());
+                    // EN: Written now, so the identity row below can point at it. / VI: Ghi ngay, để dòng liên kết bên dưới trỏ tới được.
+                    entityManager.flush();
+                    return users.findCredentialsById(created.id()).orElseThrow();
+                });
+        if (linked == null) {
+            jdbc.update("""
+                    INSERT INTO user_identities (provider, subject, user_id, created_at) VALUES ('GOOGLE', ?, ?, ?)
+                    ON CONFLICT DO NOTHING
+                    """, identity.subject(), user.id(), Instant.now().atOffset(ZoneOffset.UTC));
+        }
+        if (user.status() == com.nexbid.user.UserStatus.BLOCKED) {
+            throw new BusinessException(ErrorCode.ACCOUNT_BLOCKED, "This account has been blocked");
+        }
+        return begin(user, remember);
     }
 
     /**

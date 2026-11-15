@@ -158,6 +158,18 @@ public class AuditLogService {
     }
 
     @EventListener
+    void onTwoFactor(com.nexbid.auth.TwoFactorService.Changed event) {
+        record(event.userId(), event.enabled() ? AuditAction.TWO_FACTOR_ENABLED : AuditAction.TWO_FACTOR_DISABLED,
+                "User", event.userId(), null, event.enabled() ? "ON" : "OFF");
+    }
+
+    @EventListener
+    void onShillPairCleared(com.nexbid.trust.ShillSignals.Cleared event) {
+        record(event.adminId(), AuditAction.SHILL_PAIR_CLEARED, "User", event.bidderId(), null,
+                "seller " + event.sellerId() + (event.note() == null ? "" : ": " + event.note()));
+    }
+
+    @EventListener
     void onUserStatus(UserStatusChangedEvent event) {
         AuditAction action = event.after() == com.nexbid.user.UserStatus.BLOCKED
                 ? AuditAction.USER_BLOCKED : AuditAction.USER_UNBLOCKED;

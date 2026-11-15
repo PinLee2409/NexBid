@@ -82,8 +82,9 @@ export function RegisterForm() {
         password: values.password,
       });
 
-      if (!result.ok) {
-        setFormError(authErrorMessage(result.error));
+      // EN: A new account has no two-step sign-in, so no code step. / VI: Tài khoản mới chưa có đăng nhập hai bước, nên không có bước nhập mã.
+      if (result.ok !== true) {
+        if (result.ok === false) setFormError(authErrorMessage(result.error));
         return;
       }
 

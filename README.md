@@ -362,6 +362,11 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | Messages | `GET /api/messages` (the caller's conversations), `GET /api/messages/unread-count`, `GET`/`POST /api/orders/{id}/messages` (buyer and seller of that order only; contact details refused), `GET /api/admin/orders/{id}/messages` (each read goes in the audit log) |
 | Shipping | `GET /api/auctions/{id}/shipping-estimate` (the fee guide on a lot page; signed out is fine), `GET /api/shipping/status` (public), `GET /api/shipping/ghn/provinces`, `…/districts`, `…/wards`, `POST /api/shipping/ghn/fee`, `POST /api/shipping/ghn/webhook?secret=…` (GHN's own calls) |
 | Alerts | `GET`/`POST /api/alerts/searches`, `DELETE /api/alerts/searches/{id}` (saved catalogue searches, 10 each), `GET /api/alerts/sellers`, `GET`/`PUT`/`DELETE /api/alerts/sellers/{id}` (follow a seller) |
+| Sign-in extras | `POST /api/auth/login/2fa` (the code step), `POST /api/auth/google` (Google ID token), `GET /api/auth/providers`, `GET /api/users/me/2fa`, `POST /api/users/me/2fa/setup`, `…/enable`, `…/disable` |
+| Finance | `GET /api/admin/finance/reconciliation?from=&to=`, `GET /api/admin/finance/charges.csv`, `GET /api/admin/finance/revenue`, `GET /api/admin/finance/revenue.csv` |
+| Seller import | `POST /api/seller/auctions/import` (multipart: `file` CSV and `images`; template at `/templates/nexbid-lots.csv`) |
+| Trust | `GET /api/admin/shill-suspects` (seller–bidder pairs whose bidding looks like shill bidding, with the signals), `POST /api/admin/shill-suspects/clear` (audited) |
+| Lot extras | `GET /api/auctions/{id}/similar` (open lots in the same category), `GET /api/auctions/cards?ids=…` (recently viewed), `POST /api/auctions/{id}/views` (one visit a day per viewer), `GET /api/seller/auctions/stats` (the seller's figures) |
 | Payment | `POST /api/payments/{id}/shipping-quote` (fixes and shows goods, shipping and total), `POST /api/payments/{id}/vnpay` (signed VNPay checkout link for that total), `GET /api/payments/vnpay/ipn` and `GET /api/payments/vnpay/return` (VNPay's callbacks, public, checked by signature) |
 | Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders` (`…/{id}/received`, `…/{id}/dispute`), `…/me/bank-account` (payouts and refunds go here), `…/me/watchlist`, `…/me/offers` (`…/{id}/accept`, `…/{id}/decline`), `…/me/orders/{id}/review`, `…/me/seller-application`, `/api/notifications`, `GET /api/sellers/{id}/reviews` (public) |
 | Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions`, `/api/seller/auctions/{id}/second-chance`, `/api/seller/auctions/{id}/reserve-decision`, `/api/seller/second-chances`, `/api/seller/orders` (`…/{id}/ship`), `/api/seller/earnings`, `/api/seller/questions/{id}/answer` |
@@ -524,6 +529,9 @@ production. Once on:
 - a lot page shows a shipping fee guide from the seller's address to the viewer's, for the product's packed size (a 1 kg
   box when the seller gave none), insured at the lot's price up to `NEXBID_GHN_INSURANCE_CAP` (5,000,000₫);
 - the same quote is charged with the goods when the buyer pays (see below);
+- a seller can have NexBid book GHN for a paid order (`POST /api/seller/orders/{id}/ghn`): GHN's code and a printable
+  label (`GET /api/seller/orders/{id}/ghn-label`) come back at once. NexBid's GHN account pays GHN out of the buyer's
+  shipping, so that shipping is not added to the seller's payout. Both addresses must have been picked from GHN's lists;
 - a seller who ships with GHN picks it from the carrier list; the tracking code is checked with GHN, a code GHN does not
   know is refused, and the parcel's first status is recorded at once. When GHN cannot be asked, the code is taken as typed;
 - GHN's webhook (`/api/shipping/ghn/webhook?secret=<NEXBID_GHN_WEBHOOK_SECRET>`, which needs a public URL) and a poll

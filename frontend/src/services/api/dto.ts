@@ -45,6 +45,8 @@ export interface ApiLogin {
   accessToken: string;
   expiresAt: IsoDateString;
   user: ApiUser;
+  /** EN: Instead of the token when a code from the authenticator app is needed. / VI: Thay cho token khi cần mã từ ứng dụng xác thực. */
+  twoFactorChallenge?: string | null;
 }
 
 export interface ApiCategory {
@@ -263,6 +265,8 @@ export interface ApiOrder {
     dispute?: OrderDispute | null;
     shippingStatus?: string | null;
     deliveredAt?: IsoDateString | null;
+    ghnBooked?: boolean;
+    ghnAddress?: boolean;
   };
   payment: ApiPaymentDetails | null;
   auction: ApiAuctionSummary | null;

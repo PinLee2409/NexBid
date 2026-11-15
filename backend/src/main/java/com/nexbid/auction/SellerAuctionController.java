@@ -31,9 +31,31 @@ import jakarta.validation.Valid;
 public class SellerAuctionController {
 
     private final AuctionService auctions;
+    private final LotInsights insights;
+    private final LotImport lotImport;
 
-    public SellerAuctionController(AuctionService auctions) {
+    public SellerAuctionController(AuctionService auctions, LotInsights insights, LotImport lotImport) {
         this.auctions = auctions;
+        this.insights = insights;
+        this.lotImport = lotImport;
+    }
+
+    /**
+     * EN: Many lots at once from a CSV file and their photos; each row becomes a draft lot, or a reason it could not.
+     * VI: Nhiều lô cùng lúc từ một file CSV kèm ảnh; mỗi dòng thành một lô nháp, hoặc lý do không tạo được.
+     */
+    @PostMapping(value = "/import", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<LotImport.Result> importLots(@AuthenticationPrincipal CurrentUser seller,
+            @org.springframework.web.bind.annotation.RequestPart("file") org.springframework.web.multipart.MultipartFile file,
+            @org.springframework.web.bind.annotation.RequestPart(name = "images", required = false)
+            List<org.springframework.web.multipart.MultipartFile> images) {
+        return ApiResponse.of(lotImport.run(seller.id(), file, images));
+    }
+
+    /** EN: Views, watchers, bids per lot, and how many closed lots sold. / VI: Lượt xem, theo dõi, trả giá từng lô, và tỉ lệ lô đã đóng bán được. */
+    @GetMapping("/stats")
+    public ApiResponse<LotInsights.SellerStats> stats(@AuthenticationPrincipal CurrentUser seller) {
+        return ApiResponse.of(insights.forSeller(seller.id()));
     }
 
     @PostMapping

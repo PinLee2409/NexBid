@@ -50,6 +50,7 @@ public class OrderService {
     private final BankAccounts bankAccounts;
     private final BuyerReviews buyerReviews;
     private final GhnShipping ghn;
+    private final com.nexbid.order.shipping.GhnBookings bookings;
 
     public OrderService(
             OrderRepository orders,
@@ -61,8 +62,10 @@ public class OrderService {
             @Value("${nexbid.order.auto-complete-after}") Duration autoCompleteAfter,
             BankAccounts bankAccounts,
             BuyerReviews buyerReviews,
-            GhnShipping ghn) {
+            GhnShipping ghn,
+            com.nexbid.order.shipping.GhnBookings bookings) {
         this.ghn = ghn;
+        this.bookings = bookings;
         this.buyerReviews = buyerReviews;
         this.bankAccounts = bankAccounts;
         this.orders = orders;
@@ -177,6 +180,45 @@ public class OrderService {
     }
 
     /**
+     * EN: Books GHN to pick the parcel up, on NexBid's GHN account, and marks the order shipped with GHN's code. NexBid
+     *     pays GHN out of the shipping the buyer paid, so the seller is not paid that shipping. The row is locked while
+     *     GHN answers, so two clicks book one parcel.
+     * VI: Đặt GHN đến lấy kiện, bằng tài khoản GHN của NexBid, và đánh dấu đơn đã gửi với mã của GHN. NexBid trả tiền GHN
+     *     từ phí ship người mua đã trả, nên người bán không nhận phần phí ship đó. Dòng đơn được khoá trong lúc chờ GHN,
+     *     nên bấm hai lần chỉ đặt một kiện.
+     */
+    @Transactional
+    public OrderView shipWithGhn(UUID sellerId, UUID orderId) {
+        Order order = orders.findLockedById(orderId)
+                .filter(found -> found.getSellerId().equals(sellerId))
+                .orElseThrow(() -> notFound(orderId));
+        if (order.getStatus() != OrderStatus.PAID) {
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID, "Only a paid order can be shipped");
+        }
+        com.nexbid.order.shipping.GhnBookings.Booked booked = bookings.book(order);
+
+        move(order, OrderStatus.PAID, OrderStatus.PROCESSING, "Only a paid order can be shipped");
+        Instant now = Instant.now();
+        order.recordShipment(GhnShipping.CARRIER, booked.orderCode(), now);
+        order.recordCarrierStatus("ready_to_pick", false, now);
+        order.bookedWithGhn(booked.fee());
+        events.publishEvent(new OrderEvents.Shipped(order.getId(), sellerId, order.getBuyerId(), order.getAuctionId(),
+                order.getCarrier(), order.getTrackingNumber()));
+        return views(List.of(order), payments.detailsOf(List.of(order.getPaymentId()))).getFirst();
+    }
+
+    /** EN: GHN's printable label for an order NexBid booked. / VI: Phiếu GHN in được cho đơn NexBid đã đặt. */
+    public String ghnLabel(UUID sellerId, UUID orderId) {
+        Order order = orders.findById(orderId)
+                .filter(found -> found.getSellerId().equals(sellerId))
+                .orElseThrow(() -> notFound(orderId));
+        if (!order.isGhnBooked()) {
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID, "This order was not booked with GHN through NexBid");
+        }
+        return bookings.labelUrl(order.getTrackingNumber());
+    }
+
+    /**
      * EN: The buyer confirms the goods arrived. Another buyer's order answers 404.
      * VI: Người mua xác nhận đã nhận hàng. Đơn của người mua khác trả 404.
      */
@@ -225,7 +267,7 @@ public class OrderService {
         orders.save(order);
         events.publishEvent(new OrderEvents.Received(order.getId(), actorId, from));
         events.publishEvent(new OrderEvents.Completed(order.getId(), order.getAuctionId(), order.getSellerId(),
-                order.getBuyerId(), order.getAmount(), automatic, at, order.getShippingFee()));
+                order.getBuyerId(), order.getAmount(), automatic, at, order.getSellerShipping()));
     }
 
     /**
@@ -389,7 +431,9 @@ public class OrderService {
                                 order.isAutoCompleted(),
                                 disputed.containsKey(order.getId()) ? disputed.get(order.getId()).view() : null,
                                 order.getShippingStatus(),
-                                order.getDeliveredAt()),
+                                order.getDeliveredAt(),
+                                order.isGhnBooked(),
+                                order.getShipDistrictId() != null),
                         paid.get(order.getPaymentId()),
                         lots.get(order.getAuctionId()),
                         reviewed.get(order.getId()),

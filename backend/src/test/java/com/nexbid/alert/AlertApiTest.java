@@ -180,6 +180,30 @@ class AlertApiTest {
                 .andExpect(jsonPath("$.data.length()").value(0));
     }
 
+    /**
+     * EN: Searches ignore Vietnamese accents and case, on the browse page and in saved searches alike.
+     * VI: Tìm kiếm bỏ qua dấu tiếng Việt và chữ hoa, ở trang duyệt lô cũng như ở bộ lọc đã lưu.
+     */
+    @Test
+    void searchingWithoutAccentsFindsAccentedNames() throws Exception {
+        String seller = tokenFor("al.accent.seller@nexbid.com", "Accent Seller", RoleName.SELLER);
+        String admin = tokenFor("al.accent.admin@nexbid.com", "Accent Admin", RoleName.ADMIN);
+        String buyer = tokenFor("al.accent.buyer@nexbid.com", "Accent Buyer", RoleName.BUYER);
+        saveSearch(buyer, "{\"q\":\"DONG HO co\"}").andExpect(status().isCreated());
+
+        String lot = approvedLot(seller, admin, "Đồng hồ cổ Thụy Sĩ", 2_000_000);
+        approvedLot(seller, admin, "Máy ảnh Leica", 2_000_000);
+
+        assertThat(alertsTo(idOf("al.accent.buyer@nexbid.com"))).containsExactly("Đồng hồ cổ Thụy Sĩ");
+        jdbc.update("UPDATE auctions SET status = 'ACTIVE', start_time = now() - interval '1 hour' WHERE id = ?::uuid", lot);
+        mockMvc.perform(get("/api/auctions").param("q", "dong ho"))
+                .andExpect(jsonPath("$.data.items[?(@.product.name == 'Đồng hồ cổ Thụy Sĩ')]").exists());
+        mockMvc.perform(get("/api/auctions").param("q", "đồng HỒ"))
+                .andExpect(jsonPath("$.data.items[?(@.product.name == 'Đồng hồ cổ Thụy Sĩ')]").exists());
+        mockMvc.perform(get("/api/auctions").param("q", "dong ho"))
+                .andExpect(jsonPath("$.data.items[?(@.product.name == 'Máy ảnh Leica')]").doesNotExist());
+    }
+
     @Test
     void savedSearchesAndFollowsHaveTheirLimits() throws Exception {
         String buyer = tokenFor("al.limits@nexbid.com", "Lim Buyer", RoleName.BUYER);

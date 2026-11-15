@@ -1,12 +1,13 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 
+import { GoogleButton } from "@/components/auth/google-button";
 import { FormField } from "@/components/common/form-field";
 import { useAuthErrorMessage } from "@/hooks/use-labels";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { landingFor, useReturnPath, withReturnPath } from "@/components/auth/use-return-path";
 import { Label } from "@/components/ui/label";
-import { hasRole, signIn, signOut, useSession } from "@/services/session-service";
+import {
+  hasRole,
+  signIn,
+  signInWithCode,
+  signInWithGoogle,
+  signOut,
+  useSession,
+  type AuthResult,
+} from "@/services/session-service";
 
 interface FieldErrors {
   email?: string;
@@ -54,6 +63,52 @@ export function LoginForm({ audience = "marketplace" }: LoginFormProps) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const locale = useLocale();
+  // EN: Set once the password was right and the authenticator code is next. / VI: Có khi mật khẩu đúng và tiếp theo là mã xác thực.
+  const [challenge, setChallenge] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+
+  /** EN: Where every way of signing in ends. / VI: Nơi mọi cách đăng nhập kết thúc. */
+  async function settle(result: AuthResult) {
+    if (result.ok === false) {
+      setFormError(authErrorMessage(result.error));
+      return;
+    }
+    if (result.ok === "code") {
+      setChallenge(result.challenge);
+      setCode("");
+      return;
+    }
+
+    if (forAdmin && !hasRole(result.user, "ADMIN")) {
+      // EN: The account is fine, just not for this door: leave no session behind. / VI: Tài khoản không sai, chỉ là không dành cho cửa này: không để lại phiên nào.
+      await signOut();
+      setChallenge(null);
+      setFormError(t("adminOnly"));
+      return;
+    }
+
+    toast.success(t("signedIn"), {
+      description: t("welcomeBack", { name: result.user.fullName }),
+    });
+    router.replace(forAdmin ? (returnPath ?? "/admin") : landingFor(result.user, returnPath));
+  }
+
+  function submitCode(event: FormEvent) {
+    event.preventDefault();
+    setFormError(null);
+    if (!challenge || !code.trim()) return;
+    startTransition(async () => {
+      await settle(await signInWithCode(challenge, code));
+    });
+  }
+
+  function viaGoogle(credential: string) {
+    setFormError(null);
+    startTransition(async () => {
+      await settle(await signInWithGoogle(credential, remember));
+    });
+  }
 
   function validate(): FieldErrors {
     const next: FieldErrors = {};
@@ -77,25 +132,52 @@ export function LoginForm({ audience = "marketplace" }: LoginFormProps) {
     if (Object.keys(nextErrors).length > 0) return;
 
     startTransition(async () => {
-      const result = await signIn({ email, password, remember });
-
-      if (!result.ok) {
-        setFormError(authErrorMessage(result.error));
-        return;
-      }
-
-      if (forAdmin && !hasRole(result.user, "ADMIN")) {
-        // EN: The account is fine, just not for this door: leave no session behind. / VI: Tài khoản không sai, chỉ là không dành cho cửa này: không để lại phiên nào.
-        await signOut();
-        setFormError(t("adminOnly"));
-        return;
-      }
-
-      toast.success(t("signedIn"), {
-        description: t("welcomeBack", { name: result.user.fullName }),
-      });
-      router.replace(forAdmin ? (returnPath ?? "/admin") : landingFor(result.user, returnPath));
+      await settle(await signIn({ email, password, remember }));
     });
+  }
+
+  if (challenge) {
+    return (
+      <div>
+        <h1 className="display text-[clamp(2rem,5vw,3.5rem)]">{t("codeTitle")}</h1>
+        <p className="text-muted-foreground mt-2 text-sm leading-relaxed">{t("codeBody")}</p>
+        <form onSubmit={submitCode} noValidate className="mt-8 space-y-4">
+          <FormField label={t("code")} required>
+            {(field) => (
+              <Input
+                {...field}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                autoFocus
+                maxLength={20}
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+                className="h-11 tracking-[0.3em]"
+              />
+            )}
+          </FormField>
+          {formError ? (
+            <p role="alert" className="bg-danger-dim text-danger-text px-3.5 py-3 text-sm">
+              {formError}
+            </p>
+          ) : null}
+          <Button type="submit" className="h-11 w-full" disabled={isPending || !code.trim()}>
+            {isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+            {t("codeAction")}
+          </Button>
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-foreground w-full text-center text-sm underline-offset-4 hover:underline"
+            onClick={() => {
+              setChallenge(null);
+              setFormError(null);
+            }}
+          >
+            {t("codeBack")}
+          </button>
+        </form>
+      </div>
+    );
   }
 
   return (
@@ -176,6 +258,12 @@ export function LoginForm({ audience = "marketplace" }: LoginFormProps) {
           {t("signInAction")}
         </Button>
       </form>
+
+      {forAdmin ? null : (
+        <div className="mt-4">
+          <GoogleButton onCredential={viaGoogle} locale={locale} />
+        </div>
+      )}
 
       <p className="border-line text-dim mt-8 border-t pt-4 text-xs leading-relaxed">
         <span className="label-sm text-foreground">{t("demoTitle")}</span>{" "}

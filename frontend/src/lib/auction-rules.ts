@@ -4,6 +4,7 @@ import type {
   AuctionStatus,
   AuctionSummary,
   ErrorCode,
+  ProductStatus,
   ReserveDecision,
   User,
 } from "@/types";
@@ -115,6 +116,16 @@ export function isBelowReserve(lot: {
 }): boolean {
   if (!lot.ended || lot.bidCount === 0 || lot.reserveDecision === "ACCEPTED") return false;
   return lot.reserveDecision !== null || lot.reserveMet === false;
+}
+
+/**
+ * EN: Whether the product behind a finished lot can go up again: the lot closed unsold, was cancelled (unpaid,
+ *     refunded) or was taken down, and the product is back with the seller.
+ * VI: Sản phẩm của một lô đã xong có đăng lại được không: lô đóng mà không bán được, bị huỷ (không trả tiền, đã hoàn
+ *     tiền) hoặc bị gỡ, và sản phẩm đã về lại tay người bán.
+ */
+export function isRelistable(status: AuctionStatus, productStatus: ProductStatus): boolean {
+  return productStatus === "AVAILABLE" && ["ENDED", "COMPLETED", "CANCELLED", "REMOVED"].includes(status);
 }
 
 /** Seller-side rule: auctions are only editable while still a draft (§7.4). */

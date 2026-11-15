@@ -485,6 +485,9 @@ class AfterSaleApiTest {
     @Autowired
     private com.nexbid.order.shipping.ShippingEstimates estimates;
 
+    @Autowired
+    private com.nexbid.order.shipping.GhnBookings bookings;
+
     private ResultActions message(String token, String orderId, String body) throws Exception {
         return mockMvc.perform(post("/api/orders/" + orderId + "/messages").header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"body\":\"" + body + "\"}"));
@@ -605,8 +608,19 @@ class AfterSaleApiTest {
                     httpStatus = 400;
                     body = "{\"code\":400,\"message\":\"Lỗi gọi API: corev2_tenant_order_detail - Đơn hàng không tồn tại\",\"data\":null}";
                 }
+            } else if (path.equals("/v2/shipping-order/create")) {
+                String phone = objectMapper.readTree(sent).path("to_phone").asString();
+                if (phone.startsWith("000")) {
+                    httpStatus = 400;
+                    body = "{\"code\":400,\"message\":\"Số điện thoại người nhận không hợp lệ\",\"data\":null}";
+                } else {
+                    String code = "NB" + (parcels.size() + 100);
+                    parcels.put(code, "ready_to_pick");
+                    body = "{\"code\":200,\"data\":{\"order_code\":\"" + code + "\",\"total_fee\":41000}}";
+                }
             } else {
                 body = switch (path) {
+                    case "/v2/a5/gen-token" -> "{\"code\":200,\"data\":{\"token\":\"print-tok\"}}";
                     case "/v2/shipping-order/fee" -> "{\"code\":200,\"message\":\"Success\",\"data\":{\"total\":36300}}";
                     case "/master-data/province" -> """
                             {"code":200,"data":[{"ProvinceID":2002,"ProvinceName":"Hà Nội 02"},
@@ -630,6 +644,7 @@ class AfterSaleApiTest {
             var ghn = com.nexbid.order.shipping.GhnTestAccess.shipping(orderRepository, client, "s3cret");
             org.springframework.test.util.ReflectionTestUtils.setField(orderService, "ghn", ghn);
             org.springframework.test.util.ReflectionTestUtils.setField(estimates, "ghn", ghn);
+            org.springframework.test.util.ReflectionTestUtils.setField(bookings, "ghn", ghn);
             assertThat(com.nexbid.order.shipping.GhnTestAccess.fee(ghn)).isEqualByComparingTo("36300");
             // EN: Test places are hidden, names sorted the Vietnamese way, the list kept. / VI: Ẩn địa danh test, sắp theo tiếng Việt, giữ danh sách.
             assertThat(ghn.provinces()).extracting("name").containsExactly("Hà Nội", "Hồ Chí Minh");
@@ -690,9 +705,63 @@ class AfterSaleApiTest {
             assertThat(jdbc.queryForObject("SELECT shipping_status FROM orders WHERE id = ?::uuid", String.class,
                     sale.orderId())).isEqualTo("delivered");
             assertThat(ghn.record("unknown-code", "delivered", Instant.now())).isFalse();
+
+            // EN: NexBid books GHN itself once both addresses carry GHN's ids. / VI: NexBid tự đặt GHN khi cả hai địa chỉ có mã GHN.
+            Sale booked = paidSale("ghnbook");
+            String book = "/api/seller/orders/" + booked.orderId() + "/ghn";
+            mockMvc.perform(post(book).header("Authorization", "Bearer " + booked.seller()))
+                    .andExpect(jsonPath("$.code").value("GHN_ADDRESS_REQUIRED"));
+            jdbc.update("UPDATE orders SET ship_district_id = 1484, ship_ward_code = '1A0101' WHERE id = ?::uuid",
+                    booked.orderId());
+            mockMvc.perform(post(book).header("Authorization", "Bearer " + booked.seller()))
+                    .andExpect(jsonPath("$.code").value("GHN_ADDRESS_REQUIRED"));
+            mockMvc.perform(put("/api/users/me/address").header("Authorization", "Bearer " + booked.seller())
+                    .contentType(MediaType.APPLICATION_JSON).content("""
+                            {"recipient":"Seller","phone":"0987654321","line":"2 Lê Lợi","ward":"Bến Nghé",
+                             "district":"Quận 1","province":"Hồ Chí Minh","provinceId":202,"districtId":1442,
+                             "wardCode":"20109"}""")).andExpect(status().isOk());
+            jdbc.update("UPDATE orders SET ship_phone = '0001112223' WHERE id = ?::uuid", booked.orderId());
+            mockMvc.perform(post(book).header("Authorization", "Bearer " + booked.seller()))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.code").value("GHN_REFUSED"));
+            assertThat(statusOf("orders", booked.orderId())).isEqualTo("PAID");
+            jdbc.update("UPDATE orders SET ship_phone = '0901234567' WHERE id = ?::uuid", booked.orderId());
+            mockMvc.perform(get("/api/seller/orders/" + booked.orderId() + "/ghn-label")
+                    .header("Authorization", "Bearer " + booked.seller()))
+                    .andExpect(jsonPath("$.code").value("ORDER_STATUS_INVALID"));
+
+            mockMvc.perform(post(book).header("Authorization", "Bearer " + booked.seller()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.order.status").value("PROCESSING"))
+                    .andExpect(jsonPath("$.data.order.carrier").value("GHN"))
+                    .andExpect(jsonPath("$.data.order.trackingNumber").value(org.hamcrest.Matchers.startsWith("NB")))
+                    .andExpect(jsonPath("$.data.order.shippingStatus").value("ready_to_pick"))
+                    .andExpect(jsonPath("$.data.order.ghnBooked").value(true));
+            String created = calls.stream().filter(call -> call.startsWith("/v2/shipping-order/create")
+                    && call.contains("0901234567")).findFirst().orElseThrow();
+            assertThat(created).contains("\"client_order_code\":\"" + booked.orderId() + "\"", "\"cod_amount\":0",
+                    "\"to_district_id\":1484", "\"from_district_name\":\"Quận 1\"", "\"insurance_value\":5000000",
+                    "\"name\":\"After sale ghnbook\"");
+            assertThat(jdbc.queryForObject("SELECT carrier_fee FROM orders WHERE id = ?::uuid", BigDecimal.class,
+                    booked.orderId())).isEqualByComparingTo("41000");
+            mockMvc.perform(post(book).header("Authorization", "Bearer " + booked.seller()))
+                    .andExpect(jsonPath("$.code").value("ORDER_STATUS_INVALID"));
+            mockMvc.perform(get("/api/seller/orders/" + booked.orderId() + "/ghn-label")
+                    .header("Authorization", "Bearer " + booked.seller()))
+                    .andExpect(jsonPath("$.data.url").value(org.hamcrest.Matchers.endsWith("/a5/public-api/printA5?token=print-tok")));
+            mockMvc.perform(get("/api/seller/orders/" + booked.orderId() + "/ghn-label")
+                    .header("Authorization", "Bearer " + sale.seller()))
+                    .andExpect(status().isNotFound());
+
+            // EN: NexBid paid GHN, so the seller gets the goods less the fee and no shipping. / VI: NexBid đã trả GHN, nên người bán nhận tiền hàng trừ phí, không có phí ship.
+            mockMvc.perform(post("/api/users/me/orders/" + booked.orderId() + "/received")
+                    .header("Authorization", "Bearer " + booked.buyer())).andExpect(status().isOk());
+            assertThat(jdbc.queryForObject("SELECT shipping || ' ' || net FROM seller_earnings WHERE order_id = ?::uuid",
+                    String.class, booked.orderId())).isEqualTo("0.00 11400000.00");
         } finally {
             org.springframework.test.util.ReflectionTestUtils.setField(orderService, "ghn", offGhn);
             org.springframework.test.util.ReflectionTestUtils.setField(estimates, "ghn", offGhn);
+            org.springframework.test.util.ReflectionTestUtils.setField(bookings, "ghn", offGhn);
             gateway.stop(0);
         }
 
