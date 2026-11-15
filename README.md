@@ -357,10 +357,10 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | Auth | `POST /api/auth/register`, `POST /api/auth/login` (JWT for 15 minutes + refresh cookie), `POST /api/auth/refresh`, `POST /api/auth/logout` |
 | Catalogue | `GET /api/auctions`, `GET /api/auctions/{id}`, `GET /api/categories`, `GET /api/server-time` — public |
 | Bidding | `GET`/`POST /api/auctions/{id}/questions` (public Q&A; reading needs no sign-in), `POST /api/auctions/{id}/bids`, `GET /api/auctions/{id}/bids`, `/api/auctions/{id}/auto-bid`, `POST /api/auctions/{id}/buy-now` |
-| Account | `GET`/`PUT /api/users/me/address` (delivery address, required before paying), `GET`/`PUT /api/users/me/email-preferences`, `POST /api/email/unsubscribe` (signed link, public) |
+| Account | `GET`/`PUT /api/users/me/address` (delivery address, required before paying; GHN's province, district and ward ids when picked from GHN's lists), `GET`/`PUT /api/users/me/email-preferences`, `POST /api/email/unsubscribe` (signed link, public) |
 | Reports | `POST /api/auctions/{id}/reports` (counterfeit, misdescribed, prohibited; signed in, not the seller), `/api/admin/reports` (`…/{id}/dismiss`, `…/{id}/take-down`), `POST /api/admin/auctions/{id}/remove` |
-| Messages | `GET /api/messages` (the caller's conversations), `GET /api/messages/unread-count`, `GET`/`POST /api/orders/{id}/messages` (buyer and seller of that order only; contact details refused), `GET /api/admin/orders/{id}/messages` |
-| Shipping | `GET /api/shipping/status` (public), `GET /api/shipping/ghn/provinces`, `…/districts`, `…/wards`, `POST /api/shipping/ghn/fee`, `POST /api/shipping/ghn/webhook?secret=…` (GHN's own calls) |
+| Messages | `GET /api/messages` (the caller's conversations), `GET /api/messages/unread-count`, `GET`/`POST /api/orders/{id}/messages` (buyer and seller of that order only; contact details refused), `GET /api/admin/orders/{id}/messages` (each read goes in the audit log) |
+| Shipping | `GET /api/auctions/{id}/shipping-estimate` (the fee guide on a lot page; signed out is fine), `GET /api/shipping/status` (public), `GET /api/shipping/ghn/provinces`, `…/districts`, `…/wards`, `POST /api/shipping/ghn/fee`, `POST /api/shipping/ghn/webhook?secret=…` (GHN's own calls) |
 | Alerts | `GET`/`POST /api/alerts/searches`, `DELETE /api/alerts/searches/{id}` (saved catalogue searches, 10 each), `GET /api/alerts/sellers`, `GET`/`PUT`/`DELETE /api/alerts/sellers/{id}` (follow a seller) |
 | Payment | `POST /api/payments/{id}/vnpay` (signed VNPay checkout link), `GET /api/payments/vnpay/ipn` and `GET /api/payments/vnpay/return` (VNPay's callbacks, public, checked by signature) |
 | Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders` (`…/{id}/received`, `…/{id}/dispute`), `…/me/bank-account` (payouts and refunds go here), `…/me/watchlist`, `…/me/offers` (`…/{id}/accept`, `…/{id}/decline`), `…/me/orders/{id}/review`, `…/me/seller-application`, `/api/notifications`, `GET /api/sellers/{id}/reviews` (public) |
@@ -515,18 +515,23 @@ The demo scripts pay by sending a signed IPN themselves, so they need the backen
 
 ### Shipping with GHN
 
-The GHN (Giao Hàng Nhanh) integration is built but off until it has a shop's keys: set `NEXBID_GHN_TOKEN` and
-`NEXBID_GHN_SHOP_ID` (sandbox keys from GHN's developer site; the default gateway is GHN's sandbox, set
-`NEXBID_GHN_BASE_URL` for production). Once on:
+The GHN (Giao Hàng Nhanh) integration is off until it has a shop's keys: set `NEXBID_GHN_TOKEN` and
+`NEXBID_GHN_SHOP_ID` (sandbox keys from [5sao.ghn.dev](https://5sao.ghn.dev) under the account's security settings; the
+shop needs a pickup address before GHN quotes fees). The default gateway is GHN's sandbox; set `NEXBID_GHN_BASE_URL` for
+production. Once on:
 
-- a seller who ships with GHN enters "GHN" as the carrier and GHN's order code as the tracking number;
-- GHN's webhook (`/api/shipping/ghn/webhook?secret=<NEXBID_GHN_WEBHOOK_SECRET>`) and a poll every 30 minutes record
-  the parcel's status on the order;
+- addresses are picked from GHN's province, district and ward lists, so their ids are saved;
+- a lot page shows a shipping fee guide from the seller's address to the viewer's, for the product's packed size (a 1 kg
+  box when the seller gave none). It is a guide only and is not added to the payment;
+- a seller who ships with GHN picks it from the carrier list; the tracking code is checked with GHN, a code GHN does not
+  know is refused, and the parcel's first status is recorded at once. When GHN cannot be asked, the code is taken as typed;
+- GHN's webhook (`/api/shipping/ghn/webhook?secret=<NEXBID_GHN_WEBHOOK_SECRET>`, which needs a public URL) and a poll
+  every 30 minutes keep the parcel's status on the order;
 - when GHN reports "delivered", the order completes three days later unless the buyer disputes
-  (`NEXBID_ORDER_COMPLETE_AFTER_DELIVERY`), instead of seven days after shipping;
-- shipping fees and GHN's province, district and ward lists are available to the checkout.
+  (`NEXBID_ORDER_COMPLETE_AFTER_DELIVERY`), instead of seven days after shipping.
 
-Without keys the endpoints answer `SHIPPING_UNAVAILABLE` and sellers type tracking numbers by hand, as before.
+Without keys the GHN endpoints answer `SHIPPING_UNAVAILABLE`, addresses are typed by hand, no fee guide is shown, and
+any carrier name and tracking number are accepted, as before.
 
 ### Monitoring
 

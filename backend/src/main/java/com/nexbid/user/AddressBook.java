@@ -25,25 +25,31 @@ public class AddressBook {
 
     public Optional<ShippingAddress> addressOf(UUID userId) {
         List<ShippingAddress> found = jdbc.query(
-                "SELECT recipient, phone, line, ward, district, province FROM user_addresses WHERE user_id = ?",
+                """
+                SELECT recipient, phone, line, ward, district, province, province_id, district_id, ward_code
+                FROM user_addresses WHERE user_id = ?
+                """,
                 (rs, row) -> new ShippingAddress(rs.getString("recipient"), rs.getString("phone"), rs.getString("line"),
-                        rs.getString("ward"), rs.getString("district"), rs.getString("province")),
+                        rs.getString("ward"), rs.getString("district"), rs.getString("province"),
+                        rs.getObject("province_id", Integer.class), rs.getObject("district_id", Integer.class),
+                        rs.getString("ward_code")),
                 userId);
         return found.stream().findFirst();
     }
-
     @Transactional
     public ShippingAddress save(UUID userId, ShippingAddress address) {
         ShippingAddress clean = address.trimmed();
         jdbc.update("""
-                INSERT INTO user_addresses (user_id, recipient, phone, line, ward, district, province, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO user_addresses (user_id, recipient, phone, line, ward, district, province, province_id,
+                    district_id, ward_code, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (user_id) DO UPDATE SET recipient = EXCLUDED.recipient, phone = EXCLUDED.phone,
                     line = EXCLUDED.line, ward = EXCLUDED.ward, district = EXCLUDED.district,
-                    province = EXCLUDED.province, updated_at = EXCLUDED.updated_at
+                    province = EXCLUDED.province, province_id = EXCLUDED.province_id,
+                    district_id = EXCLUDED.district_id, ward_code = EXCLUDED.ward_code, updated_at = EXCLUDED.updated_at
                 """,
                 userId, clean.recipient(), clean.phone(), clean.line(), clean.ward(), clean.district(), clean.province(),
-                Timestamp.from(Instant.now()));
+                clean.provinceId(), clean.districtId(), clean.wardCode(), Timestamp.from(Instant.now()));
         return clean;
     }
 

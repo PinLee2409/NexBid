@@ -14,6 +14,7 @@ import { ReportLotButton } from "@/components/nexbid/report-lot-button";
 import { LotQuestions } from "@/components/nexbid/lot-questions";
 import { ProductStage } from "@/components/nexbid/product-stage";
 import { SectionHead } from "@/components/nexbid/section-head";
+import { ShippingEstimateRow } from "@/components/nexbid/shipping-estimate-row";
 import type { Locale } from "@/i18n/config";
 import { formatCurrency } from "@/lib/format";
 import { getAuction, getSellerReputation, listAuctions } from "@/services/auction-service";
@@ -107,6 +108,9 @@ export default async function AuctionDetailPage(
                   label={t("bidPanelTitle")}
                   value={formatCurrency(auction.startingPrice, locale)}
                 />
+                {auction.status === "ACTIVE" || auction.status === "SCHEDULED" ? (
+                  <ShippingEstimateRow auctionId={auction.id} />
+                ) : null}
                 <SpecRow
                   label={tf("provenance")}
                   value={tf("originalOwner")}

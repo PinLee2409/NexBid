@@ -117,6 +117,22 @@ export async function listOrders(statuses: OrderStatus[] = []): Promise<OrderEnt
   return page.items.map(toEntry);
 }
 
+/** EN: One message of an order, as an admin reads it. / VI: Một tin nhắn của đơn, như admin đọc. */
+export interface AdminOrderMessage {
+  id: string;
+  fromBuyer: boolean;
+  /** EN: Full display name. / VI: Tên hiển thị đầy đủ. */
+  sender: string;
+  body: string;
+  createdAt: string;
+  readAt: string | null;
+}
+
+/** `GET /api/admin/orders/{id}/messages` — every read is written to the audit log. */
+export function listOrderMessages(orderId: string): Promise<AdminOrderMessage[]> {
+  return api<AdminOrderMessage[]>(`/api/admin/orders/${orderId}/messages`);
+}
+
 /** `GET /api/admin/orders/{id}/refund-account` — where to transfer a refund; null when the buyer has not said. */
 export async function getRefundAccount(orderId: string): Promise<BankAccount | null> {
   return (await api<BankAccount | null>(`/api/admin/orders/${orderId}/refund-account`)) ?? null;

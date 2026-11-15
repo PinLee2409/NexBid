@@ -8,6 +8,7 @@ import type {
   OfferStatus,
   OrderDispute,
   OrderStatus,
+  Parcel,
   PaymentStatus,
   ProductCondition,
   ProductStatus,
@@ -278,6 +279,7 @@ export interface ApiProduct {
   description: string;
   condition: ProductCondition;
   status: ProductStatus;
+  parcel?: Parcel | null;
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
 }
@@ -326,4 +328,7 @@ export interface ApiShippingAddress {
   ward: string | null;
   district: string | null;
   province: string;
+  provinceId?: number | null;
+  districtId?: number | null;
+  wardCode?: string | null;
 }

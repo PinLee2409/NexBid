@@ -270,7 +270,13 @@
     "reportDetailsShort": "Hãy nói thêm một chút (ít nhất 10 ký tự).",
     "reportSend": "Gửi báo cáo",
     "reportSent": "Đã gửi báo cáo",
-    "reportSentBody": "NexBid sẽ xem xét. Bạn sẽ được báo kết quả."
+    "reportSentBody": "NexBid sẽ xem xét. Bạn sẽ được báo kết quả.",
+    "shippingEstimate": "Phí ship",
+    "shippingEstimateTo": "về {place}: khoảng",
+    "shippingEstimateNote": "GHN chuẩn, chỉ để tham khảo; người bán có thể gửi hãng khác",
+    "shippingEstimateDefault": "GHN chuẩn cho hộp 1 kg, chỉ để tham khảo; người bán chưa khai kích thước",
+    "shippingEstimateAddAddress": "Thêm địa chỉ để xem phí ship",
+    "shippingEstimateSignIn": "Đăng nhập để xem phí ship về địa chỉ của bạn"
   },
   "bidErrors": {
     "NOT_AUTHENTICATED": "Đăng nhập để đặt giá.",
@@ -517,7 +523,27 @@
     "unsubscribedDigestTitle": "Đã tắt email lô mới",
     "orderDelivered": "Đã giao {date}",
     "orderCarrierStatus": "Vận chuyển:",
-    "orderMessages": "Tin nhắn"
+    "orderMessages": "Tin nhắn",
+    "carrierStatus": {
+      "ready_to_pick": "Chờ lấy hàng",
+      "picking": "Đang lấy hàng",
+      "picked": "Đã lấy hàng",
+      "storing": "Đang ở kho",
+      "transporting": "Đang luân chuyển",
+      "sorting": "Đang phân loại",
+      "delivering": "Đang giao",
+      "delivered": "Đã giao",
+      "delivery_fail": "Giao không thành công",
+      "waiting_to_return": "Chờ hoàn hàng",
+      "return": "Đang hoàn hàng",
+      "returned": "Đã hoàn về người bán",
+      "cancel": "Hãng vận chuyển đã huỷ",
+      "exception": "Kiện hàng gặp sự cố",
+      "damage": "Hàng bị hư hỏng",
+      "lost": "Hàng bị thất lạc"
+    },
+    "addressPick": "Chọn…",
+    "addressPickAgain": "Địa chỉ đã lưu ({address}) được gõ tay. Hãy chọn lại từ danh sách để trang lô báo được phí ship."
   },
   "becomeSeller": {
     "title": "Trở thành người bán",
@@ -645,7 +671,8 @@
       "categoryRequired": "Chọn danh mục.",
       "imagesRequired": "Thêm ít nhất một ảnh.",
       "reserveBelowStart": "Giá sàn không được thấp hơn giá khởi điểm.",
-      "buyNowTooLow": "Giá mua ngay phải cao hơn giá khởi điểm và không thấp hơn giá sàn."
+      "buyNowTooLow": "Giá mua ngay phải cao hơn giá khởi điểm và không thấp hơn giá sàn.",
+      "parcelInvalid": "Điền đủ cả bốn ô hoặc bỏ trống: tối đa 30.000 g và mỗi cạnh 150 cm."
     },
     "ordersTitle": "Đơn hàng",
     "ordersSubtitle": "Các lô bạn đã bán. Gửi hàng cho đơn đã thanh toán; người mua xác nhận đã nhận.",
@@ -688,7 +715,6 @@
     "shipBody": "Thêm đơn vị vận chuyển và mã vận đơn nếu có; người mua sẽ thấy trong đơn hàng và trong email.",
     "shipTo": "Giao tới",
     "shipCarrier": "Đơn vị vận chuyển",
-    "shipCarrierHint": "Ví dụ GHN, GHTK, Viettel Post hoặc J&T.",
     "shipTracking": "Mã vận đơn",
     "earningsTitle": "Thu nhập",
     "earningsSubtitle": "Tiền bán được tính khi đơn hoàn tất. NexBid giữ phí sàn và chuyển phần còn lại vào tài khoản ngân hàng của bạn.",
@@ -724,7 +750,19 @@
     "rateBuyerStarsRequired": "Chọn từ 1 đến 5 sao.",
     "rateBuyerComment": "Nhận xét (không bắt buộc)",
     "rateBuyerSend": "Lưu đánh giá",
-    "rateBuyerSaved": "Đã lưu đánh giá"
+    "rateBuyerSaved": "Đã lưu đánh giá",
+    "shipCarrierPlaceholder": "Chọn đơn vị vận chuyển",
+    "shipCarrierOther": "Hãng khác",
+    "shipCarrierOtherName": "Tên hãng vận chuyển",
+    "shipTrackingGhnHint": "NexBid kiểm tra mã với GHN và tự theo dõi kiện hàng cho bạn.",
+    "parcelTitle": "Đóng gói",
+    "parcelHint": "Không bắt buộc. Cân nặng và kích thước sau đóng gói giúp trang lô báo phí ship; bỏ trống thì tính theo hộp 1 kg, 20×15×10 cm.",
+    "parcel": {
+      "weightGrams": "Cân nặng (g)",
+      "lengthCm": "Dài (cm)",
+      "widthCm": "Rộng (cm)",
+      "heightCm": "Cao (cm)"
+    }
   },
   "admin": {
     "console": "Bảng quản trị",
@@ -932,7 +970,14 @@
     "unverifySeller": "Gỡ huy hiệu",
     "sellerVerified": "Đã xác minh người bán",
     "sellerUnverified": "Đã gỡ huy hiệu xác minh",
-    "verifiedBadge": "Người bán đã xác minh"
+    "verifiedBadge": "Người bán đã xác minh",
+    "orderMessages": "Tin nhắn",
+    "orderMessagesTitle": "Tin nhắn của đơn này",
+    "orderMessagesBody": "Giữa người mua và người bán. Chỉ đọc; mỗi lần mở đều được ghi vào nhật ký.",
+    "orderMessagesLoading": "Đang tải tin nhắn",
+    "orderMessagesNone": "Đơn này chưa có tin nhắn.",
+    "orderMessagesBuyer": "người mua",
+    "orderMessagesSeller": "người bán"
   },
   "howItWorks": {
     "title": "NexBid hoạt động thế nào",
@@ -1089,7 +1134,8 @@
       "BANK_ACCOUNT_CHANGED": "Đổi tài khoản nhận tiền",
       "STRAY_CHARGE_REFUNDED": "Trả lại khoản VNPay thu thừa",
       "AUCTION_REMOVED": "Gỡ lô",
-      "SELLER_VERIFIED": "Đổi xác minh người bán"
+      "SELLER_VERIFIED": "Đổi xác minh người bán",
+      "ORDER_MESSAGES_READ": "Đọc tin nhắn đơn hàng"
     },
     "role": {
       "BUYER": "Người mua",
@@ -1364,7 +1410,8 @@
     "MESSAGES_CLOSED": "Tin nhắn của đơn này đã đóng.",
     "MESSAGE_BLOCKED": "Tin nhắn không được chứa số điện thoại, email, đường link, số tài khoản hay ứng dụng khác. Hãy giữ giao dịch trên NexBid để được bảo vệ.",
     "MESSAGE_LIMIT": "Bạn gửi quá nhanh. Hãy đợi vài phút.",
-    "SHIPPING_UNAVAILABLE": "Hiện chưa giao hàng qua GHN được."
+    "SHIPPING_UNAVAILABLE": "Hiện chưa giao hàng qua GHN được.",
+    "TRACKING_NOT_FOUND": "GHN không có đơn nào mang mã này. Hãy kiểm tra mã trên biên nhận GHN."
   },
   "messages": {
     "title": "Tin nhắn",

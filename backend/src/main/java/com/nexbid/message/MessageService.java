@@ -79,11 +79,29 @@ public class MessageService {
         return new ThreadDetail(thread(userId, order), messages(userId, orderId));
     }
 
-    /** EN: An admin reads a thread without marking anything. / VI: Admin đọc cuộc trò chuyện mà không đánh dấu gì. */
-    @Transactional(readOnly = true)
-    public List<MessageView> read(UUID orderId) {
-        orders.partiesOf(orderId).orElseThrow(() -> notFound(orderId));
-        return messages(null, orderId);
+    /**
+     * EN: One message as an admin sees it: which side wrote it, under their full display name.
+     * VI: Một tin nhắn như admin thấy: bên nào viết, kèm tên hiển thị đầy đủ.
+     */
+    public record AdminMessageView(UUID id, boolean fromBuyer, String sender, String body, Instant createdAt,
+            Instant readAt) {
+    }
+
+    /**
+     * EN: An admin reads a thread, for a dispute, without marking anything read. The two sides wrote to each other, not
+     *     to us, so every read goes in the audit log.
+     * VI: Admin đọc cuộc trò chuyện, để xử lý khiếu nại, mà không đánh dấu đã đọc. Hai bên viết cho nhau chứ không phải
+     *     cho sàn, nên mỗi lần đọc đều ghi vào nhật ký.
+     */
+    @Transactional
+    public List<AdminMessageView> read(UUID adminId, UUID orderId) {
+        OrderService.Parties order = orders.partiesOf(orderId).orElseThrow(() -> notFound(orderId));
+        List<Row> rows = jdbc.query("SELECT * FROM order_messages WHERE order_id = ? ORDER BY created_at",
+                (rs, n) -> row(rs), orderId);
+        Map<UUID, String> names = users.namesOf(List.of(order.buyerId(), order.sellerId()));
+        events.publishEvent(new MessageEvents.AdminRead(adminId, orderId, rows.size()));
+        return rows.stream().map(row -> new AdminMessageView(row.id(), row.senderId().equals(order.buyerId()),
+                names.get(row.senderId()), row.body(), row.createdAt(), row.readAt())).toList();
     }
 
     @Transactional

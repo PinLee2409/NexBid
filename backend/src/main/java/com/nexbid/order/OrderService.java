@@ -25,6 +25,7 @@ import com.nexbid.common.exception.ErrorCode;
 import com.nexbid.common.exception.ResourceNotFoundException;
 import com.nexbid.order.entity.Order;
 import com.nexbid.order.repository.OrderRepository;
+import com.nexbid.order.shipping.GhnShipping;
 import com.nexbid.payment.PaymentService;
 import com.nexbid.payment.PaymentView;
 import com.nexbid.user.BankAccount;
@@ -48,6 +49,7 @@ public class OrderService {
     private final Duration autoCompleteAfter;
     private final BankAccounts bankAccounts;
     private final BuyerReviews buyerReviews;
+    private final GhnShipping ghn;
 
     public OrderService(
             OrderRepository orders,
@@ -58,7 +60,9 @@ public class OrderService {
             DisputeBook disputes,
             @Value("${nexbid.order.auto-complete-after}") Duration autoCompleteAfter,
             BankAccounts bankAccounts,
-            BuyerReviews buyerReviews) {
+            BuyerReviews buyerReviews,
+            GhnShipping ghn) {
+        this.ghn = ghn;
         this.buyerReviews = buyerReviews;
         this.bankAccounts = bankAccounts;
         this.orders = orders;
@@ -70,7 +74,6 @@ public class OrderService {
         this.autoCompleteAfter = autoCompleteAfter;
     }
 
-    /** EN: A shipped order nobody confirmed yet, and when it completes on its own. / VI: Một đơn đã gửi chưa ai xác nhận, và lúc nó tự hoàn tất. */
     /** EN: Who is party to an order, for its messages. / VI: Ai là bên của một đơn, cho phần tin nhắn. */
     public record Parties(UUID orderId, UUID auctionId, UUID buyerId, UUID sellerId, OrderStatus status,
             Instant completedAt) {
@@ -146,17 +149,28 @@ public class OrderService {
     }
 
     /**
-     * EN: The seller marks a paid order as shipped. Another seller's order answers 404.
-     * VI: Người bán đánh dấu một đơn đã trả là đã gửi hàng. Đơn của người bán khác trả 404.
+     * EN: The seller marks a paid order as shipped. Another seller's order answers 404. With GHN connected, a GHN code
+     *     is checked first (before the row lock, as GHN may take seconds): one GHN has never heard of is refused
+     *     (TRACKING_NOT_FOUND), a real one records its first status at once; when GHN cannot be asked, the shipment is
+     *     taken as typed.
+     * VI: Người bán đánh dấu một đơn đã trả là đã gửi hàng. Đơn của người bán khác trả 404. Khi đã kết nối GHN, mã GHN được
+     *     kiểm trước (trước khi khoá dòng, vì GHN có thể mất vài giây): mã GHN không biết bị từ chối (TRACKING_NOT_FOUND),
+     *     mã thật ghi luôn trạng thái đầu tiên; khi không hỏi được GHN thì nhận như người bán đã nhập.
      */
     @Transactional
     public OrderView ship(UUID sellerId, UUID orderId, String carrier, String trackingNumber) {
+        String code = blankToNull(trackingNumber);
+        boolean viaGhn = GhnShipping.isGhn(carrier);
+        java.util.Optional<String> parcel = viaGhn && code != null ? ghn.verifyParcel(code) : java.util.Optional.empty();
+
         Order order = orders.findLockedById(orderId)
                 .filter(found -> found.getSellerId().equals(sellerId))
                 .orElseThrow(() -> notFound(orderId));
 
         move(order, OrderStatus.PAID, OrderStatus.PROCESSING, "Only a paid order can be shipped");
-        order.recordShipment(blankToNull(carrier), blankToNull(trackingNumber), Instant.now());
+        Instant now = Instant.now();
+        order.recordShipment(viaGhn ? GhnShipping.CARRIER : blankToNull(carrier), code, now);
+        parcel.ifPresent(status -> order.recordCarrierStatus(status, GhnShipping.isDelivered(status), now));
         events.publishEvent(new OrderEvents.Shipped(order.getId(), sellerId, order.getBuyerId(), order.getAuctionId(),
                 order.getCarrier(), order.getTrackingNumber()));
         return views(List.of(order), payments.detailsOf(List.of(order.getPaymentId()))).getFirst();

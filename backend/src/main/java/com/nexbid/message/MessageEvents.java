@@ -17,4 +17,8 @@ public final class MessageEvents {
     public record Sent(UUID messageId, UUID orderId, UUID auctionId, UUID senderId, UUID recipientId, String sender,
             String body, Instant at, boolean firstUnread) {
     }
+
+    /** EN: An admin opened an order's messages. / VI: Admin đã mở tin nhắn của một đơn. */
+    public record AdminRead(UUID adminId, UUID orderId, int messages) {
+    }
 }

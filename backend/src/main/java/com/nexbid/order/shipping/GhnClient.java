@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.springframework.http.MediaType;
@@ -66,6 +67,45 @@ class GhnClient {
     /** EN: The parcel's status word, e.g. "delivering" or "delivered". / VI: Trạng thái của kiện, ví dụ "delivering" hay "delivered". */
     String status(String orderCode) {
         return post("/v2/shipping-order/detail", Map.of("order_code", orderCode), false).get("status").asString();
+    }
+
+    /**
+     * EN: What GHN knows of an order code: its status, MISSING when GHN says there is no such order, or UNKNOWN when GHN
+     *     could not be asked (down, slow, a bad token) — not the seller's fault, so callers let it through.
+     * VI: GHN biết gì về một mã đơn: trạng thái của nó, MISSING khi GHN báo không có đơn này, hoặc UNKNOWN khi không hỏi
+     *     được GHN (sập, chậm, token sai) — không phải lỗi người bán, nên bên gọi cho qua.
+     */
+    record Lookup(String status, boolean missing) {
+        static final Lookup MISSING = new Lookup(null, true);
+        static final Lookup UNKNOWN = new Lookup(null, false);
+
+        boolean found() {
+            return status != null;
+        }
+    }
+
+    Lookup lookup(String orderCode) {
+        JsonNode reply;
+        try {
+            reply = http.post().uri("/v2/shipping-order/detail").header("Token", token)
+                    .contentType(MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_JSON)
+                    .body(Map.of("order_code", orderCode))
+                    .exchange((request, response) -> response.getStatusCode().is5xxServerError()
+                            ? null
+                            : response.bodyTo(JsonNode.class));
+        } catch (RestClientException ex) {
+            return Lookup.UNKNOWN;
+        }
+        if (reply == null) {
+            return Lookup.UNKNOWN;
+        }
+        if (reply.path("code").asInt() == 200 && reply.path("data").path("status").isString()) {
+            return new Lookup(reply.path("data").path("status").asString(), false);
+        }
+        String message = reply.path("message").asString("").toLowerCase(Locale.ROOT);
+        boolean missing = reply.path("code").asInt() == 400
+                && (message.contains("không tồn tại") || message.contains("not exist") || message.contains("not found"));
+        return missing ? Lookup.MISSING : Lookup.UNKNOWN;
     }
 
     List<Area> provinces() {

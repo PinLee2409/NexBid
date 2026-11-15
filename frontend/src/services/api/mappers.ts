@@ -264,6 +264,7 @@ export function toProduct(product: ApiProduct, images: ProductImage[] = []): Pro
     description: product.description,
     condition: product.condition,
     status: product.status,
+    parcel: product.parcel ?? null,
     images,
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,

@@ -5,6 +5,7 @@ import type {
   Auction,
   AuctionSummary,
   Category,
+  Parcel,
   Product,
   ProductCondition,
   ProductImage,
@@ -80,6 +81,8 @@ export interface ProductInput {
   condition: ProductCondition;
   /** Server URLs for photos kept, object URLs for new ones; the first is the cover. */
   imageUrls: string[];
+  /** EN: Packed size, or null to leave it out. / VI: Kích thước kiện, hoặc null để bỏ trống. */
+  parcel: Parcel | null;
 }
 
 /**
@@ -128,6 +131,7 @@ export async function createProduct(input: ProductInput): Promise<Product> {
       categoryId: input.categoryId,
       condition: input.condition,
       publishNow: true,
+      parcel: input.parcel,
     },
   });
   await syncImages(product.id, input.imageUrls, []);
@@ -144,6 +148,7 @@ export async function updateProduct(productId: string, input: ProductInput): Pro
       description: input.description.trim(),
       categoryId: input.categoryId,
       condition: input.condition,
+      parcel: input.parcel,
     },
   });
   await syncImages(productId, input.imageUrls, existing);

@@ -4,10 +4,13 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -15,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nexbid.common.response.ApiResponse;
+import com.nexbid.common.security.CurrentUser;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -32,9 +36,11 @@ import jakarta.validation.constraints.PositiveOrZero;
 public class GhnController {
 
     private final GhnShipping ghn;
+    private final ShippingEstimates estimates;
 
-    public GhnController(GhnShipping ghn) {
+    public GhnController(GhnShipping ghn, ShippingEstimates estimates) {
         this.ghn = ghn;
+        this.estimates = estimates;
     }
 
     public record FeeRequest(@Min(1) int fromDistrictId, @Min(1) int toDistrictId, @NotBlank String toWardCode,
@@ -71,6 +77,13 @@ public class GhnController {
         return ApiResponse.of(Map.of("fee", ghn.fee(new GhnClient.FeeQuery(request.fromDistrictId(),
                 request.toDistrictId(), request.toWardCode(), request.weightGrams(), request.lengthCm(),
                 request.widthCm(), request.heightCm(), request.insuranceValue()))));
+    }
+
+    /** EN: A guide to the shipping fee on a lot page; signed out is fine. / VI: Phí ship tham khảo trên trang lô; chưa đăng nhập cũng được. */
+    @GetMapping("/api/auctions/{id}/shipping-estimate")
+    public ApiResponse<ShippingEstimates.Estimate> estimate(@PathVariable UUID id,
+            @AuthenticationPrincipal CurrentUser caller) {
+        return ApiResponse.of(estimates.forLot(id, caller == null ? null : caller.id()));
     }
 
     @PostMapping("/api/shipping/ghn/webhook")

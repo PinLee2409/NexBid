@@ -477,6 +477,9 @@ class AfterSaleApiTest {
     @Autowired
     private com.nexbid.order.repository.OrderRepository orderRepository;
 
+    @Autowired
+    private com.nexbid.order.shipping.ShippingEstimates estimates;
+
     private ResultActions message(String token, String orderId, String body) throws Exception {
         return mockMvc.perform(post("/api/orders/" + orderId + "/messages").header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"body\":\"" + body + "\"}"));
@@ -520,7 +523,14 @@ class AfterSaleApiTest {
         assertThat(noticesTo(sale.buyerId())).contains("NEW_MESSAGE");
 
         mockMvc.perform(get("/api/admin/orders/" + sale.orderId() + "/messages").header("Authorization", "Bearer " + sale.admin()))
-                .andExpect(jsonPath("$.data.length()").value(3));
+                .andExpect(jsonPath("$.data.length()").value(3))
+                .andExpect(jsonPath("$.data[0].fromBuyer").value(true))
+                .andExpect(jsonPath("$.data[2].fromBuyer").value(false))
+                .andExpect(jsonPath("$.data[2].body").value("Shipping tomorrow morning."));
+        // EN: An admin reading a private conversation leaves a trace. / VI: Admin đọc cuộc trò chuyện riêng thì để lại dấu vết.
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM audit_logs WHERE action = 'ORDER_MESSAGES_READ' AND entity_id = ?::uuid",
+                Integer.class, sale.orderId())).isEqualTo(1);
         mockMvc.perform(get("/api/admin/orders/" + sale.orderId() + "/messages").header("Authorization", "Bearer " + sale.buyer()))
                 .andExpect(status().isForbidden());
 
@@ -569,38 +579,112 @@ class AfterSaleApiTest {
         com.sun.net.httpserver.HttpServer gateway = com.sun.net.httpserver.HttpServer.create(
                 new java.net.InetSocketAddress("127.0.0.1", 0), 0);
         java.util.List<String> tokens = new java.util.concurrent.CopyOnWriteArrayList<>();
+        java.util.List<String> calls = new java.util.concurrent.CopyOnWriteArrayList<>();
+        java.util.Map<String, String> parcels = new java.util.concurrent.ConcurrentHashMap<>(
+                java.util.Map.of("LBK6DA", "ready_to_pick"));
         gateway.createContext("/", exchange -> {
             tokens.add(exchange.getRequestHeaders().getFirst("Token"));
             String path = exchange.getRequestURI().getPath();
-            String body = switch (path) {
-                case "/v2/shipping-order/fee" -> "{\"code\":200,\"message\":\"Success\",\"data\":{\"total\":36300}}";
-                case "/v2/shipping-order/detail" -> "{\"code\":200,\"data\":{\"status\":\"delivered\"}}";
-                case "/master-data/province" -> "{\"code\":200,\"data\":[{\"ProvinceID\":202,\"ProvinceName\":\"Hồ Chí Minh\"}]}";
-                default -> "{\"code\":400,\"message\":\"bad\",\"data\":null}";
-            };
+            String sent = new String(exchange.getRequestBody().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            calls.add(path + " " + sent);
+            int httpStatus = 200;
+            String body;
+            if (path.equals("/v2/shipping-order/detail")) {
+                String code = objectMapper.readTree(sent).path("order_code").asString();
+                if (code.equals("BROKEN")) {
+                    httpStatus = 502;
+                    body = "{}";
+                } else if (parcels.containsKey(code)) {
+                    body = "{\"code\":200,\"data\":{\"status\":\"" + parcels.get(code) + "\"}}";
+                } else {
+                    httpStatus = 400;
+                    body = "{\"code\":400,\"message\":\"Lỗi gọi API: corev2_tenant_order_detail - Đơn hàng không tồn tại\",\"data\":null}";
+                }
+            } else {
+                body = switch (path) {
+                    case "/v2/shipping-order/fee" -> "{\"code\":200,\"message\":\"Success\",\"data\":{\"total\":36300}}";
+                    case "/master-data/province" -> """
+                            {"code":200,"data":[{"ProvinceID":2002,"ProvinceName":"Hà Nội 02"},
+                             {"ProvinceID":202,"ProvinceName":"Hồ Chí Minh"},
+                             {"ProvinceID":298,"ProvinceName":"Test - Alert - Tỉnh - 001"},
+                             {"ProvinceID":201,"ProvinceName":"Hà Nội"}]}""";
+                    default -> "{\"code\":400,\"message\":\"bad\",\"data\":null}";
+                };
+            }
             byte[] bytes = body.getBytes(java.nio.charset.StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.sendResponseHeaders(httpStatus, bytes.length);
             exchange.getResponseBody().write(bytes);
             exchange.close();
         });
         gateway.start();
+        Object offGhn = org.springframework.test.util.ReflectionTestUtils.getField(orderService, "ghn");
         try {
             var client = com.nexbid.order.shipping.GhnTestAccess.client(
                     "http://127.0.0.1:" + gateway.getAddress().getPort(), "test-token", "885");
             var ghn = com.nexbid.order.shipping.GhnTestAccess.shipping(orderRepository, client, "s3cret");
+            org.springframework.test.util.ReflectionTestUtils.setField(orderService, "ghn", ghn);
+            org.springframework.test.util.ReflectionTestUtils.setField(estimates, "ghn", ghn);
             assertThat(com.nexbid.order.shipping.GhnTestAccess.fee(ghn)).isEqualByComparingTo("36300");
-            assertThat(ghn.provinces()).extracting("name").containsExactly("Hồ Chí Minh");
+            // EN: Test places are hidden, names sorted the Vietnamese way, the list kept. / VI: Ẩn địa danh test, sắp theo tiếng Việt, giữ danh sách.
+            assertThat(ghn.provinces()).extracting("name").containsExactly("Hà Nội", "Hồ Chí Minh");
+            assertThat(ghn.provinces()).hasSize(2);
+            assertThat(calls.stream().filter(call -> call.startsWith("/master-data/province")).count()).isEqualTo(1);
             assertThat(tokens).containsOnly("test-token");
 
+            // EN: The lot's shipping guide needs both addresses on GHN. / VI: Phí ship tham khảo cần cả hai địa chỉ có mã GHN.
+            String estimate = "/api/auctions/" + sale.auctionId() + "/shipping-estimate";
+            mockMvc.perform(get(estimate)).andExpect(jsonPath("$.data.state").value("NEEDS_ADDRESS"));
+            String typed = """
+                    {"recipient":"Buyer","phone":"0912345678","line":"1 Kim Mã","ward":"Kim Mã","district":"Ba Đình",
+                     "province":"Hà Nội"}""";
+            mockMvc.perform(put("/api/users/me/address").header("Authorization", "Bearer " + sale.buyer())
+                    .contentType(MediaType.APPLICATION_JSON).content(typed)).andExpect(status().isOk());
+            mockMvc.perform(get(estimate).header("Authorization", "Bearer " + sale.buyer()))
+                    .andExpect(jsonPath("$.data.state").value("NEEDS_ADDRESS"));
+            mockMvc.perform(put("/api/users/me/address").header("Authorization", "Bearer " + sale.buyer())
+                            .contentType(MediaType.APPLICATION_JSON).content(typed.replace("}",
+                                    ",\"provinceId\":201,\"districtId\":1484,\"wardCode\":\"1A0101\"}")))
+                    .andExpect(jsonPath("$.data.districtId").value(1484));
+            mockMvc.perform(get(estimate).header("Authorization", "Bearer " + sale.buyer()))
+                    .andExpect(jsonPath("$.data.state").value("NO_ORIGIN"));
+            mockMvc.perform(put("/api/users/me/address").header("Authorization", "Bearer " + sale.seller())
+                    .contentType(MediaType.APPLICATION_JSON).content("""
+                            {"recipient":"Seller","phone":"0987654321","line":"2 Lê Lợi","ward":"Bến Nghé",
+                             "district":"Quận 1","province":"Hồ Chí Minh","provinceId":202,"districtId":1442,
+                             "wardCode":"20109"}""")).andExpect(status().isOk());
+            mockMvc.perform(get(estimate).header("Authorization", "Bearer " + sale.buyer()))
+                    .andExpect(jsonPath("$.data.state").value("READY"))
+                    .andExpect(jsonPath("$.data.fee").value(36300))
+                    .andExpect(jsonPath("$.data.district").value("Ba Đình"))
+                    .andExpect(jsonPath("$.data.defaultParcel").value(true));
+            String quoted = calls.stream().filter(call -> call.contains("\"from_district_id\":1442")).findFirst()
+                    .orElseThrow();
+            assertThat(quoted).contains("\"to_ward_code\":\"1A0101\"", "\"weight\":1000", "\"insurance_value\":12000000");
+
+            // EN: A code GHN never issued is refused; GHN being down is not the seller's fault. / VI: Mã GHN chưa cấp bị từ chối; GHN sập không phải lỗi người bán.
             mockMvc.perform(post("/api/seller/orders/" + sale.orderId() + "/ship").header("Authorization", "Bearer " + sale.seller())
-                            .contentType(MediaType.APPLICATION_JSON).content("{\"carrier\":\"GHN\",\"trackingNumber\":\"LBK6DA\"}"))
-                    .andExpect(status().isOk());
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"carrier\":\"GHN\",\"trackingNumber\":\"NOPE42\"}"))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.code").value("TRACKING_NOT_FOUND"));
+            assertThat(ghn.verifyParcel("BROKEN")).isEmpty();
+            assertThat(jdbc.queryForObject("SELECT status FROM orders WHERE id = ?::uuid", String.class, sale.orderId()))
+                    .isEqualTo("PAID");
+
+            mockMvc.perform(post("/api/seller/orders/" + sale.orderId() + "/ship").header("Authorization", "Bearer " + sale.seller())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"carrier\":\"Giao hàng nhanh\",\"trackingNumber\":\"LBK6DA\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.order.carrier").value("GHN"))
+                    .andExpect(jsonPath("$.data.order.shippingStatus").value("ready_to_pick"));
+            parcels.put("LBK6DA", "delivered");
             assertThat(ghn.refresh(50)).isGreaterThanOrEqualTo(1);
             assertThat(jdbc.queryForObject("SELECT shipping_status FROM orders WHERE id = ?::uuid", String.class,
                     sale.orderId())).isEqualTo("delivered");
             assertThat(ghn.record("unknown-code", "delivered", Instant.now())).isFalse();
         } finally {
+            org.springframework.test.util.ReflectionTestUtils.setField(orderService, "ghn", offGhn);
+            org.springframework.test.util.ReflectionTestUtils.setField(estimates, "ghn", offGhn);
             gateway.stop(0);
         }
 

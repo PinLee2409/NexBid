@@ -270,7 +270,13 @@
     "reportDetailsShort": "Tell us a little more (at least 10 characters).",
     "reportSend": "Send report",
     "reportSent": "Report sent",
-    "reportSentBody": "NexBid will review it. You will be notified of the outcome."
+    "reportSentBody": "NexBid will review it. You will be notified of the outcome.",
+    "shippingEstimate": "Shipping",
+    "shippingEstimateTo": "to {place}: about",
+    "shippingEstimateNote": "GHN standard, a guide only; the seller may use another carrier",
+    "shippingEstimateDefault": "GHN standard for a 1 kg box, a guide only; the seller gave no size",
+    "shippingEstimateAddAddress": "Add your address to see the fee",
+    "shippingEstimateSignIn": "Sign in to see the fee to your address"
   },
   "bidErrors": {
     "NOT_AUTHENTICATED": "Sign in to place a bid.",
@@ -517,7 +523,27 @@
     "unsubscribedDigestTitle": "New-lot emails are off",
     "orderDelivered": "Delivered {date}",
     "orderCarrierStatus": "Carrier:",
-    "orderMessages": "Messages"
+    "orderMessages": "Messages",
+    "carrierStatus": {
+      "ready_to_pick": "Waiting for pickup",
+      "picking": "Being picked up",
+      "picked": "Picked up",
+      "storing": "At the depot",
+      "transporting": "In transit",
+      "sorting": "Being sorted",
+      "delivering": "Out for delivery",
+      "delivered": "Delivered",
+      "delivery_fail": "Delivery failed",
+      "waiting_to_return": "Waiting to be returned",
+      "return": "Being returned",
+      "returned": "Returned to the seller",
+      "cancel": "Cancelled by the carrier",
+      "exception": "Problem with the parcel",
+      "damage": "Damaged",
+      "lost": "Lost"
+    },
+    "addressPick": "Choose…",
+    "addressPickAgain": "Your saved address ({address}) was typed by hand. Choose it again from the lists so lot pages can quote shipping."
   },
   "becomeSeller": {
     "title": "Become a seller",
@@ -645,7 +671,8 @@
       "categoryRequired": "Choose a category.",
       "imagesRequired": "Add at least one photo.",
       "reserveBelowStart": "The reserve cannot be below the starting price.",
-      "buyNowTooLow": "The buy-now price must be above the starting price and at least the reserve."
+      "buyNowTooLow": "The buy-now price must be above the starting price and at least the reserve.",
+      "parcelInvalid": "Fill in all four, or none: up to 30,000 g and 150 cm a side."
     },
     "ordersTitle": "Orders",
     "ordersSubtitle": "Your sold lots. Ship paid orders; the buyer confirms receipt.",
@@ -688,7 +715,6 @@
     "shipBody": "Add the carrier and tracking number if there are any; the buyer sees them on their order and in the email.",
     "shipTo": "Ship to",
     "shipCarrier": "Carrier",
-    "shipCarrierHint": "For example GHN, GHTK, Viettel Post or J&T.",
     "shipTracking": "Tracking number",
     "earningsTitle": "Earnings",
     "earningsSubtitle": "A sale counts once its order completes. NexBid keeps its fee and transfers the rest to your bank account.",
@@ -724,7 +750,19 @@
     "rateBuyerStarsRequired": "Choose 1 to 5 stars.",
     "rateBuyerComment": "Comment (optional)",
     "rateBuyerSend": "Save rating",
-    "rateBuyerSaved": "Rating saved"
+    "rateBuyerSaved": "Rating saved",
+    "shipCarrierPlaceholder": "Choose the carrier",
+    "shipCarrierOther": "Another carrier",
+    "shipCarrierOtherName": "Carrier name",
+    "shipTrackingGhnHint": "NexBid checks the code with GHN and follows the parcel for you.",
+    "parcelTitle": "Packing",
+    "parcelHint": "Optional. The packed weight and size let lot pages quote shipping; left empty, quotes assume 1 kg in a 20×15×10 cm box.",
+    "parcel": {
+      "weightGrams": "Weight (g)",
+      "lengthCm": "Length (cm)",
+      "widthCm": "Width (cm)",
+      "heightCm": "Height (cm)"
+    }
   },
   "admin": {
     "console": "Admin console",
@@ -932,7 +970,14 @@
     "unverifySeller": "Remove badge",
     "sellerVerified": "Seller verified",
     "sellerUnverified": "Verified badge removed",
-    "verifiedBadge": "Verified seller"
+    "verifiedBadge": "Verified seller",
+    "orderMessages": "Messages",
+    "orderMessagesTitle": "Messages on this order",
+    "orderMessagesBody": "Between the buyer and the seller. Read-only; opening them is recorded in the audit log.",
+    "orderMessagesLoading": "Loading messages",
+    "orderMessagesNone": "No messages on this order.",
+    "orderMessagesBuyer": "buyer",
+    "orderMessagesSeller": "seller"
   },
   "howItWorks": {
     "title": "How NexBid works",
@@ -1089,7 +1134,8 @@
       "BANK_ACCOUNT_CHANGED": "Payout bank account changed",
       "STRAY_CHARGE_REFUNDED": "Extra VNPay charge sent back",
       "AUCTION_REMOVED": "Lot taken down",
-      "SELLER_VERIFIED": "Seller verification changed"
+      "SELLER_VERIFIED": "Seller verification changed",
+      "ORDER_MESSAGES_READ": "Order messages read"
     },
     "role": {
       "BUYER": "Buyer",
@@ -1364,7 +1410,8 @@
     "MESSAGES_CLOSED": "Messages on this order are closed.",
     "MESSAGE_BLOCKED": "Messages cannot contain phone numbers, emails, links, account numbers or other apps. Keep the sale on NexBid so it stays protected.",
     "MESSAGE_LIMIT": "You are sending too fast. Wait a few minutes.",
-    "SHIPPING_UNAVAILABLE": "Shipping with GHN is not available right now."
+    "SHIPPING_UNAVAILABLE": "Shipping with GHN is not available right now.",
+    "TRACKING_NOT_FOUND": "GHN has no order with this code. Check the code on your GHN receipt."
   },
   "messages": {
     "title": "Messages",

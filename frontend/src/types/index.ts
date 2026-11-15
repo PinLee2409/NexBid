@@ -85,6 +85,7 @@ export const ERROR_CODES = [
   "MESSAGE_BLOCKED",
   "MESSAGE_LIMIT",
   "SHIPPING_UNAVAILABLE",
+  "TRACKING_NOT_FOUND",
   "QUESTION_NOT_FOUND",
   "QUESTION_NOT_ALLOWED",
   "QUESTION_LIMIT",
@@ -244,6 +245,14 @@ export interface ProductImage {
   sortOrder: number;
 }
 
+/** EN: Weight in grams, sides in centimetres. / VI: Cân nặng tính bằng gam, các cạnh tính bằng cm. */
+export interface Parcel {
+  weightGrams: number;
+  lengthCm: number;
+  widthCm: number;
+  heightCm: number;
+}
+
 export interface Product {
   id: Id;
   sellerId: Id;
@@ -252,6 +261,8 @@ export interface Product {
   description: string;
   condition: ProductCondition;
   status: ProductStatus;
+  /** EN: Packed size for shipping quotes; null when not given. / VI: Kích thước kiện để báo phí ship; null khi chưa khai. */
+  parcel?: Parcel | null;
   images: ProductImage[];
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
@@ -617,6 +628,10 @@ export interface ShippingAddress {
   ward: string;
   district: string;
   province: string;
+  /** EN: GHN's ids, when picked from GHN's lists; all three or none. / VI: Mã GHN khi chọn từ danh sách GHN; đủ cả ba hoặc không có. */
+  provinceId?: number | null;
+  districtId?: number | null;
+  wardCode?: string | null;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -655,7 +670,8 @@ export type AuditAction =
   | "BANK_ACCOUNT_CHANGED"
   | "STRAY_CHARGE_REFUNDED"
   | "AUCTION_REMOVED"
-  | "SELLER_VERIFIED";
+  | "SELLER_VERIFIED"
+  | "ORDER_MESSAGES_READ";
 
 export interface AuditLog {
   id: Id;

@@ -14,6 +14,7 @@ import { StarInput, StarRating } from "@/components/common/star-rating";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -34,6 +35,8 @@ import {
   shipOrder,
   type SecondChance,
 } from "@/services/seller-service";
+import { CARRIERS, GHN_CARRIER, OTHER_CARRIER } from "@/lib/carriers";
+import { useGhnEnabled } from "@/services/shipping-service";
 import type { SecondChanceOffer } from "@/types";
 import { useMoney } from "@/hooks/use-money";
 
@@ -256,8 +259,11 @@ function ShipButton({ entry, onShipped }: { entry: OrderEntry; onShipped: () => 
   const errorMessage = useApiErrorMessage();
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
-  const [carrier, setCarrier] = useState("");
+  const [choice, setChoice] = useState<string>("");
+  const [otherCarrier, setOtherCarrier] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
+  const ghnOn = useGhnEnabled();
+  const carrier = choice === OTHER_CARRIER ? otherCarrier.trim() : choice;
 
   function ship(event: FormEvent) {
     event.preventDefault();
@@ -299,12 +305,39 @@ function ShipButton({ entry, onShipped }: { entry: OrderEntry; onShipped: () => 
             ) : null}
 
             <div className="mt-5 space-y-4">
-              <FormField label={t("shipCarrier")} hint={t("shipCarrierHint")}>
+              <FormField label={t("shipCarrier")}>
                 {(field) => (
-                  <Input {...field} maxLength={60} value={carrier} onChange={(event) => setCarrier(event.target.value)} />
+                  <Select value={choice} onValueChange={setChoice}>
+                    <SelectTrigger id={field.id} aria-describedby={field["aria-describedby"]} className="w-full">
+                      <SelectValue placeholder={t("shipCarrierPlaceholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CARRIERS.map((name) => (
+                        <SelectItem key={name} value={name}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value={OTHER_CARRIER}>{t("shipCarrierOther")}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 )}
               </FormField>
-              <FormField label={t("shipTracking")}>
+              {choice === OTHER_CARRIER ? (
+                <FormField label={t("shipCarrierOtherName")}>
+                  {(field) => (
+                    <Input
+                      {...field}
+                      maxLength={60}
+                      value={otherCarrier}
+                      onChange={(event) => setOtherCarrier(event.target.value)}
+                    />
+                  )}
+                </FormField>
+              ) : null}
+              <FormField
+                label={t("shipTracking")}
+                hint={choice === GHN_CARRIER && ghnOn ? t("shipTrackingGhnHint") : undefined}
+              >
                 {(field) => (
                   <Input
                     {...field}

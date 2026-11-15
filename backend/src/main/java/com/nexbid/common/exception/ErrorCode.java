@@ -125,6 +125,8 @@ public enum ErrorCode {
     MESSAGE_LIMIT(HttpStatus.TOO_MANY_REQUESTS),
     // EN: GHN is not connected, or did not answer. / VI: Chưa kết nối GHN, hoặc GHN không trả lời.
     SHIPPING_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE),
+    // EN: GHN has no order with the code the seller typed. / VI: GHN không có đơn nào mang mã người bán đã nhập.
+    TRACKING_NOT_FOUND(HttpStatus.UNPROCESSABLE_ENTITY),
     // EN: Questions on a lot: none such, closed lot or own lot, too many waiting, or already answered.
     // VI: Hỏi đáp trên lô: không có câu hỏi, lô đã đóng hoặc lô của chính mình, quá nhiều câu đang chờ, hoặc đã trả lời.
     QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND),

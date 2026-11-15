@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 
 import { ProductPhoto } from "@/components/common/product-photo";
 import { useEnumLabels } from "@/hooks/use-labels";
+import { carrierStatusKey } from "@/lib/carriers";
 import { cn } from "@/lib/utils";
 import type { OrderEntry } from "@/services/order-service";
 import type { OrderStatus } from "@/types";
@@ -119,7 +120,11 @@ export function OrderRow({
         ) : entry.order.shippingStatus ? (
           <p className="text-muted-foreground mt-1 text-xs">
             <span className="label-sm text-dim">{t("orderCarrierStatus")}</span>{" "}
-            <span className="mono-figure">{entry.order.shippingStatus}</span>
+            <span>
+              {carrierStatusKey(entry.order.shippingStatus)
+                ? t(`carrierStatus.${carrierStatusKey(entry.order.shippingStatus)}`)
+                : entry.order.shippingStatus}
+            </span>
           </p>
         ) : null}
         {extra}

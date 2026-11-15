@@ -1,6 +1,6 @@
 # NexBid: hiện trạng và việc tiếp theo
 
-Cập nhật: 15/11/2026 (đợt 19: huy hiệu xác minh, nhắn tin, khung GHN). Lịch sử chi tiết từng đợt nằm trong [NexBid_Backlog.md](NexBid_Backlog.md).
+Cập nhật: 15/11/2026 (đợt 20: GHN chạy với key sandbox, phí ship tham khảo, admin đọc tin nhắn). Lịch sử chi tiết từng đợt nằm trong [NexBid_Backlog.md](NexBid_Backlog.md).
 
 ## 1. Web đã tới đâu
 
@@ -9,10 +9,11 @@ Cập nhật: 15/11/2026 (đợt 19: huy hiệu xác minh, nhắn tin, khung GHN
 - Trả giá, tự động trả giá (auto-bid), mua ngay, theo dõi lô.
 - Hỏi đáp công khai trên trang lô: người mua hỏi, người bán trả lời ngay dưới câu hỏi; mỗi người tối đa 3 câu đang chờ trên một lô.
 - Lưu tìm kiếm và theo dõi người bán: có lô mới khớp thì nhận thông báo ngay, và email tổng hợp mỗi ngày lúc 8:00.
-- Nhắn tin với người bán về đơn hàng; số điện thoại, email, link bị chặn để giữ giao dịch trên sàn *(mới, chưa commit)*.
+- Nhắn tin với người bán về đơn hàng; số điện thoại, email, link bị chặn để giữ giao dịch trên sàn.
+- Phí ship tham khảo trên trang lô (GHN, theo địa chỉ của người xem); chọn tỉnh, quận, phường từ danh sách của GHN *(mới, chưa commit)*.
 - Giá sàn ẩn: người mua chỉ thấy "chưa đạt / đã đạt giá sàn".
 - Thanh toán qua VNPay (bản demo đã bỏ). Phải có địa chỉ nhận hàng trước khi thanh toán.
-- Đơn hàng: theo dõi mã vận đơn, xác nhận đã nhận, đánh giá người bán (1–5 sao).
+- Đơn hàng: theo dõi mã vận đơn và trạng thái kiện từ GHN, xác nhận đã nhận, đánh giá người bán (1–5 sao).
 - Khiếu nại đơn hàng (chưa nhận, sai mô tả, hư hỏng, khác).
 - Cơ hội thứ hai: khi người thắng không trả tiền, người trả giá kế tiếp được mời mua.
 - Thông báo trong app và email song ngữ; tắt được email bị vượt giá, có link huỷ đăng ký một chạm.
@@ -20,16 +21,16 @@ Cập nhật: 15/11/2026 (đợt 19: huy hiệu xác minh, nhắn tin, khung GHN
 
 ### Người bán
 - Gửi yêu cầu bán hàng, admin duyệt.
-- Đăng sản phẩm kèm ảnh, tạo phiên đấu giá (giá khởi điểm, bước giá, giá sàn, giá mua ngay).
+- Đăng sản phẩm kèm ảnh và kích thước đóng gói (để báo phí ship), tạo phiên đấu giá (giá khởi điểm, bước giá, giá sàn, giá mua ngay).
 - Quyết định bán khi lô đóng dưới giá sàn (trong 24 giờ).
 - Đánh giá người mua sau mỗi đơn hoàn tất, xem hồ sơ người mua cạnh đơn bán.
-- Đơn bán: xem địa chỉ giao, nhập đơn vị vận chuyển và mã vận đơn.
+- Đơn bán: xem địa chỉ giao, chọn đơn vị vận chuyển và nhập mã vận đơn; mã GHN được kiểm với GHN, sai thì báo ngay *(mới, chưa commit)*.
 - Thu nhập: số tiền chờ chi trả, đã nhận, phí sàn 5%, tài khoản ngân hàng nhận tiền.
 
 ### Admin (trang đăng nhập riêng `/admin/login`)
-- Duyệt lô, quản lý danh mục, người dùng (khoá / mở khoá, xác minh người bán), yêu cầu bán hàng *(xác minh: mới, chưa commit)*.
+- Duyệt lô, quản lý danh mục, người dùng (khoá / mở khoá, xác minh người bán), yêu cầu bán hàng.
 - Đơn hàng: hoàn tiền bằng chuyển khoản thủ công vào tài khoản người mua đã cho, kèm mã giao dịch.
-- Khiếu nại: hoàn tiền cho người mua hoặc giữ giao dịch, kèm ghi chú.
+- Khiếu nại: hoàn tiền cho người mua hoặc giữ giao dịch, kèm ghi chú; đọc tin nhắn giữa hai bên (mỗi lần đọc ghi vào nhật ký) *(đọc tin nhắn: mới, chưa commit)*.
 - Chi trả cho người bán: danh sách người bán đang chờ tiền, ghi nhận chuyển khoản kèm mã giao dịch.
 - Khoản VNPay thu thừa (trễ hạn hoặc trả hai lần): hiện ở trang Đơn hàng để chuyển khoản trả lại.
 - Báo cáo lô vi phạm: bỏ qua hoặc gỡ lô; trang Email để gửi lại email thất bại.
@@ -37,7 +38,8 @@ Cập nhật: 15/11/2026 (đợt 19: huy hiệu xác minh, nhắn tin, khung GHN
 
 ### Hệ thống
 - Backend Spring Boot 4 chia module (Spring Modulith), Postgres, Redis, Kafka (outbox), OpenTelemetry.
-- Đơn đã gửi tự hoàn tất sau 7 ngày nếu người mua không xác nhận và không khiếu nại.
+- Đơn đã gửi tự hoàn tất sau 7 ngày nếu người mua không xác nhận và không khiếu nại; gửi bằng GHN thì 3 ngày sau khi GHN báo đã giao.
+- Tích hợp GHN (sandbox): phí ship, trạng thái vận đơn, danh sách tỉnh/quận/phường; webhook cần địa chỉ công khai, chạy ở máy thì hỏi GHN 30 phút một lần.
 - 26 loại email song ngữ qua Brevo, có logo, tự gửi lại khi lỗi.
 - CI: test backend (độ phủ JaCoCo), kiểm tra frontend, test E2E Playwright.
 - File deploy staging với HTTPS tự động (Caddy) trong `deploy/staging/`, chưa deploy thật.
@@ -85,7 +87,7 @@ mục `nexbid-backend` của `.claude/launch.json` nạp file này; chạy bằn
 
 - [x] VNPay kích hoạt lại mã website sandbox `VVK6HZ1B`.
 - [x] Key Brevo: đã có, đã gửi thử thành công (mail vào thư rác vì gửi bằng địa chỉ Gmail).
-- [ ] Tạo tài khoản GHN sandbox, lấy Token và ShopId, đặt vào `backend/.env` (`NEXBID_GHN_TOKEN`, `NEXBID_GHN_SHOP_ID`, `NEXBID_GHN_WEBHOOK_SECRET`). Khung tích hợp đã sẵn, có key là chạy.
+- [x] GHN sandbox: cửa hàng 239091 trên `5sao.ghn.dev`, đã có địa chỉ lấy hàng; Token, ShopId và webhook secret đã nằm trong `backend/.env`.
 - [ ] Mua domain, rồi deploy staging bằng `deploy/staging/`. Có domain thì:
   - IPN của VNPay gọi về được thật (không cần ngrok);
   - email gửi bằng `no-reply@domain` đã xác thực SPF/DKIM, không vào thư rác;
@@ -100,4 +102,4 @@ mục `nexbid-backend` của `.claude/launch.json` nạp file này; chạy bằn
 
 ### Làm sau
 
-2. **Tích hợp GHN (khung đã có, chờ key sandbox):** tính phí ship theo tỉnh lúc thanh toán, tự lấy trạng thái vận đơn, đơn tự hoàn tất khi đơn vị vận chuyển báo đã giao.
+2. **Thu phí ship cùng tiền hàng** (hiện chỉ tham khảo): cộng phí GHN vào số tiền thanh toán VNPay, trả lại người bán cùng tiền hàng; đụng tới thanh toán, hoàn tiền và chi trả nên cần làm riêng một đợt.

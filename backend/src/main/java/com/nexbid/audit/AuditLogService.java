@@ -152,6 +152,12 @@ public class AuditLogService {
     }
 
     @EventListener
+    void onOrderMessagesRead(com.nexbid.message.MessageEvents.AdminRead event) {
+        record(event.adminId(), AuditAction.ORDER_MESSAGES_READ, "Order", event.orderId(), null,
+                event.messages() + " messages");
+    }
+
+    @EventListener
     void onUserStatus(UserStatusChangedEvent event) {
         AuditAction action = event.after() == com.nexbid.user.UserStatus.BLOCKED
                 ? AuditAction.USER_BLOCKED : AuditAction.USER_UNBLOCKED;

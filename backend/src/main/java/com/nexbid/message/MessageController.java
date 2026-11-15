@@ -60,7 +60,8 @@ public class MessageController {
     }
 
     @GetMapping("/api/admin/orders/{orderId}/messages")
-    public ApiResponse<List<MessageService.MessageView>> read(@PathVariable UUID orderId) {
-        return ApiResponse.of(messages.read(orderId));
+    public ApiResponse<List<MessageService.AdminMessageView>> read(@AuthenticationPrincipal CurrentUser me,
+            @PathVariable UUID orderId) {
+        return ApiResponse.of(messages.read(me.id(), orderId));
     }
 }

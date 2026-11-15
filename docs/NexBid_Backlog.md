@@ -357,3 +357,28 @@ Phần khoá dòng, chống trùng và chạy nhiều máy đã chắc; sửa 6 
 - **Kiểm chứng:** backend 468 test (độ phủ 95.6% dòng, 79.9% nhánh, vẫn trên ngưỡng); frontend 150 unit test; E2E 52/52 (test mới: nhắn tin hai chiều kèm chặn số điện thoại, admin xác minh
   người bán và huy hiệu hiện trên lô).
 
+## Đã làm (15/11/2026) — đợt 20: hoàn thiện GHN
+
+- **Key GHN sandbox** (cửa hàng 239091 trên `5sao.ghn.dev`) đã nằm trong `backend/.env`. Gọi thật: 65 tỉnh, quận/phường,
+  phí 1 kg Quận 1 → Ba Đình 96.900₫, mã vận đơn không có trả "Đơn hàng không tồn tại". Phí chỉ tính được khi cửa hàng
+  trên GHN có địa chỉ lấy hàng.
+- **Admin đọc tin nhắn của đơn** ở trang Đơn hàng và Khiếu nại (khung chỉ đọc, ghi rõ tin của người mua hay người bán,
+  tên đầy đủ). Mỗi lần mở ghi nhật ký `ORDER_MESSAGES_READ` kèm số tin.
+- **Người bán chọn hãng vận chuyển** từ danh sách (GHN, GHTK, Viettel Post, J&T Express, VNPost, Ninja Van, hoặc gõ tên
+  hãng khác). Chọn GHN khi tích hợp đang bật: hỏi GHN trước khi lưu (trước khi khoá dòng đơn, vì GHN có thể mất vài
+  giây); GHN báo không có đơn thì từ chối `TRACKING_NOT_FOUND`, có thì ghi luôn trạng thái đầu tiên; GHN lỗi, chậm
+  hoặc token sai thì vẫn cho gửi. "Giao hàng nhanh" gõ tay cũng được hiểu là GHN.
+- **Trạng thái GHN bằng chữ dễ đọc** trên đơn ("Chờ lấy hàng", "Đang giao", "Đã giao"…) thay cho mã thô.
+- **Địa chỉ có mã GHN** (V36: `user_addresses.province_id`, `district_id`, `ward_code`): khi GHN bật, form địa chỉ
+  chọn tỉnh → quận → phường từ danh sách GHN; tắt hoặc không tải được thì vẫn là ô gõ tay. Danh sách nhớ 24 giờ, bỏ các
+  địa danh test của sandbox ("Hà Nội 02", "Test - Alert…"), sắp xếp theo tiếng Việt.
+- **Kích thước đóng gói của sản phẩm** (V36: `products.weight_grams`, `length_cm`, `width_cm`, `height_cm`, đủ cả bốn
+  hoặc không có): mục "Đóng gói" trong form sản phẩm, giới hạn của GHN 30 kg và 150 cm mỗi cạnh.
+- **Phí ship tham khảo trên trang lô** (`GET /api/auctions/{id}/shipping-estimate`): từ địa chỉ người bán tới địa chỉ
+  người xem, theo kích thước kiện (bỏ trống thì hộp 1 kg 20×15×10 cm và ghi rõ), khai giá bằng giá lô làm tròn lên
+  triệu; nhớ 30 phút. Chưa đăng nhập hoặc chưa có địa chỉ GHN thì mời đăng nhập / thêm địa chỉ; GHN tắt, người bán
+  chưa có địa chỉ GHN hoặc GHN lỗi thì không hiện gì. Không cộng vào tiền thanh toán.
+- **Kiểm chứng:** backend 469 test (độ phủ 95.5% dòng, 79.5% nhánh); frontend 154 unit test, tsc, ESLint, knip sạch; E2E
+  54 test (mới: người bán chọn hãng vận chuyển, admin đọc tin nhắn của đơn; 2 test cũ chập chờn khi chạy 4 luồng, chạy lại
+  đều qua). Chạy thật với GHN sandbox qua API của NexBid: lô Omega 90 triệu từ Quận 1 về Ba Đình báo 503.900₫ (phần lớn là
+  phí bảo hiểm theo giá khai), form địa chỉ chọn tỉnh → quận → phường và bắt buộc đủ ba.
