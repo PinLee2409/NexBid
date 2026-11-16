@@ -8,6 +8,7 @@ import { StarRating } from "@/components/common/star-rating";
 import { Container } from "@/components/layout/container";
 import { AuctionCatalogueItem } from "@/components/nexbid/catalogue-item";
 import { FollowSellerButton } from "@/components/nexbid/follow-seller-button";
+import { SellerAway } from "@/components/nexbid/seller-away";
 import { getSellerProfile } from "@/services/auction-service";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -53,6 +54,8 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
         </div>
         <FollowSellerButton sellerId={seller.id} returnTo={`/sellers/${seller.id}`} />
       </header>
+
+      <SellerAway until={seller.awayUntil ?? null} note={seller.awayNote ?? null} />
 
       <section className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4" aria-label={t("profileScore")}>
         <div>

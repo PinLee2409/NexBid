@@ -238,6 +238,10 @@ export interface AuctionInput {
   buyNowPrice?: number;
   /** EN: The seller pays the parcel. / VI: Người bán trả tiền gửi kiện. */
   freeShipping?: boolean;
+  /** EN: Relist by itself this many times when unsold. / VI: Tự đăng lại bấy nhiêu lần khi không bán được. */
+  autoRelist?: number;
+  /** EN: Each relist starts this much lower, in percent. / VI: Mỗi lần đăng lại khởi điểm thấp hơn bấy nhiêu phần trăm. */
+  relistDropPercent?: number;
 }
 
 /** `POST /api/seller/auctions`, and `…/submit` straight after when asked. */

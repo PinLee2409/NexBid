@@ -126,6 +126,17 @@ public class SellerAuctionController {
      * EN: Hands the lot to an admin (guide §15). After this the seller waits.
      * VI: Giao lô cho admin (guide §15). Sau bước này người bán chỉ còn việc chờ.
      */
+    public record RelistRequest(@jakarta.validation.constraints.Min(0) @jakarta.validation.constraints.Max(50) Integer dropPercent) {
+    }
+
+    /** EN: A new draft from a lot that closed unsold. / VI: Bản nháp mới từ một lô đã đóng mà không bán được. */
+    @PostMapping("/{id}/relist")
+    public ApiResponse<AuctionView> relist(@AuthenticationPrincipal CurrentUser seller, @PathVariable UUID id,
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody(required = false) RelistRequest request) {
+        int drop = request == null || request.dropPercent() == null ? 0 : request.dropPercent();
+        return ApiResponse.of(auctions.relistAsDraft(seller.id(), id, drop), "Draft created");
+    }
+
     @PostMapping("/{id}/submit")
     public ApiResponse<AuctionView> submit(
             @AuthenticationPrincipal CurrentUser seller, @PathVariable UUID id) {

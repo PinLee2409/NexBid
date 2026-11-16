@@ -33,8 +33,9 @@ class UserPersistenceTest {
     private RoleRepository roles;
 
     @Test
-    void migrationSeedsTheThreeRoles() {
-        assertThat(roles.findAll()).hasSize(3);
+    void migrationsSeedEveryRole() {
+        assertThat(roles.findAll()).hasSize(RoleName.values().length);
+        assertThat(roles.findByName(RoleName.FINANCE)).isPresent();
         assertThat(roles.findByName(RoleName.ADMIN)).isPresent();
     }
 

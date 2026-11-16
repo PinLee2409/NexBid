@@ -31,6 +31,11 @@ final class MailTemplates {
     private final String siteUrl;
     /** EN: Null when no inbox could fetch the logo. / VI: Null khi không hộp thư nào tải được logo. */
     private final String logoUrl;
+    /**
+     * EN: "vi" or "en" for an email in the reader's own language; null for both, Vietnamese first.
+     * VI: "vi" hoặc "en" cho email bằng ngôn ngữ của người đọc; null là cả hai, tiếng Việt trước.
+     */
+    private final String lang;
 
     MailTemplates(String siteUrl) {
         this(siteUrl, null);
@@ -47,6 +52,38 @@ final class MailTemplates {
         String base = assetUrl != null && !assetUrl.isBlank() ? trimSlash(assetUrl)
                 : isLocal(this.siteUrl) ? null : this.siteUrl;
         this.logoUrl = base == null ? null : base + "/nexbid-wordmark.png";
+        this.lang = null;
+    }
+
+    private MailTemplates(MailTemplates base, String lang) {
+        this.siteUrl = base.siteUrl;
+        this.logoUrl = base.logoUrl;
+        this.lang = lang;
+    }
+
+    /**
+     * EN: The same templates in one language: "vi" or "en". Anything else keeps both.
+     * VI: Cùng các mẫu nhưng một ngôn ngữ: "vi" hoặc "en". Giá trị khác giữ cả hai.
+     */
+    MailTemplates in(String language) {
+        String chosen = "en".equalsIgnoreCase(language) ? "en" : "vi".equalsIgnoreCase(language) ? "vi" : null;
+        return java.util.Objects.equals(chosen, lang) ? this : new MailTemplates(this, chosen);
+    }
+
+    /**
+     * EN: One side of a "Vietnamese · English" label, or the whole label when the email keeps both.
+     * VI: Một vế của nhãn "tiếng Việt · tiếng Anh", hoặc cả nhãn khi email giữ hai ngôn ngữ.
+     */
+    private String pick(String both) {
+        int at = both.indexOf(" · ");
+        if (lang == null || at < 0) {
+            return both;
+        }
+        return "en".equals(lang) ? both.substring(at + 3) : both.substring(0, at);
+    }
+
+    private boolean english() {
+        return "en".equals(lang);
     }
 
     private static String trimSlash(String url) {
@@ -77,13 +114,14 @@ final class MailTemplates {
 
     private Rendered wrap(Rendered body, MailKind kind, String unsubscribeUrl) {
         String settings = siteUrl + "/profile#email";
-        String off = kind == MailKind.LOT_DIGEST
+        String off = pick(kind == MailKind.LOT_DIGEST
                 ? "Tắt email lô mới · Turn off new-lot emails"
-                : "Tắt email bị vượt giá · Turn off outbid emails";
-        String footer = "<a href=\"" + HtmlUtils.htmlEscape(settings) + "\" style=\"color:#6b6b65\">Cài đặt email · Email settings</a>"
+                : "Tắt email bị vượt giá · Turn off outbid emails");
+        String settingsLabel = pick("Cài đặt email · Email settings");
+        String footer = "<a href=\"" + HtmlUtils.htmlEscape(settings) + "\" style=\"color:#6b6b65\">" + settingsLabel + "</a>"
                 + (unsubscribeUrl == null ? "" : " &nbsp;|&nbsp; <a href=\"" + HtmlUtils.htmlEscape(unsubscribeUrl)
                         + "\" style=\"color:#6b6b65\">" + off + "</a>");
-        String text = body.text() + "\nCài đặt email · Email settings: " + settings + "\n"
+        String text = body.text() + "\n" + settingsLabel + ": " + settings + "\n"
                 + (unsubscribeUrl == null ? "" : off + ": " + unsubscribeUrl + "\n");
         return new Rendered(body.subject(), withFont(body.html().replace(FOOTER_SLOT, footer)), text);
     }
@@ -467,7 +505,7 @@ final class MailTemplates {
                     </td></tr>
                     """.formatted(LINE, link, INK, HtmlUtils.htmlEscape(lot.title()), DIM,
                     money(lot.price(), Locale.forLanguageTag("vi-VN")),
-                    lot.endsAt() == null ? "" : "đóng · ends " + WHEN.format(lot.endsAt()),
+                    lot.endsAt() == null ? "" : pick("đóng · ends") + " " + WHEN.format(lot.endsAt()),
                     lot.why() == null ? "" : " · " + HtmlUtils.htmlEscape(lot.why())));
         }
         String table = lots.isEmpty() ? "" : "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" "
@@ -480,8 +518,11 @@ final class MailTemplates {
                         "Các lô vừa được đăng khớp với tìm kiếm đã lưu hoặc người bán bạn theo dõi:" + table + more,
                         "Quản lý theo dõi"),
                 new Half("New lots for your alerts",
-                        "Lots listed since yesterday that match your saved searches or the sellers you follow are "
-                                + "listed above." + moreEn,
+                        english()
+                                ? "Lots listed since yesterday that match your saved searches or the sellers you follow:"
+                                        + table.replace("đóng · ends", "ends") + moreEn
+                                : "Lots listed since yesterday that match your saved searches or the sellers you follow are "
+                                        + "listed above." + moreEn,
                         "Manage alerts"));
     }
 
@@ -577,35 +618,36 @@ final class MailTemplates {
      * EN: The lot, the amount, the deadline and the parcel in one card, so the facts stand out from the prose.
      * VI: Lô, số tiền, hạn chót và kiện hàng trong một thẻ, để các thông tin chính nổi bật khỏi phần chữ.
      */
-    private static String card(MailKind kind, MailFacts facts) {
+    private String card(MailKind kind, MailFacts facts) {
         if (kind == MailKind.WELCOME || kind == MailKind.SELLER_APPROVED || kind == MailKind.SELLER_REJECTED) {
             return "";
         }
         List<String[]> rows = new ArrayList<>();
         if (facts.lotTitle() != null) {
-            rows.add(new String[] {"Lô · Lot", "<span style=\"font-size:16px;font-weight:bold;color:" + INK + "\">"
+            rows.add(new String[] {pick("Lô · Lot"), "<span style=\"font-size:16px;font-weight:bold;color:" + INK + "\">"
                     + facts.lotTitle() + "</span>"});
         }
         if (facts.amount() != null) {
-            rows.add(new String[] {amountLabel(kind), "<span style=\"font-size:24px;font-weight:bold;color:" + INK
-                    + ";letter-spacing:-0.5px\">" + money(facts.amount(), Locale.forLanguageTag("vi-VN"))
-                    + "</span><br><span style=\"font-size:12px;color:" + DIM + "\">"
-                    + money(facts.amount(), Locale.US) + "</span>"});
+            String big = money(facts.amount(), english() ? Locale.US : Locale.forLanguageTag("vi-VN"));
+            String small = lang != null ? "" : "<br><span style=\"font-size:12px;color:" + DIM + "\">"
+                    + money(facts.amount(), Locale.US) + "</span>";
+            rows.add(new String[] {pick(amountLabel(kind)), "<span style=\"font-size:24px;font-weight:bold;color:" + INK
+                    + ";letter-spacing:-0.5px\">" + big + "</span>" + small});
         }
         // EN: A deadline only matters where the person has to act before it. / VI: Hạn chót chỉ có ý nghĩa khi người đó phải làm gì đó trước hạn.
         if (facts.until() != null && deadlineLabel(kind) != null) {
-            rows.add(new String[] {deadlineLabel(kind), "<span style=\"font-size:15px;font-weight:bold;color:" + INK
+            rows.add(new String[] {pick(deadlineLabel(kind)), "<span style=\"font-size:15px;font-weight:bold;color:" + INK
                     + "\">" + WHEN.format(facts.until()) + "</span> <span style=\"font-size:12px;color:" + DIM
                     + "\">GMT+7</span>"});
         }
         if (facts.rating() != null) {
-            rows.add(new String[] {"Đánh giá · Rating", "<span style=\"font-size:22px;color:#e8a400;letter-spacing:2px\">"
+            rows.add(new String[] {pick("Đánh giá · Rating"), "<span style=\"font-size:22px;color:#e8a400;letter-spacing:2px\">"
                     + "★".repeat(Math.max(0, Math.min(5, facts.rating()))) + "<span style=\"color:" + LINE + "\">"
                     + "★".repeat(5 - Math.max(0, Math.min(5, facts.rating()))) + "</span></span> <span style=\"font-size:13px;color:"
                     + DIM + "\">" + facts.rating() + "/5</span>"});
         }
         if (facts.tracking() != null) {
-            rows.add(new String[] {kind == MailKind.PAYMENT_REFUNDED ? "Chuyển tới · Sent to" : "Vận chuyển · Shipping", "<span style=\"font-size:15px;font-weight:bold;color:"
+            rows.add(new String[] {pick(kind == MailKind.PAYMENT_REFUNDED ? "Chuyển tới · Sent to" : "Vận chuyển · Shipping"), "<span style=\"font-size:15px;font-weight:bold;color:"
                     + INK + "\">" + facts.tracking() + "</span>"});
         }
         if (rows.isEmpty()) {
@@ -645,12 +687,33 @@ final class MailTemplates {
 
     private Rendered build(MailKind kind, MailFacts facts, String subjectVi, String subjectEn, String link, Half vi,
             Half en) {
-        String subject = strip(subjectVi) + " · " + strip(subjectEn);
+        Half first = english() ? en : vi;
+        String subject = lang == null ? strip(subjectVi) + " · " + strip(subjectEn)
+                : strip(english() ? subjectEn : subjectVi);
         Tag tag = tag(kind);
-        String preview = HtmlUtils.htmlEscape(strip(vi.body()).replace('\n', ' '));
+        String preview = HtmlUtils.htmlEscape(strip(first.body()).replace('\n', ' '));
+        String button = lang == null ? vi.button() + " · " + en.button() : first.button();
+        // EN: The English half follows only when the email keeps both languages. / VI: Nửa tiếng Anh chỉ có khi email giữ hai ngôn ngữ.
+        String second = lang != null ? "" : """
+                <tr><td style="padding:32px 32px 0">
+                  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0"><tr>
+                  <td style="border-top:1px solid %s;padding-top:22px;font-size:11px;letter-spacing:1.5px;
+                      text-transform:uppercase;color:%s">English</td></tr></table>
+                </td></tr>
+                <tr><td style="padding:10px 32px 36px">
+                  <h2 style="margin:0 0 8px;font-size:19px;line-height:1.3;font-weight:bold;color:%s">%s</h2>
+                  <p style="margin:0;font-size:14px;line-height:1.6;color:#55554f">%s</p>
+                </td></tr>
+                """.formatted(LINE, DIM, INK, en.heading(), en.body());
+        String closing = lang == null ? "<tr><td style=\"padding:0 0 36px\"></td></tr>" : "<tr><td style=\"padding:0 0 36px\"></td></tr>";
+        String note = switch (lang == null ? "" : lang) {
+            case "en" -> "An automatic email from NexBid; please do not reply.";
+            case "vi" -> "Email tự động từ NexBid, vui lòng không trả lời.";
+            default -> "Email tự động từ NexBid, vui lòng không trả lời.<br>An automatic email from NexBid; please do not reply.";
+        };
         String html = """
                 <!doctype html>
-                <html lang="vi"><head><meta charset="utf-8">
+                <html lang="%s"><head><meta charset="utf-8">
                 <meta name="viewport" content="width=device-width,initial-scale=1">
                 <meta name="color-scheme" content="light only"><title>%s</title></head>
                 <body style="margin:0;padding:0;background:%s;color:%s">
@@ -662,7 +725,7 @@ final class MailTemplates {
                 <tr><td style="background:%s;padding:22px 32px">
                   <table role="presentation" width="100%%" cellpadding="0" cellspacing="0"><tr>
                   <td>%s</td>
-                  <td align="right" style="font-size:11px;letter-spacing:1px;color:#9a9a93;text-transform:uppercase">Đấu giá trực tuyến</td>
+                  <td align="right" style="font-size:11px;letter-spacing:1px;color:#9a9a93;text-transform:uppercase">%s</td>
                   </tr></table>
                 </td></tr>
                 <tr><td style="padding:32px 32px 0">
@@ -678,38 +741,34 @@ final class MailTemplates {
                   <table role="presentation" cellpadding="0" cellspacing="0"><tr>
                   <td style="background:%s;border-radius:10px">
                     <a href="%s" style="display:inline-block;padding:15px 28px;font-size:15px;font-weight:bold;
-                       color:#ffffff;text-decoration:none">%s · %s &nbsp;<span style="color:%s">&rarr;</span></a>
+                       color:#ffffff;text-decoration:none">%s &nbsp;<span style="color:%s">&rarr;</span></a>
                   </td></tr></table>
                 </td></tr>
-                <tr><td style="padding:32px 32px 0">
-                  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0"><tr>
-                  <td style="border-top:1px solid %s;padding-top:22px;font-size:11px;letter-spacing:1.5px;
-                      text-transform:uppercase;color:%s">English</td></tr></table>
-                </td></tr>
-                <tr><td style="padding:10px 32px 36px">
-                  <h2 style="margin:0 0 8px;font-size:19px;line-height:1.3;font-weight:bold;color:%s">%s</h2>
-                  <p style="margin:0;font-size:14px;line-height:1.6;color:#55554f">%s</p>
-                </td></tr>
+                %s%s
                 </table>
                 <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="max-width:560px">
                 <tr><td align="center" style="padding:22px 24px 8px;font-size:12px;line-height:1.7;color:%s">
-                  Email tự động từ NexBid, vui lòng không trả lời.<br>An automatic email from NexBid; please do not reply.
+                  %s
                   <br>%s
                 </td></tr></table>
                 </td></tr></table>
                 </body></html>
                 """.formatted(
-                        HtmlUtils.htmlEscape(strip(subjectVi)), PAPER, INK, preview, PAPER, LINE, INK, brand(),
-                        tag.warning() ? DANGER : SIGNAL, tag.warning() ? "#ffffff" : INK, tag.label(),
-                        INK, vi.heading(), vi.body(),
+                        english() ? "en" : "vi",
+                        HtmlUtils.htmlEscape(strip(english() ? subjectEn : subjectVi)), PAPER, INK, preview, PAPER, LINE,
+                        INK, brand(), english() ? "Online auctions" : "Đấu giá trực tuyến",
+                        tag.warning() ? DANGER : SIGNAL, tag.warning() ? "#ffffff" : INK, pick(tag.label()),
+                        INK, first.heading(), first.body(),
                         card(kind, facts),
-                        INK, HtmlUtils.htmlEscape(link), vi.button(), en.button(), SIGNAL,
-                        LINE, DIM, INK, en.heading(), en.body(),
-                        DIM, FOOTER_SLOT);
-        String text = strip(vi.heading()) + "\n\n" + strip(vi.body()) + "\n\n"
-                + "----\n\n"
-                + strip(en.heading()) + "\n\n" + strip(en.body()) + "\n\n"
-                + link + "\n";
+                        INK, HtmlUtils.htmlEscape(link), button, SIGNAL,
+                        second, lang == null ? "" : closing,
+                        DIM, note, FOOTER_SLOT);
+        String text = lang != null
+                ? strip(first.heading()) + "\n\n" + strip(first.body()) + "\n\n" + link + "\n"
+                : strip(vi.heading()) + "\n\n" + strip(vi.body()) + "\n\n"
+                        + "----\n\n"
+                        + strip(en.heading()) + "\n\n" + strip(en.body()) + "\n\n"
+                        + link + "\n";
         return new Rendered(subject, html, text);
     }
 

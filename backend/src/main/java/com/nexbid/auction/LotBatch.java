@@ -89,9 +89,12 @@ public class LotBatch {
      */
     public int submitDue(Instant now, int limit) {
         List<Due> due = jdbc.query("""
-                SELECT id, seller_id FROM auctions WHERE status = 'DRAFT' AND submit_at <= ? ORDER BY submit_at LIMIT ?
+                SELECT id, seller_id FROM auctions a WHERE status = 'DRAFT' AND submit_at <= ?
+                  -- EN: A seller on vacation: the draft waits for their return. / VI: Người bán đang nghỉ: bản nháp chờ họ quay lại.
+                  AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = a.seller_id AND u.vacation_until > ?)
+                ORDER BY submit_at LIMIT ?
                 """, (rs, n) -> new Due(rs.getObject("id", UUID.class), rs.getObject("seller_id", UUID.class)),
-                now.atOffset(ZoneOffset.UTC), limit);
+                now.atOffset(ZoneOffset.UTC), now.atOffset(ZoneOffset.UTC), limit);
         int sent = 0;
         for (Due lot : due) {
             jdbc.update("UPDATE auctions SET submit_at = NULL WHERE id = ?", lot.id());

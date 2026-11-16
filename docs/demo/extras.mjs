@@ -29,7 +29,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { paidReply, payThroughVnpay, sendIpn } from "./vnpay.mjs";
+import { ensureDeposit, paidReply, payThroughVnpay, sendIpn } from "./vnpay.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const API = (process.env.NEXBID_API_URL ?? "http://localhost:8080").replace(/\/$/, "");
@@ -155,6 +155,7 @@ async function downloadPhotos(ids) {
 }
 
 async function placeBid(lotId, token) {
+  await ensureDeposit(API, call, lotId, token);
   for (let attempt = 1; ; attempt++) {
     const { minimumNextBid } = await call("GET", `/api/auctions/${lotId}`);
     try {

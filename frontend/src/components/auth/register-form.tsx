@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
@@ -27,6 +27,7 @@ const MIN_PASSWORD_LENGTH = 8;
 
 export function RegisterForm() {
   const t = useTranslations("auth");
+  const locale = useLocale();
   const authErrorMessage = useAuthErrorMessage();
   const tc = useTranslations("common");
   const router = useRouter();
@@ -81,6 +82,7 @@ export function RegisterForm() {
         fullName: values.fullName,
         email: values.email,
         password: values.password,
+        language: locale,
       });
 
       // EN: A new account has no two-step sign-in, so no code step. / VI: Tài khoản mới chưa có đăng nhập hai bước, nên không có bước nhập mã.

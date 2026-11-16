@@ -87,7 +87,9 @@ public class PushService {
             Map.entry("SELLER_VERIFIED", "Người bán đã xác minh"),
             Map.entry("NEW_MESSAGE", "Tin nhắn mới"),
             Map.entry("SHIPMENT_CANCELLED", "Đã huỷ vận đơn"),
-            Map.entry("ORDER_ADDRESS_CHANGED", "Đổi địa chỉ nhận"));
+            Map.entry("ORDER_ADDRESS_CHANGED", "Đổi địa chỉ nhận"),
+            Map.entry("OFFER_RECEIVED", "Có đề nghị mua mới"),
+            Map.entry("OFFER_ANSWERED", "Đề nghị đã có trả lời"));
 
     private final JdbcTemplate jdbc;
     private final AuctionService auctions;

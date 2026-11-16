@@ -24,6 +24,7 @@ import { useApiErrorMessage, useCategoryLabels, useEnumLabels } from "@/hooks/us
 import { createProduct, updateProduct } from "@/services/seller-service";
 import type { BundleItem, Category, Parcel, Product, ProductCondition } from "@/types";
 import { ProductMediaSettings } from "@/components/seller/product-media-settings";
+import { TemplateBar } from "@/components/seller/template-bar";
 
 type ParcelKey = keyof Parcel;
 /** EN: GHN's limits: 30 kg, 150 cm a side. / VI: Giới hạn của GHN: 30 kg, mỗi cạnh 150 cm. */
@@ -146,6 +147,32 @@ export function ProductForm({ categories, product }: ProductFormProps) {
   }
 
   return (
+    <>
+    {!product ? (
+      <TemplateBar
+        current={{
+          name: "",
+          description,
+          categoryId: categoryId || null,
+          condition,
+          parcel: parcelOf(parcel) ?? null,
+        }}
+        onApply={(template) => {
+          setDescription(template.description);
+          if (template.categoryId) setCategoryId(template.categoryId);
+          if (template.condition) setCondition(template.condition);
+          if (template.parcel) {
+            setParcel({
+              weightGrams: String(template.parcel.weightGrams),
+              lengthCm: String(template.parcel.lengthCm),
+              widthCm: String(template.parcel.widthCm),
+              heightCm: String(template.parcel.heightCm),
+            });
+          }
+          setErrors({});
+        }}
+      />
+    ) : null}
     <form onSubmit={handleSubmit} noValidate className="mt-8 max-w-2xl space-y-6">
       <FormField label={t("productName")} error={errors.name} required>
         {(field) => (
@@ -368,5 +395,6 @@ export function ProductForm({ categories, product }: ProductFormProps) {
         </Button>
       </div>
     </form>
+    </>
   );
 }

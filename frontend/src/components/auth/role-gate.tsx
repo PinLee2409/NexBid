@@ -11,6 +11,8 @@ import type { UserRole } from "@/types";
 interface RoleGateProps {
   /** EN: Left out, being signed in is enough. / VI: Bỏ trống thì chỉ cần đã đăng nhập. */
   role?: UserRole;
+  /** EN: Any of these will do. / VI: Có một trong số này là đủ. */
+  roles?: UserRole[];
   /** EN: Where a signed-out reader signs in. / VI: Nơi người chưa đăng nhập đi đăng nhập. */
   signInPage?: "/login" | "/admin/login";
   /** EN: Shown to a signed-in reader without the role. / VI: Hiện cho người đã đăng nhập nhưng không có vai trò. */
@@ -28,7 +30,7 @@ interface RoleGateProps {
  *     không có vai trò thì thấy `denied`. Backend vẫn luôn kiểm tra vai trò; ở đây chỉ để không hiện một
  *     bảng điều khiển toàn lỗi.
  */
-export function RoleGate({ role, denied, children, signInPage = "/login" }: RoleGateProps) {
+export function RoleGate({ role, roles, denied, children, signInPage = "/login" }: RoleGateProps) {
   const { user, hydrated } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -41,6 +43,7 @@ export function RoleGate({ role, denied, children, signInPage = "/login" }: Role
 
   if (!hydrated || !user) return <GateSkeleton />;
   if (role && !hasRole(user, role)) return denied ?? null;
+  if (roles && !roles.some((each) => hasRole(user, each))) return denied ?? null;
   return children;
 }
 

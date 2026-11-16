@@ -21,7 +21,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { payThroughVnpay } from "./vnpay.mjs";
+import { ensureDeposit, payThroughVnpay } from "./vnpay.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const API = (process.env.NEXBID_API_URL ?? "http://localhost:8080").replace(/\/$/, "");
@@ -427,6 +427,7 @@ async function downloadPhotos(ids) {
 }
 
 async function placeBid(lotId, who, tokens) {
+  await ensureDeposit(API, call, lotId, tokens[who]);
   for (let attempt = 1; ; attempt++) {
     const { minimumNextBid } = await call("GET", `/api/auctions/${lotId}`);
     try {
@@ -528,6 +529,7 @@ async function main() {
       await call("POST", `/api/admin/auctions/${auction.id}/approve`, { token: tokens.admin });
     }
     for (const [who, max] of plan.autoBids ?? []) {
+      await ensureDeposit(API, call, auction.id, tokens[who]);
       await call("POST", `/api/auctions/${auction.id}/auto-bid`, { token: tokens[who], body: { maxAmount: max } });
     }
     for (const who of plan.bids ?? []) {

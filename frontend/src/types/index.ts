@@ -26,6 +26,20 @@ export const ERROR_CODES = [
   "INVALID_CREDENTIALS",
   "ACCOUNT_BLOCKED",
   "ADMIN_NOT_BLOCKABLE",
+  "STAFF_ROLES_INVALID",
+  "DEPOSIT_REQUIRED",
+  "DEPOSIT_NOT_NEEDED",
+  "DEPOSIT_ALREADY_HELD",
+  "DEPOSIT_NOT_FOUND",
+  "DEPOSIT_NOT_DUE",
+  "OFFER_UNAVAILABLE",
+  "OFFER_INVALID",
+  "OFFER_LIMIT",
+  "RELIST_NOT_ALLOWED",
+  "VACATION_INVALID",
+  "SELLER_ON_VACATION",
+  "TEMPLATE_NOT_FOUND",
+  "TEMPLATE_INVALID",
   "REFRESH_TOKEN_INVALID",
   "LOGIN_RATE_LIMITED",
   "ALREADY_SELLER",
@@ -144,7 +158,7 @@ export interface Page<T> {
 /*                                    User                                    */
 /* -------------------------------------------------------------------------- */
 
-export type UserRole = "BUYER" | "SELLER" | "ADMIN";
+export type UserRole = "BUYER" | "SELLER" | "ADMIN" | "MODERATOR" | "FINANCE" | "SUPPORT";
 
 export type UserStatus = "ACTIVE" | "BLOCKED";
 
@@ -574,7 +588,9 @@ export type NotificationType =
   | "SELLER_VERIFIED"
   | "NEW_MESSAGE"
   | "SHIPMENT_CANCELLED"
-  | "ORDER_ADDRESS_CHANGED";
+  | "ORDER_ADDRESS_CHANGED"
+  | "OFFER_RECEIVED"
+  | "OFFER_ANSWERED";
 
 export interface AppNotification {
   id: Id;
@@ -725,7 +741,12 @@ export type AuditAction =
   | "ORDER_MESSAGES_READ"
   | "SHILL_PAIR_CLEARED"
   | "TWO_FACTOR_ENABLED"
-  | "TWO_FACTOR_DISABLED";
+  | "TWO_FACTOR_DISABLED"
+  | "STAFF_ROLES_CHANGED"
+  | "AUCTION_RELISTED"
+  | "LOT_OFFER_ACCEPTED"
+  | "DEPOSIT_FORFEITED"
+  | "DEPOSIT_REFUNDED";
 
 export interface AuditLog {
   id: Id;

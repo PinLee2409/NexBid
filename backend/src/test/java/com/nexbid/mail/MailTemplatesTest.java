@@ -37,6 +37,31 @@ class MailTemplatesTest {
         assertThat(mail.html()).doesNotContain("<Submariner>").doesNotContain("<photos>");
     }
 
+    /**
+     * EN: In one language every kind keeps only that language: subject, labels, button and footer.
+     * VI: Ở một ngôn ngữ, mọi loại chỉ giữ ngôn ngữ đó: tiêu đề, nhãn, nút và chân thư.
+     */
+    @ParameterizedTest
+    @EnumSource(MailKind.class)
+    void everyKindCanSpeakOneLanguage(MailKind kind) {
+        MailTemplates.Rendered english = templates.in("en").render(kind, "Linh", MailTemplates.escaped(WON), "https://x.example/u");
+        assertThat(english.subject()).doesNotContain(" · ");
+        assertThat(english.html()).contains("lang=\"en\"").doesNotContain("Cài đặt email").doesNotContain("Email tự động")
+                .doesNotContain(">English<");
+        assertThat(english.text()).doesNotContain("----");
+
+        MailTemplates.Rendered vietnamese = templates.in("vi").render(kind, "Linh", MailTemplates.escaped(WON), "https://x.example/u");
+        assertThat(vietnamese.html()).contains("lang=\"vi\"").doesNotContain("Email settings").doesNotContain("An automatic email");
+    }
+
+    @Test
+    void anEnglishWinShowsDollarStyleDigitsOnly() {
+        MailTemplates.Rendered mail = templates.in("en").render(MailKind.AUCTION_WON, "Linh", MailTemplates.escaped(WON));
+        assertThat(mail.subject()).isEqualTo("You won: Rolex <Submariner>");
+        assertThat(mail.html()).contains("18,500,000").doesNotContain("18.500.000").contains("Winning bid")
+                .doesNotContain("Giá thắng");
+    }
+
     @Test
     void aWinGivesThePriceInBothLanguagesTheDeadlineInVietnamTimeAndAPayLink() {
         MailTemplates.Rendered mail = templates.render(MailKind.AUCTION_WON, "Linh", MailTemplates.escaped(WON));

@@ -9,7 +9,10 @@ import { CategoryName } from "@/components/common/category-name";
 import { StarRating } from "@/components/common/star-rating";
 import { AuctionRoomView } from "@/components/nexbid/auction-room";
 import { AuctionCatalogueItem } from "@/components/nexbid/catalogue-item";
+import { CompareButton } from "@/components/nexbid/compare-button";
 import { FollowSellerButton } from "@/components/nexbid/follow-seller-button";
+import { PriceHistory } from "@/components/nexbid/price-history";
+import { SellerAway } from "@/components/nexbid/seller-away";
 import { RecentlyViewed } from "@/components/nexbid/recently-viewed";
 import { ReportLotButton } from "@/components/nexbid/report-lot-button";
 import { LotQuestions } from "@/components/nexbid/lot-questions";
@@ -190,6 +193,8 @@ export default async function AuctionDetailPage(
                 <FollowSellerButton sellerId={auction.seller.id} returnTo={`/auctions/${auction.id}`} />
               </div>
 
+              <SellerAway sellerId={auction.seller.id} />
+
               {reputation && reputation.reviews.length > 0 ? (
                 <section className="mt-6" aria-labelledby="reviews-heading">
                   <h2 id="reviews-heading" className="label-sm text-dim">
@@ -218,6 +223,8 @@ export default async function AuctionDetailPage(
                 </section>
               ) : null}
 
+              <PriceHistory auctionId={auction.id} />
+
               <LotQuestions
                 auctionId={auction.id}
                 sellerId={auction.seller.id}
@@ -225,7 +232,8 @@ export default async function AuctionDetailPage(
                 initial={questions}
               />
 
-              <div className="mt-10">
+              <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4">
+                <CompareButton auctionId={auction.id} />
                 <ReportLotButton auctionId={auction.id} sellerId={auction.seller.id} status={auction.status} />
               </div>
             </div>

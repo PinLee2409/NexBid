@@ -65,6 +65,7 @@ public class AuditLogService {
             case APPROVED -> AuditAction.AUCTION_APPROVED;
             case REJECTED -> AuditAction.AUCTION_REJECTED;
             case REMOVED -> AuditAction.AUCTION_REMOVED;
+            case RELISTED -> AuditAction.AUCTION_RELISTED;
         };
         record(event.actorId(), action, "Auction", event.auctionId(),
                 event.before() == null ? null : event.before().name(), event.after().name());
@@ -154,6 +155,27 @@ public class AuditLogService {
     void onSellerVerified(com.nexbid.user.SellerVerifiedEvent event) {
         record(event.actorId(), AuditAction.SELLER_VERIFIED, "User", event.sellerId(),
                 String.valueOf(!event.verified()), String.valueOf(event.verified()));
+    }
+
+    @EventListener
+    void onOfferAnswered(com.nexbid.bid.LotOfferEvents.Answered event) {
+        if ("ACCEPTED".equals(event.outcome())) {
+            record(event.sellerId(), AuditAction.LOT_OFFER_ACCEPTED, "Auction", event.auctionId(), null,
+                    event.price().toPlainString());
+        }
+    }
+
+    @EventListener
+    void onDeposit(com.nexbid.payment.DepositEvents.Settled event) {
+        record(event.actorId(), "FORFEITED".equals(event.outcome()) ? AuditAction.DEPOSIT_FORFEITED
+                : AuditAction.DEPOSIT_REFUNDED, "Deposit", event.depositId(), "PAID", event.outcome());
+    }
+
+    @EventListener
+    void onStaffRoles(com.nexbid.user.StaffRolesChangedEvent event) {
+        record(event.adminId(), AuditAction.STAFF_ROLES_CHANGED, "User", event.userId(),
+                String.join(",", event.before().stream().map(Enum::name).sorted().toList()),
+                String.join(",", event.after().stream().map(Enum::name).sorted().toList()));
     }
 
     @EventListener

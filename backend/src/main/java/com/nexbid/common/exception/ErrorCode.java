@@ -15,6 +15,20 @@ public enum ErrorCode {
     ACCOUNT_BLOCKED(HttpStatus.FORBIDDEN),
     // EN: Admins cannot block an admin — not another one, not themselves. / VI: Admin không khoá được admin — kể cả chính mình.
     ADMIN_NOT_BLOCKABLE(HttpStatus.CONFLICT),
+    STAFF_ROLES_INVALID(HttpStatus.BAD_REQUEST),
+    DEPOSIT_REQUIRED(HttpStatus.PAYMENT_REQUIRED),
+    DEPOSIT_NOT_NEEDED(HttpStatus.CONFLICT),
+    DEPOSIT_ALREADY_HELD(HttpStatus.CONFLICT),
+    DEPOSIT_NOT_FOUND(HttpStatus.NOT_FOUND),
+    DEPOSIT_NOT_DUE(HttpStatus.CONFLICT),
+    OFFER_UNAVAILABLE(HttpStatus.CONFLICT),
+    OFFER_INVALID(HttpStatus.BAD_REQUEST),
+    OFFER_LIMIT(HttpStatus.CONFLICT),
+    RELIST_NOT_ALLOWED(HttpStatus.CONFLICT),
+    VACATION_INVALID(HttpStatus.BAD_REQUEST),
+    SELLER_ON_VACATION(HttpStatus.CONFLICT),
+    TEMPLATE_NOT_FOUND(HttpStatus.NOT_FOUND),
+    TEMPLATE_INVALID(HttpStatus.BAD_REQUEST),
     // EN: Missing, expired, signed out, or replayed after it was replaced. / VI: Thiếu, hết hạn, đã đăng xuất, hoặc bị dùng lại sau khi đã được thay.
     REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED),
     // EN: Too many wrong passwords; Retry-After says when to try again. / VI: Sai mật khẩu quá nhiều lần; Retry-After cho biết khi nào thử lại.

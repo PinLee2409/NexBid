@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  HandCoins,
   AlertTriangle,
   BadgeCheck,
   Banknote,
@@ -69,6 +70,8 @@ const ICONS: Record<NotificationType, LucideIcon> = {
   NEW_MESSAGE: MessagesSquare,
   SHIPMENT_CANCELLED: RotateCcw,
   ORDER_ADDRESS_CHANGED: MapPin,
+  OFFER_RECEIVED: HandCoins,
+  OFFER_ANSWERED: HandCoins,
   NEW_QUESTION: MessageCircleQuestion,
   QUESTION_ANSWERED: MessageSquareReply,
   LOT_ALERT: BellRing,
@@ -107,6 +110,8 @@ const TONES: Record<NotificationType, string> = {
   NEW_MESSAGE: "text-signal-text",
   SHIPMENT_CANCELLED: "text-warning",
   ORDER_ADDRESS_CHANGED: "text-warning",
+  OFFER_RECEIVED: "text-signal-text",
+  OFFER_ANSWERED: "text-signal-text",
   NEW_QUESTION: "text-signal-text",
   QUESTION_ANSWERED: "text-signal-text",
   LOT_ALERT: "text-signal-text",

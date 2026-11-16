@@ -249,6 +249,43 @@ class AccountNotices {
                 event.auctionId(), java.time.Instant.now());
     }
 
+    /** EN: The seller hears each offer. / VI: Người bán được báo mỗi đề nghị. */
+    @EventListener
+    void onOffer(com.nexbid.bid.LotOfferEvents.Made event) {
+        notifications.notify(event.sellerId(), NotificationType.OFFER_RECEIVED, "New offer",
+                clip(auctions.lotTitleOf(event.auctionId()) + ": a buyer offers "
+                        + event.amount().toBigInteger() + " VND. Accept, decline or counter within two days."),
+                event.auctionId(), event.at());
+    }
+
+    /** EN: The other side hears the answer. / VI: Bên còn lại được báo câu trả lời. */
+    @EventListener
+    void onOfferAnswered(com.nexbid.bid.LotOfferEvents.Answered event) {
+        String title = auctions.lotTitleOf(event.auctionId());
+        String price = event.price().toBigInteger() + " VND";
+        switch (event.outcome()) {
+            case "ACCEPTED" -> {
+                notifications.notify(event.buyerId(), NotificationType.OFFER_ANSWERED, "Offer accepted",
+                        clip(title + ": sold to you for " + price + ". Pay to complete the purchase."),
+                        event.auctionId(), event.at());
+                notifications.notify(event.sellerId(), NotificationType.OFFER_ANSWERED, "Lot sold by offer",
+                        clip(title + ": sold for " + price + ". The buyer has been asked to pay."),
+                        event.auctionId(), event.at());
+            }
+            case "DECLINED" -> notifications.notify(event.buyerId(), NotificationType.OFFER_ANSWERED,
+                    "Offer declined", clip(title + ": the seller declined your offer of " + price + "."),
+                    event.auctionId(), event.at());
+            case "COUNTERED" -> notifications.notify(event.buyerId(), NotificationType.OFFER_ANSWERED,
+                    "The seller countered", clip(title + ": the seller would sell for " + price
+                            + ". Accept or decline within two days."), event.auctionId(), event.at());
+            case "COUNTER_DECLINED" -> notifications.notify(event.sellerId(), NotificationType.OFFER_ANSWERED,
+                    "Counter declined", clip(title + ": the buyer declined your counter."), event.auctionId(),
+                    event.at());
+            default -> {
+            }
+        }
+    }
+
     /** EN: The seller hears each question while the lot is open. / VI: Người bán được báo mỗi câu hỏi khi lô còn mở. */
     @EventListener
     void onQuestion(QuestionEvents.Asked event) {

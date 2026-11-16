@@ -11,6 +11,7 @@ import {
   SoldOverlay,
 } from "@/components/nexbid/auction-overlays";
 import { BidTerminal } from "@/components/nexbid/bid-terminal";
+import { LotDeals } from "@/components/nexbid/lot-deals";
 import { LiveBidTape } from "@/components/nexbid/live-bid-tape";
 import {
   StatePreview,
@@ -112,6 +113,17 @@ export function AuctionRoomView({ auction, serverTime }: AuctionRoomViewProps) {
       {/* EN: Not sticky: it is taller than most screens, and the bid tape below would slide up over it.
           VI: Không dùng sticky: khối này cao hơn hầu hết màn hình, và dải lượt trả giá bên dưới sẽ trượt đè lên nó. */}
       <BidTerminal auction={auction} room={room} user={user} serverTime={serverTime} />
+
+      <LotDeals
+        auctionId={auction.id}
+        sellerId={auction.sellerId}
+        startingPrice={auction.startingPrice}
+        buyNowPrice={auction.buyNowPrice}
+        open={room.status === "ACTIVE" && !room.ended}
+        closed={room.ended || !["ACTIVE", "SCHEDULED"].includes(room.status)}
+        bidCount={room.bidCount}
+        user={user}
+      />
 
       <section className="mt-10" aria-labelledby="tape-heading">
         <div className="border-line bg-surface border p-5 sm:p-6">

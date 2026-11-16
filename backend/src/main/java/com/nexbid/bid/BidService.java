@@ -37,6 +37,7 @@ public class BidService {
     private final BidRecorder recorder;
     private final ProxyBidding proxies;
     private final BidderRestriction restriction;
+    private final com.nexbid.auction.LotDeposits deposits;
 
     BidService(
             BidRepository bids,
@@ -44,7 +45,10 @@ public class BidService {
             UserService users,
             BidRecorder recorder,
             ProxyBidding proxies,
-            BidderRestriction restriction) {
+            BidderRestriction restriction,
+            com.nexbid.auction.LotDeposits deposits) {
+
+        this.deposits = deposits;
 
         this.restriction = restriction;
 
@@ -83,6 +87,7 @@ public class BidService {
     @Transactional
     public PlacedBidView place(UUID auctionId, UUID bidderId, BigDecimal amount) {
         restriction.check(bidderId, amount);
+        deposits.require(auctionId, bidderId);
         LeadTracker leads = new LeadTracker();
         PlacedBidView mine = recorder.record(auctionId, bidderId, amount, leads);
 
@@ -107,6 +112,7 @@ public class BidService {
      */
     @Transactional
     public PlacedBidView buyNow(UUID auctionId, UUID buyerId) {
+        deposits.require(auctionId, buyerId);
         AuctionService.AcceptedBid accepted = auctions.buyNow(auctionId, buyerId);
         // EN: The price is known only once the lot is locked; refusing here rolls the purchase back.
         // VI: Chỉ biết giá khi đã khoá lô; từ chối ở đây sẽ huỷ luôn lần mua.

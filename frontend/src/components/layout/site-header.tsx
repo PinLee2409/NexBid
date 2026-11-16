@@ -19,7 +19,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ADMIN_NAV, BUYER_NAV, SELLER_NAV } from "@/constants/site";
+import { ADMIN_NAV, BUYER_NAV, SELLER_NAV, STAFF_ROLES, canSeeAdminItem } from "@/constants/site";
 import { cn } from "@/lib/utils";
 import { useUnreadNotificationCount } from "@/services/notification-service";
 import { hasRole, signOut, useSession } from "@/services/session-service";
@@ -181,7 +181,8 @@ export function SiteHeader({ liveCount = 0 }: SiteHeaderProps) {
                   liveCount={liveCount}
                   signedIn={Boolean(user)}
                   isSeller={isSeller}
-                  isAdmin={hasRole(user, "ADMIN")}
+                  isAdmin={STAFF_ROLES.some((role) => hasRole(user, role))}
+                  roles={user?.roles ?? []}
                 />
               </SheetContent>
             </Sheet>
@@ -278,11 +279,13 @@ function MobileMenu({
   signedIn,
   isSeller,
   isAdmin,
+  roles,
 }: {
   liveCount: number;
   signedIn: boolean;
   isSeller: boolean;
   isAdmin: boolean;
+  roles: string[];
 }) {
   const t = useTranslations("nav");
   const tc = useTranslations("common");
@@ -322,7 +325,12 @@ function MobileMenu({
 
         <MobileGroup title={t("yourAccount")} items={BUYER_NAV} />
         {isSeller ? <MobileGroup title={t("sellerArea")} items={SELLER_NAV} /> : null}
-        {isAdmin ? <MobileGroup title={t("adminArea")} items={ADMIN_NAV} /> : null}
+        {isAdmin ? (
+          <MobileGroup
+            title={t("adminArea")}
+            items={ADMIN_NAV.filter((item) => canSeeAdminItem(roles, item))}
+          />
+        ) : null}
 
         <div className="border-line mt-2 border-t px-5 py-4">
           <p className="label-sm text-dim pb-2">{tc("language")}</p>

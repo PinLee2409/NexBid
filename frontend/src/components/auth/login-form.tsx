@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { landingFor, useReturnPath, withReturnPath } from "@/components/auth/use-return-path";
 import { Label } from "@/components/ui/label";
+import { STAFF_ROLES } from "@/constants/site";
 import {
   hasRole,
   signIn,
@@ -53,7 +54,7 @@ export function LoginForm({ audience = "marketplace" }: LoginFormProps) {
   const { user } = useSession();
 
   // EN: An admin already signed in has nothing to do here. / VI: Admin đã đăng nhập thì không cần ở đây.
-  const alreadyAdmin = forAdmin && hasRole(user, "ADMIN");
+  const alreadyAdmin = forAdmin && STAFF_ROLES.some((role) => hasRole(user, role));
   useEffect(() => {
     if (alreadyAdmin) router.replace(returnPath ?? "/admin");
   }, [alreadyAdmin, returnPath, router]);
@@ -81,7 +82,7 @@ export function LoginForm({ audience = "marketplace" }: LoginFormProps) {
       return;
     }
 
-    if (forAdmin && !hasRole(result.user, "ADMIN")) {
+    if (forAdmin && !STAFF_ROLES.some((role) => hasRole(result.user, role))) {
       // EN: The account is fine, just not for this door: leave no session behind. / VI: Tài khoản không sai, chỉ là không dành cho cửa này: không để lại phiên nào.
       await signOut();
       setChallenge(null);

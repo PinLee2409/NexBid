@@ -213,6 +213,57 @@ public class UserService {
         return toAccount(user);
     }
 
+    /**
+     * EN: Replaces an account's staff roles (moderator, finance, support) with {@code staff}. Only those three can be
+     *     handed out here, never ADMIN, and an admin cannot change their own. Takes effect at the person's next token
+     *     refresh, within minutes.
+     * VI: Thay các vai trò nhân viên (kiểm duyệt, kế toán, hỗ trợ) của một tài khoản bằng {@code staff}. Chỉ cấp được ba
+     *     vai trò này, không bao giờ ADMIN, và admin không tự đổi vai trò của mình. Có hiệu lực ở lần làm mới token kế
+     *     tiếp của người đó, trong vài phút.
+     */
+    @Transactional
+    public UserAccount setStaffRoles(java.util.UUID id, java.util.UUID adminId, java.util.Set<RoleName> staff) {
+        if (id.equals(adminId)) {
+            throw new BusinessException(ErrorCode.STAFF_ROLES_INVALID, "You cannot change your own roles");
+        }
+        if (!RoleName.STAFF.containsAll(staff)) {
+            throw new BusinessException(ErrorCode.STAFF_ROLES_INVALID, "Only MODERATOR, FINANCE and SUPPORT can be given");
+        }
+        User user = users.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.USER_NOT_FOUND, "No account with id " + id));
+        if (user.isBlocked()) {
+            throw new BusinessException(ErrorCode.STAFF_ROLES_INVALID, "A blocked account cannot be staff");
+        }
+        java.util.Set<RoleName> before = roleNames(user).stream().filter(RoleName.STAFF::contains)
+                .collect(Collectors.toCollection(() -> java.util.EnumSet.noneOf(RoleName.class)));
+        if (before.equals(staff.isEmpty() ? java.util.EnumSet.noneOf(RoleName.class) : java.util.EnumSet.copyOf(staff))) {
+            return toAccount(user);
+        }
+        for (RoleName name : RoleName.STAFF) {
+            if (staff.contains(name)) {
+                user.addRole(roles.findByName(name)
+                        .orElseThrow(() -> new IllegalStateException("Role missing from database: " + name)));
+            } else {
+                user.removeRole(name);
+            }
+        }
+        users.save(user);
+        events.publishEvent(new StaffRolesChangedEvent(id, adminId, java.util.Set.copyOf(before),
+                java.util.Set.copyOf(staff), java.time.Instant.now()));
+        return toAccount(user);
+    }
+
+    /** EN: Admins and staff, for the staff page. / VI: Admin và nhân viên, cho trang nhân viên. */
+    @Transactional(readOnly = true)
+    public java.util.List<UserAccount> staff() {
+        return users.findAll(Sort.by("fullName")).stream()
+                .map(UserService::toAccount)
+                .filter(account -> account.roles().contains(RoleName.ADMIN)
+                        || account.roles().stream().anyMatch(RoleName.STAFF::contains))
+                .toList();
+    }
+
     /** EN: Which of these sellers carry the badge. / VI: Những người bán nào trong số này có huy hiệu. */
     public java.util.Set<java.util.UUID> verifiedAmong(java.util.Collection<java.util.UUID> ids) {
         if (ids.isEmpty()) {

@@ -175,7 +175,11 @@ export interface EmailPreferences {
   outbid: boolean;
   /** EN: The daily new-lot email; left out, it keeps its value. / VI: Email lô mới hằng ngày; bỏ trống thì giữ nguyên. */
   digest?: boolean;
+  /** EN: "vi", "en" or "both"; left out, it keeps its value. / VI: "vi", "en" hoặc "both"; bỏ trống thì giữ nguyên. */
+  language?: EmailLanguage;
 }
+
+export type EmailLanguage = "vi" | "en" | "both";
 
 export async function getEmailPreferences(): Promise<EmailPreferences> {
   return api<EmailPreferences>("/api/users/me/email-preferences");

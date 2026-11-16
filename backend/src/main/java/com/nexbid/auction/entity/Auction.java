@@ -132,6 +132,37 @@ public class Auction {
     @Column(name = "submit_at", insertable = false, updatable = false)
     private Instant submitAt;
 
+    @Column(name = "relist_left", nullable = false)
+    private int relistLeft;
+
+    @Column(name = "relist_drop_percent", nullable = false)
+    private int relistDropPercent;
+
+    @Column(name = "relisted_from", updatable = false)
+    private UUID relistedFrom;
+
+    public int getRelistLeft() {
+        return relistLeft;
+    }
+
+    public int getRelistDropPercent() {
+        return relistDropPercent;
+    }
+
+    public UUID getRelistedFrom() {
+        return relistedFrom;
+    }
+
+    /** EN: Up to five automatic relists, each up to half off. / VI: Tối đa năm lần tự đăng lại, mỗi lần hạ tối đa một nửa. */
+    public void setRelisting(int times, int dropPercent) {
+        this.relistLeft = Math.clamp(times, 0, 5);
+        this.relistDropPercent = Math.clamp(dropPercent, 0, 50);
+    }
+
+    public void setRelistedFrom(UUID relistedFrom) {
+        this.relistedFrom = relistedFrom;
+    }
+
     public Instant getSubmitAt() {
         return submitAt;
     }
@@ -269,6 +300,13 @@ public class Auction {
      * EN: Buy-now: the buyer's bid at the buy-now price closes the lot on the spot, in their name.
      * VI: Mua ngay: lượt trả giá bằng giá mua ngay đóng lô tại chỗ, đứng tên người mua.
      */
+    /** EN: Sold to an accepted offer: closes now, not as a buy-now. / VI: Bán cho một đề nghị được nhận: đóng ngay, không tính là mua ngay. */
+    public void closeSoldByOffer(Instant at) {
+        this.status = AuctionStatus.ENDED;
+        this.endTime = at;
+        this.winnerId = this.leadingBidderId;
+    }
+
     public void closeBoughtNow(Instant at) {
         this.status = AuctionStatus.ENDED;
         this.endTime = at;

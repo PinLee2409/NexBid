@@ -98,6 +98,8 @@ export function AuctionForm({ products, initialProductId, relist }: AuctionFormP
   const [endTime, setEndTime] = useState(schedule.endTime);
   const [antiSniping, setAntiSniping] = useState(relist?.antiSniping.enabled ?? true);
   const [freeShipping, setFreeShipping] = useState(relist?.freeShipping ?? false);
+  const [autoRelist, setAutoRelist] = useState("0");
+  const [relistDrop, setRelistDrop] = useState("10");
   const [snipeWindow, setSnipeWindow] = useState(
     String(relist?.antiSniping.windowSeconds ?? AUCTION_CONFIG.defaultAntiSnipingWindowSeconds),
   );
@@ -160,6 +162,8 @@ export function AuctionForm({ products, initialProductId, relist }: AuctionFormP
             reservePrice: reservePrice ? Number(reservePrice) : undefined,
             buyNowPrice: buyNowPrice ? Number(buyNowPrice) : undefined,
             freeShipping,
+            autoRelist: Number(autoRelist),
+            relistDropPercent: Number(autoRelist) > 0 ? Number(relistDrop) : 0,
           },
           submitForApproval,
         );
@@ -326,6 +330,45 @@ export function AuctionForm({ products, initialProductId, relist }: AuctionFormP
               <p className="text-muted-foreground mt-1 text-xs leading-relaxed">{t("freeShippingHint")}</p>
             </div>
             <Switch id="free-shipping" checked={freeShipping} onCheckedChange={setFreeShipping} />
+          </div>
+
+          <div className="border-line mt-6 border-t pt-6" data-testid="auto-relist">
+            <p className="label">{t("autoRelistLabel")}</p>
+            <p className="text-muted-foreground mt-1 text-xs leading-relaxed">{t("autoRelistHint")}</p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <FormField label={t("autoRelistTimes")}>
+                {(field) => (
+                  <Select value={autoRelist} onValueChange={setAutoRelist}>
+                    <SelectTrigger id={field.id} className="h-11 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["0", "1", "2", "3", "4", "5"].map((times) => (
+                        <SelectItem key={times} value={times}>
+                          {times === "0" ? t("autoRelistOff") : t("autoRelistCount", { count: Number(times) })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </FormField>
+              <FormField label={t("autoRelistDrop")}>
+                {(field) => (
+                  <Select value={relistDrop} onValueChange={setRelistDrop} disabled={autoRelist === "0"}>
+                    <SelectTrigger id={field.id} className="h-11 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["0", "5", "10", "15", "20", "30"].map((percent) => (
+                        <SelectItem key={percent} value={percent}>
+                          {t("autoRelistPercent", { percent: Number(percent) })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </FormField>
+            </div>
           </div>
         </FormSection>
 

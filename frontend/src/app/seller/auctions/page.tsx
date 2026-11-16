@@ -22,6 +22,7 @@ import {
   listMyAuctions,
   submitAuctionForApproval,
 } from "@/services/seller-service";
+import { relistLot } from "@/services/market-service";
 import type { AuctionSummary } from "@/types";
 import { useMoney } from "@/hooks/use-money";
 
@@ -116,6 +117,20 @@ function SellerAuctionRow({
     });
   }
 
+  /** EN: A new draft 10% cheaper, to check and submit. / VI: Bản nháp mới rẻ hơn 10%, để kiểm rồi gửi duyệt. */
+  function handleQuickRelist() {
+    startTransition(async () => {
+      try {
+        await relistLot(auction.id, 10);
+      } catch (error) {
+        toast.error(errorMessage(error));
+        return;
+      }
+      onChanged();
+      toast.success(t("relistedDraft", { name: auction.product.name }));
+    });
+  }
+
   return (
     <>
       <AuctionListItem
@@ -142,6 +157,11 @@ function SellerAuctionRow({
                   <RotateCcw className="size-3.5" />
                   {t("relist")}
                 </Link>
+              </Button>
+            ) : null}
+            {isRelistable(auction.status, auction.product.status) ? (
+              <Button size="sm" variant="ghost" onClick={handleQuickRelist} disabled={isPending}>
+                {t("relistCheaper", { percent: 10 })}
               </Button>
             ) : null}
             <Button asChild size="sm" variant="outline">

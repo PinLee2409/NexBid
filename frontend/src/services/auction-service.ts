@@ -149,6 +149,9 @@ export interface SellerProfile {
   score: SellerReputation;
   onSale: AuctionSummary[];
   sold: AuctionSummary[];
+  /** EN: Set while the seller is on vacation. / VI: Có giá trị khi người bán đang nghỉ. */
+  awayUntil?: string | null;
+  awayNote?: string | null;
 }
 
 /** `GET /api/sellers/{id}/profile` — null when there is no such seller. */

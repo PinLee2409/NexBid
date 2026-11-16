@@ -30,8 +30,11 @@ public class SellerProfiles {
     private final AuctionService auctions;
     private final ReviewService reviews;
     private final JdbcTemplate jdbc;
+    private final com.nexbid.user.Vacations vacations;
 
-    SellerProfiles(UserService users, AuctionService auctions, ReviewService reviews, JdbcTemplate jdbc) {
+    SellerProfiles(UserService users, AuctionService auctions, ReviewService reviews, JdbcTemplate jdbc,
+            com.nexbid.user.Vacations vacations) {
+        this.vacations = vacations;
         this.users = users;
         this.auctions = auctions;
         this.reviews = reviews;
@@ -39,7 +42,8 @@ public class SellerProfiles {
     }
 
     public record Profile(UUID id, String displayName, boolean verified, Instant memberSince, int followers,
-            SellerReviewsView score, List<AuctionSummaryView> onSale, List<AuctionSummaryView> sold) {
+            SellerReviewsView score, List<AuctionSummaryView> onSale, List<AuctionSummaryView> sold,
+            Instant awayUntil, String awayNote) {
     }
 
     @Transactional(readOnly = true)
@@ -54,9 +58,11 @@ public class SellerProfiles {
         Integer followers = jdbc.queryForObject("SELECT COUNT(*) FROM seller_follows WHERE seller_id = ?",
                 Integer.class, sellerId);
         var soldMap = auctions.participantSummariesOf(soldIds);
+        com.nexbid.user.Vacations.Vacation away = vacations.of(sellerId, Instant.now());
         return new Profile(seller.id(), seller.fullName(), seller.verified(), seller.createdAt(),
                 followers == null ? 0 : followers, reviews.ofSeller(sellerId, 1, 5),
                 auctions.publicSummariesOf(auctions.openLotsOf(sellerId)),
-                soldIds.stream().map(soldMap::get).filter(java.util.Objects::nonNull).toList());
+                soldIds.stream().map(soldMap::get).filter(java.util.Objects::nonNull).toList(),
+                away.until(), away.note());
     }
 }

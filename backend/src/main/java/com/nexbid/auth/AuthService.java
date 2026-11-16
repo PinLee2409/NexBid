@@ -108,6 +108,10 @@ public class AuthService {
                     // VI: Ai cũng bắt đầu là người mua; quyền bán cấp sau (guide §6).
                     RoleName.BUYER);
 
+            // EN: Before the welcome email, so it is already in the chosen language. / VI: Trước email chào mừng, để nó đã đúng ngôn ngữ đã chọn.
+            if ("vi".equals(request.language()) || "en".equals(request.language())) {
+                jdbc.update("UPDATE users SET email_language = ? WHERE id = ?", request.language(), account.id());
+            }
             mailer.send(account.id(), MailKind.WELCOME, MailFacts.none());
             return RegisterResponse.from(account);
 

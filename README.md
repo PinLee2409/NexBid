@@ -382,10 +382,22 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders` (`…/{id}/received`, `…/{id}/dispute`), `…/me/bank-account` (payouts and refunds go here), `…/me/watchlist`, `…/me/offers` (`…/{id}/accept`, `…/{id}/decline`), `…/me/orders/{id}/review`, `…/me/seller-application`, `/api/notifications`, `GET /api/sellers/{id}/reviews` (public) |
 | Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions`, `/api/seller/auctions/{id}/second-chance`, `/api/seller/auctions/{id}/reserve-decision`, `/api/seller/second-chances`, `/api/seller/orders` (`…/{id}/ship`), `/api/seller/earnings`, `/api/seller/questions/{id}/answer` |
 | Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users`, `/api/admin/users/{id}/block`, `/api/admin/users/{id}/verified` (the verified seller badge), `/api/admin/seller-applications` (`…/{id}/approve`, `…/{id}/reject`), `/api/admin/orders` (`…/{id}/refund-account`, `…/{id}/refund` with the bank transfer's reference), `/api/admin/disputes` (`…/{id}/resolve`), `/api/admin/payouts` (`…/due`; recording one sends the amount the admin transferred and is refused if the balance moved), `/api/admin/stray-charges` (`…/{id}/refund`: VNPay charges no payment could use), `/api/admin/emails` (`…/{id}/retry` a failed email), `/api/seller/orders/{id}/buyer-review`, `/api/admin/analytics`, `/api/admin/audit-logs` |
+| Search | `GET /api/auctions/suggest?q=` (lots and sellers while typing, accents ignored, a spelling when nothing matches), `GET /api/auctions/{id}/price-history` (what similar lots sold for) — public |
+| Offers | `POST /api/auctions/{id}/offers`, `GET /api/auctions/{id}/offers/mine`, `GET /api/users/me/lot-offers` (`…/{id}/accept-counter`, `…/decline-counter`, `…/withdraw`), `GET /api/seller/lot-offers` (`…/{id}/accept`, `…/decline`, `…/counter`) |
+| Deposits | `GET /api/auctions/{id}/deposit` (public), `POST /api/auctions/{id}/deposit/vnpay`, `GET /api/payments/deposits/vnpay/return`, `GET /api/users/me/deposits`, `GET /api/admin/deposits`, `POST /api/admin/deposits/{id}/refund` |
+| Seller tools | `POST /api/seller/auctions/{id}/relist` (a cheaper draft), `GET`/`PUT /api/seller/vacation`, `/api/seller/templates` (listing templates) |
+| Staff | `GET`/`POST /api/admin/staff`, `PUT /api/admin/staff/{userId}` (ADMIN only), `GET /api/admin/analytics/funnel?days=` |
 | Realtime | STOMP at `/ws`: `/topic/auctions/{id}` for everyone, `/user/queue/notifications` and `/user/queue/messages` for the signed-in user |
 
-`/api/admin/**` needs the ADMIN role and `/api/seller/**` needs SELLER. The frontend hides those menus
-too, but that is decoration — the server is what refuses.
+`/api/seller/**` needs SELLER. `/api/admin/**` needs ADMIN, or one of the narrower staff roles for its own part:
+MODERATOR (lots, categories, reports, shill suspects, seller requests), FINANCE (payouts, deposits, finance,
+vouchers, orders and disputes) and SUPPORT (users, emails, orders and disputes); staff management and the audit log
+stay ADMIN only. The frontend hides those menus too, but that is decoration — the server is what refuses.
+
+Lots starting at 50 million VND or more (`nexbid.deposit.threshold`; 0 turns it off) ask bidders for a deposit of
+10% of the start, between 500 thousand and 10 million, paid through VNPay before the first bid. Bidders who lose are
+owed it back when the lot closes, the winner once they have paid, and an admin returns it by bank transfer from
+the deposits page; a winner who lets the payment lapse forfeits it.
 
 Every endpoint answers in one of two shapes (spec §28), so the client needs one parser:
 

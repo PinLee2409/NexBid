@@ -66,6 +66,22 @@ public class AddressBook {
     }
 
     /** EN: Whether this account wants the daily new-lot email. / VI: Tài khoản này có muốn email lô mới hằng ngày không. */
+    /**
+     * EN: "vi", "en" or "both": the language the person's emails are written in.
+     * VI: "vi", "en" hoặc "both": ngôn ngữ dùng để viết email cho người đó.
+     */
+    public String emailLanguageOf(UUID userId) {
+        return jdbc.query("SELECT email_language FROM users WHERE id = ?", (rs, n) -> rs.getString(1), userId)
+                .stream().findFirst().orElse("both");
+    }
+
+    /** EN: Anything but "vi", "en" or "both" is ignored. / VI: Giá trị khác "vi", "en" hoặc "both" bị bỏ qua. */
+    public void setEmailLanguage(UUID userId, String language) {
+        if (language != null && java.util.Set.of("vi", "en", "both").contains(language)) {
+            jdbc.update("UPDATE users SET email_language = ? WHERE id = ?", language, userId);
+        }
+    }
+
     public boolean wantsDigestEmails(UUID userId) {
         Boolean wants = jdbc.query("SELECT digest_emails FROM users WHERE id = ?",
                 rs -> rs.next() ? rs.getBoolean(1) : Boolean.FALSE, userId);

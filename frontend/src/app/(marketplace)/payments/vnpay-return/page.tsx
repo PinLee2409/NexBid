@@ -8,6 +8,7 @@ import { ApiErrorState } from "@/components/common/api-error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { Container } from "@/components/layout/container";
 import { useMoney } from "@/hooks/use-money";
+import { confirmDepositReturn, type Deposit } from "@/services/market-service";
 import { confirmVnpayReturn } from "@/services/payment-service";
 import type { Payment } from "@/types";
 
@@ -17,6 +18,7 @@ const CANCELLED = "24";
 type Result =
   | { status: "checking" }
   | { status: "done"; payment: Payment; responseCode: string | null }
+  | { status: "deposit"; deposit: Deposit; responseCode: string | null }
   | { status: "error"; error: unknown };
 
 /**
@@ -51,7 +53,15 @@ function VnpayResult() {
     if (started.current) return;
     started.current = true;
     const query = window.location.search;
-    const responseCode = new URLSearchParams(query).get("vnp_ResponseCode");
+    const params = new URLSearchParams(query);
+    const responseCode = params.get("vnp_ResponseCode");
+    // EN: A deposit's reference starts with D. / VI: Mã của khoản cọc bắt đầu bằng D.
+    if (params.get("vnp_TxnRef")?.startsWith("D")) {
+      confirmDepositReturn(Object.fromEntries(params))
+        .then((deposit) => setResult({ status: "deposit", deposit, responseCode }))
+        .catch((error: unknown) => setResult({ status: "error", error }));
+      return;
+    }
     confirmVnpayReturn(query)
       .then((payment) => setResult({ status: "done", payment, responseCode }))
       .catch((error: unknown) => setResult({ status: "error", error }));
@@ -68,6 +78,28 @@ function VnpayResult() {
 
   if (result.status === "error") {
     return <ApiErrorState icon={Wallet} error={result.error} />;
+  }
+
+  if (result.status === "deposit") {
+    const { deposit } = result;
+    const paid = deposit.status !== "PENDING" && deposit.status !== "FAILED";
+    return paid ? (
+      <EmptyState
+        icon={CircleCheck}
+        title={t("depositPaid")}
+        description={`${money.currency(deposit.amount)} · ${t("depositPaidBody", { lot: deposit.lotTitle })}`}
+        action={{ label: t("depositBackToLot"), href: `/auctions/${deposit.auctionId}` }}
+        secondaryAction={{ label: t("depositsTitle"), href: "/offers" }}
+      />
+    ) : (
+      <EmptyState
+        tone="error"
+        icon={CircleX}
+        title={t("depositFailed")}
+        description={t("depositFailedBody")}
+        action={{ label: t("depositBackToLot"), href: `/auctions/${deposit.auctionId}` }}
+      />
+    );
   }
 
   const { payment, responseCode } = result;

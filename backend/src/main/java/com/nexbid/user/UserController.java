@@ -85,13 +85,13 @@ public class UserController {
      * EN: {@code digest} is the daily new-lot email; a client that does not send it leaves it as it was.
      * VI: {@code digest} là email lô mới hằng ngày; client không gửi trường này thì giữ nguyên giá trị cũ.
      */
-    public record EmailPreferences(boolean outbid, Boolean digest) {
+    public record EmailPreferences(boolean outbid, Boolean digest, String language) {
     }
 
     @GetMapping("/me/email-preferences")
     public ApiResponse<EmailPreferences> emailPreferences(@AuthenticationPrincipal CurrentUser caller) {
         return ApiResponse.of(new EmailPreferences(addresses.wantsOutbidEmails(caller.id()),
-                addresses.wantsDigestEmails(caller.id())));
+                addresses.wantsDigestEmails(caller.id()), addresses.emailLanguageOf(caller.id())));
     }
 
     @PutMapping("/me/email-preferences")
@@ -101,8 +101,9 @@ public class UserController {
         if (request.digest() != null) {
             addresses.setDigestEmails(caller.id(), request.digest());
         }
-        return ApiResponse.of(new EmailPreferences(request.outbid(), addresses.wantsDigestEmails(caller.id())),
-                "Email preferences saved");
+        addresses.setEmailLanguage(caller.id(), request.language());
+        return ApiResponse.of(new EmailPreferences(request.outbid(), addresses.wantsDigestEmails(caller.id()),
+                addresses.emailLanguageOf(caller.id())), "Email preferences saved");
     }
 
     /**

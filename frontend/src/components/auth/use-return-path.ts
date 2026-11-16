@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 
 import { safeRedirect } from "@/lib/redirect";
+import { STAFF_ROLES } from "@/constants/site";
 import { hasRole } from "@/services/session-service";
 import type { User } from "@/types";
 
@@ -24,7 +25,7 @@ export function useReturnPath(): string | null {
 
 /** EN: Where a freshly signed-in user lands. / VI: Nơi người vừa đăng nhập được đưa tới. */
 export function landingFor(user: User, returnPath: string | null): string {
-  return returnPath ?? (hasRole(user, "ADMIN") ? "/admin" : "/");
+  return returnPath ?? (STAFF_ROLES.some((role) => hasRole(user, role)) ? "/admin" : "/");
 }
 
 /** EN: A link to the other auth form that keeps the return path. / VI: Link sang form auth kia, giữ nguyên trang cần quay về. */

@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { RoleGate } from "@/components/auth/role-gate";
 import { EmptyState } from "@/components/common/empty-state";
 import { WorkspaceSidebar } from "@/components/layout/workspace-sidebar";
+import { STAFF_ROLES } from "@/constants/site";
 
 /** Admin console shell. Only admins see it — the sidebar included. */
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
@@ -22,7 +23,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   );
 
   return (
-    <RoleGate role="ADMIN" signInPage="/admin/login" denied={denied}>
+    <RoleGate roles={STAFF_ROLES} signInPage="/admin/login" denied={denied}>
       <div className="flex min-h-dvh flex-col lg:flex-row">
         <WorkspaceSidebar variant="admin" title={t("console")} />
         <main id="main" className="min-w-0 flex-1 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
