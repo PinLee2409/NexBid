@@ -249,6 +249,15 @@ class AccountNotices {
                 event.auctionId(), java.time.Instant.now());
     }
 
+    /** EN: The seller hears which photo or video was taken down, and why. / VI: Người bán được báo ảnh hay video nào bị gỡ, và vì sao. */
+    @EventListener
+    void onMediaRemoved(com.nexbid.product.MediaReviews.Removed event) {
+        String what = "VIDEO".equals(event.kind()) ? "the video" : "a photo";
+        notifications.notify(event.sellerId(), NotificationType.MEDIA_REMOVED, "Media taken down",
+                clip(event.productName() + ": NexBid removed " + what + "."
+                        + (event.reason() == null ? "" : " Reason: " + event.reason())), null, event.at());
+    }
+
     /** EN: The seller hears each offer. / VI: Người bán được báo mỗi đề nghị. */
     @EventListener
     void onOffer(com.nexbid.bid.LotOfferEvents.Made event) {

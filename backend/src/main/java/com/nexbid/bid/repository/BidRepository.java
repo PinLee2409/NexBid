@@ -25,6 +25,10 @@ public interface BidRepository extends JpaRepository<Bid, UUID> {
 
     List<Bid> findByBidderIdOrderByCreatedAtDesc(UUID bidderId);
 
+    boolean existsByAuctionIdAndBidderId(UUID auctionId, UUID bidderId);
+
+    List<Bid> findByAuctionIdAndBidderIdOrderByCreatedAtDesc(UUID auctionId, UUID bidderId);
+
     @Query("SELECT DISTINCT b.bidderId FROM Bid b WHERE b.auctionId = :auctionId")
     List<UUID> findDistinctBidderIds(@Param("auctionId") UUID auctionId);
 

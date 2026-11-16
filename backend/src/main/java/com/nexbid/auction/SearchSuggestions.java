@@ -26,12 +26,51 @@ public class SearchSuggestions {
     private static final int LOTS = 6;
     private static final int SELLERS = 3;
 
+    /**
+     * EN: Typing sends the same few prefixes many times over; a short cache keeps the database out of it. Short, because
+     *     prices and lots change; a Redis failure only means asking the database.
+     * VI: Việc gõ phím gửi đi cùng vài tiền tố rất nhiều lần; cache ngắn giữ database khỏi phải trả lời. Ngắn, vì giá và
+     *     lô thay đổi; Redis lỗi thì chỉ là hỏi database.
+     */
+    static final java.time.Duration CACHE_FOR = java.time.Duration.ofSeconds(30);
+    private static final String KEY = "suggest:v1:";
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SearchSuggestions.class);
+
     private final JdbcTemplate jdbc;
     private final ProductImageService images;
+    private final org.springframework.data.redis.core.StringRedisTemplate redis;
+    private final tools.jackson.databind.ObjectMapper json;
 
-    SearchSuggestions(JdbcTemplate jdbc, ProductImageService images) {
+    SearchSuggestions(JdbcTemplate jdbc, ProductImageService images,
+            org.springframework.data.redis.core.StringRedisTemplate redis, tools.jackson.databind.ObjectMapper json) {
         this.jdbc = jdbc;
         this.images = images;
+        this.redis = redis;
+        this.json = json;
+    }
+
+    @Transactional(readOnly = true)
+    public Suggestions suggest(String raw) {
+        String query = raw == null ? "" : raw.strip();
+        if (query.length() < MIN_LENGTH || query.length() > 100) {
+            return compute(raw);
+        }
+        String key = KEY + query.toLowerCase(java.util.Locale.ROOT);
+        try {
+            String cached = redis.opsForValue().get(key);
+            if (cached != null) {
+                return json.readValue(cached, Suggestions.class);
+            }
+        } catch (RuntimeException ex) {
+            log.debug("Suggestion cache unavailable: {}", ex.getMessage());
+        }
+        Suggestions fresh = compute(raw);
+        try {
+            redis.opsForValue().set(key, json.writeValueAsString(fresh), CACHE_FOR);
+        } catch (RuntimeException ex) {
+            log.debug("Suggestion cache unavailable: {}", ex.getMessage());
+        }
+        return fresh;
     }
 
     public record LotHint(UUID auctionId, String title, BigDecimal currentPrice, String status, Instant endTime,
@@ -49,8 +88,7 @@ public class SearchSuggestions {
             boolean exact) {
     }
 
-    @Transactional(readOnly = true)
-    public Suggestions suggest(String raw) {
+    private Suggestions compute(String raw) {
         String query = raw == null ? "" : raw.strip();
         if (query.length() > 100) {
             query = query.substring(0, 100);

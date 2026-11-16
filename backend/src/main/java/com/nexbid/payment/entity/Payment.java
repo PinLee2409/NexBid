@@ -56,6 +56,40 @@ public class Payment {
     @Column(name = "promo_code", length = 32)
     private String promoCode;
 
+    // EN: Taken off the goods by the seller's own code; the seller bears it. / VI: Phần mã của người bán trừ vào tiền hàng; người bán chịu.
+    @Column(name = "seller_discount", nullable = false, precision = 15, scale = 2)
+    private BigDecimal sellerDiscount = BigDecimal.ZERO;
+
+    @Column(name = "seller_coupon", length = 32)
+    private String sellerCoupon;
+
+    // EN: The paid payment whose parcel this one travels in. / VI: Khoản đã trả mà kiện hàng của nó chở luôn khoản này.
+    @Column(name = "combined_with")
+    private UUID combinedWith;
+
+    public BigDecimal getSellerDiscount() {
+        return sellerDiscount;
+    }
+
+    public String getSellerCoupon() {
+        return sellerCoupon;
+    }
+
+    public UUID getCombinedWith() {
+        return combinedWith;
+    }
+
+    public void applySellerCoupon(String code, BigDecimal discount) {
+        this.sellerCoupon = code;
+        this.sellerDiscount = discount == null ? BigDecimal.ZERO : discount;
+    }
+
+    /** EN: Ships free in the parcel of an already paid payment. / VI: Gửi miễn phí trong kiện của một khoản đã trả. */
+    public void shipWith(UUID leaderId, String addressKey) {
+        quoteShipping(BigDecimal.ZERO, "COMBINED", addressKey);
+        this.combinedWith = leaderId;
+    }
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private PaymentStatus status = PaymentStatus.PENDING;
@@ -98,6 +132,7 @@ public class Payment {
 
     /** EN: Fixes the shipping for the address it was quoted for. / VI: Chốt phí ship cho địa chỉ đã dùng để báo phí. */
     public void quoteShipping(BigDecimal fee, String source, String addressKey) {
+        this.combinedWith = null;
         this.shippingFee = fee;
         this.shippingSource = source;
         this.shippingAddressKey = addressKey;
@@ -113,7 +148,7 @@ public class Payment {
      * VI: Tiền hàng cộng phí ship trừ voucher: số VNPay thu và số hoàn lại.
      */
     public BigDecimal getTotal() {
-        return amount.add(shippingFee).subtract(getShippingDiscount());
+        return amount.add(shippingFee).subtract(getShippingDiscount()).subtract(sellerDiscount);
     }
 
     /** EN: Never more than the shipping, whatever the address. / VI: Không bao giờ quá phí ship, dù địa chỉ nào. */

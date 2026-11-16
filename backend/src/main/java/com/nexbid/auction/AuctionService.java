@@ -394,6 +394,56 @@ public class AuctionService {
         return toView(saved);
     }
 
+    /** EN: Whether the lot takes sealed bids and is still running. / VI: Lô có nhận giá kín và vẫn đang chạy không. */
+    public boolean isSealedAndRunning(UUID auctionId) {
+        return auctions.findSealedStatus(auctionId)
+                .filter(status -> status != AuctionStatus.ENDED && status != AuctionStatus.COMPLETED
+                        && status != AuctionStatus.CANCELLED && status != AuctionStatus.REMOVED)
+                .isPresent();
+    }
+
+    public boolean isSealed(UUID auctionId) {
+        return auctions.findSealedStatus(auctionId).isPresent();
+    }
+
+    /**
+     * EN: A sealed bid, under the bidding lock: at least the start, and one per person ({@code alreadyBid} is asked
+     *     once the lock is held, so two quick tries cannot both pass). No anti-sniping, no outbid notice — the price
+     *     stays hidden until the close.
+     * VI: Một lượt giá kín, trong khoá trả giá: ít nhất bằng giá khởi điểm, và mỗi người một lượt ({@code alreadyBid}
+     *     được hỏi khi đã giữ khoá, để hai lần thử liền nhau không cùng lọt). Không chống bắn tỉa, không báo bị vượt
+     *     giá — giá vẫn ẩn tới khi đóng.
+     */
+    @Transactional
+    public AcceptedBid acceptSealedBid(UUID auctionId, UUID bidderId, BigDecimal amount,
+            java.util.function.Predicate<UUID> alreadyBid) {
+        Auction auction = auctions.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+        Instant now = Instant.now();
+        if (auction.getStatus() == AuctionStatus.ENDED || auction.getStatus() == AuctionStatus.COMPLETED
+                || !now.isBefore(auction.getEndTime())) {
+            throw new BusinessException(ErrorCode.AUCTION_ALREADY_ENDED, "This auction has already ended");
+        }
+        if (!AuctionRules.isOpenForBidding(auction, now)) {
+            throw new BusinessException(ErrorCode.AUCTION_NOT_ACTIVE, "This auction is not open for bidding");
+        }
+        if (auction.isOwnedBy(bidderId)) {
+            throw new BusinessException(ErrorCode.SELLER_CANNOT_BID, "You cannot bid on your own auction");
+        }
+        if (amount.compareTo(auction.getStartingPrice()) < 0) {
+            throw new BusinessException(ErrorCode.BID_TOO_LOW,
+                    "The bid must be at least " + auction.getStartingPrice().toPlainString());
+        }
+        if (alreadyBid.test(bidderId)) {
+            throw new BusinessException(ErrorCode.SEALED_BID_EXISTS, "You have already placed your sealed bid");
+        }
+        auction.applySealedBid(bidderId, amount);
+        auctions.save(auction);
+        return new AcceptedBid(auction.getId(), auction.getCurrentPrice(), auction.getBidCount(),
+                auction.getStartingPrice(), auction.getEndTime(), now, null, null);
+    }
+
     /** EN: A lot its winner left unpaid (spec §17). / VI: Một lô bị người thắng bỏ không trả (spec §17). */
     public record UnpaidLot(UUID auctionId, UUID sellerId, UUID productId, UUID winnerId) {
     }
@@ -513,6 +563,7 @@ public class AuctionService {
         auction.setFreeShipping(Boolean.TRUE.equals(request.freeShipping()));
         auction.setRelisting(request.autoRelist() == null ? 0 : request.autoRelist(),
                 request.relistDropPercent() == null ? 0 : request.relistDropPercent());
+        sealIfAsked(auction, request);
 
         try {
             // EN: Flushed here so the unique index answers inside this try, and the lot number comes back.
@@ -527,6 +578,22 @@ public class AuctionService {
             throw new BusinessException(
                     ErrorCode.PRODUCT_ALREADY_IN_AUCTION,
                     "This product already has an auction that has not finished");
+        }
+    }
+
+    /**
+     * EN: A sealed lot has no buy-now (the price is not public to compare against) and no anti-sniping (nobody can
+     *     react to a hidden bid).
+     * VI: Lô kín không có mua ngay (giá không công khai để so) và không chống bắn tỉa (không ai phản ứng được với giá ẩn).
+     */
+    private static void sealIfAsked(Auction auction, CreateAuctionRequest request) {
+        boolean sealed = Boolean.TRUE.equals(request.sealed());
+        if (sealed && request.buyNowPrice() != null) {
+            throw new BusinessException(ErrorCode.AUCTION_PRICES_INVALID, "A sealed lot cannot have a buy-now price");
+        }
+        auction.setSealed(sealed);
+        if (sealed) {
+            auction.setAntiSnipingEnabled(false);
         }
     }
 
@@ -571,6 +638,7 @@ public class AuctionService {
         auction.setRelisting(request.autoRelist() == null ? 0 : request.autoRelist(),
                 request.relistDropPercent() == null ? 0 : request.relistDropPercent());
         auction.setMinimumIncrement(request.minimumIncrement());
+        sealIfAsked(auction, request);
         auction.setStartTime(request.startTime());
         auction.setEndTime(request.endTime());
         auction.setAntiSnipingEnabled(Boolean.TRUE.equals(request.antiSnipingEnabled()));
@@ -766,7 +834,8 @@ public class AuctionService {
                                     && bidderId.equals(auction.getLeadingBidderId())
                                     ? BidStanding.AWAITING_SELLER
                                     : BidStanding.LOST;
-                    default -> bidderId.equals(auction.getLeadingBidderId()) ? BidStanding.WINNING : BidStanding.OUTBID;
+                    default -> auction.isSealed() ? BidStanding.SEALED
+                            : bidderId.equals(auction.getLeadingBidderId()) ? BidStanding.WINNING : BidStanding.OUTBID;
                 }));
     }
 
@@ -1268,13 +1337,16 @@ public class AuctionService {
     }
 
     private static AuctionView toView(Auction auction, UUID winnerShown, boolean reserveShown) {
+        // EN: A running sealed lot shows its start, never the bids, to anyone — the seller included.
+        // VI: Lô kín đang chạy chỉ hiện giá khởi điểm, không bao giờ hiện các lượt giá, với bất kỳ ai — kể cả người bán.
+        boolean hidden = auction.isSealedAndRunning();
         return new AuctionView(
                 auction.getId(),
                 auction.getLotNumber(),
                 auction.getProductId(),
                 auction.getSellerId(),
                 auction.getStartingPrice(),
-                auction.getCurrentPrice(),
+                hidden ? auction.getStartingPrice() : auction.getCurrentPrice(),
                 auction.getMinimumIncrement(),
                 auction.getStartTime(),
                 auction.getEndTime(),
@@ -1289,13 +1361,14 @@ public class AuctionService {
                 auction.getRejectionReason(),
                 reserveShown ? auction.getReservePrice() : null,
                 auction.getReservePrice() != null,
-                auction.reserveMet(),
+                hidden ? null : auction.reserveMet(),
                 auction.getBuyNowPrice(),
                 auction.isBoughtNow(),
                 auction.isFreeShipping(),
                 auction.getSubmitAt(),
                 auction.getReserveDecision(),
                 auction.getReserveDecisionUntil(),
+                auction.isSealed(),
                 reserveShown ? auction.getRelistLeft() : 0,
                 reserveShown ? auction.getRelistDropPercent() : 0,
                 auction.getRelistedFrom(),

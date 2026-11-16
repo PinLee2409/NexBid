@@ -7,7 +7,11 @@ import java.math.BigDecimal;
  * VI: Phí ship đã chốt trên một khoản thanh toán và tổng người mua sẽ trả. {@code source} là GHN hoặc FLAT.
  */
 public record ShippingQuote(BigDecimal amount, BigDecimal shippingFee, String source, BigDecimal total,
-        BigDecimal shippingDiscount, String promoCode) {
+        BigDecimal shippingDiscount, String promoCode, BigDecimal sellerDiscount, String sellerCoupon,
+        java.util.UUID combinedWithAuctionId) {
+
+    /** EN: Travels free in the parcel of another paid win from the same seller. / VI: Đi miễn phí trong kiện của một lô thắng khác đã trả của cùng người bán. */
+    public static final String COMBINED = "COMBINED";
 
     public static final String GHN = "GHN";
     public static final String FLAT = "FLAT";

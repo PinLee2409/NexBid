@@ -40,6 +40,13 @@ export const ERROR_CODES = [
   "SELLER_ON_VACATION",
   "TEMPLATE_NOT_FOUND",
   "TEMPLATE_INVALID",
+  "COUPON_INVALID",
+  "COUPON_NOT_FOUND",
+  "QUICK_REPLY_LIMIT",
+  "QUICK_REPLY_NOT_FOUND",
+  "MEDIA_NOT_FOUND",
+  "SEALED_BID_EXISTS",
+  "SEALED_LOT",
   "REFRESH_TOKEN_INVALID",
   "LOGIN_RATE_LIMITED",
   "ALREADY_SELLER",
@@ -380,6 +387,8 @@ export interface Auction {
   boughtNow: boolean;
   /** EN: The seller pays the parcel. / VI: Người bán trả tiền gửi kiện. */
   freeShipping: boolean;
+  /** EN: One hidden bid per person, the highest wins at the close. / VI: Mỗi người một lượt giá ẩn, giá cao nhất thắng khi đóng. */
+  sealed: boolean;
   /** EN: A draft timed to go for approval. / VI: Bản nháp hẹn giờ gửi duyệt. */
   submitAt?: IsoDateString | null;
   /** EN: Set once the lot closed below its reserve. / VI: Có giá trị khi lô đã đóng dưới giá sàn. */
@@ -590,7 +599,9 @@ export type NotificationType =
   | "SHIPMENT_CANCELLED"
   | "ORDER_ADDRESS_CHANGED"
   | "OFFER_RECEIVED"
-  | "OFFER_ANSWERED";
+  | "OFFER_ANSWERED"
+  | "LOT_RELISTED"
+  | "MEDIA_REMOVED";
 
 export interface AppNotification {
   id: Id;
@@ -623,11 +634,16 @@ export interface Payment {
   updatedAt: IsoDateString;
   /** EN: Null until quoted at checkout. / VI: Null tới khi báo phí lúc thanh toán. */
   shippingFee: number | null;
-  shippingSource: "GHN" | "FLAT" | "SELLER" | null;
+  shippingSource: "GHN" | "FLAT" | "SELLER" | "COMBINED" | null;
   /** EN: Goods plus shipping less any voucher: what VNPay charges. / VI: Tiền hàng cộng phí ship trừ voucher: số VNPay thu. */
   total: number;
   shippingDiscount?: number;
   promoCode?: string | null;
+  /** EN: Taken off the goods by the seller's own code. / VI: Phần mã riêng của người bán trừ vào tiền hàng. */
+  sellerDiscount?: number;
+  sellerCoupon?: string | null;
+  /** EN: The lot whose parcel this one travels in. / VI: Lô mà kiện của nó chở luôn lô này. */
+  shipsWithAuctionId?: string | null;
 }
 
 /** Order status (spec §5.3). */
@@ -746,7 +762,8 @@ export type AuditAction =
   | "AUCTION_RELISTED"
   | "LOT_OFFER_ACCEPTED"
   | "DEPOSIT_FORFEITED"
-  | "DEPOSIT_REFUNDED";
+  | "DEPOSIT_REFUNDED"
+  | "MEDIA_REMOVED";
 
 export interface AuditLog {
   id: Id;

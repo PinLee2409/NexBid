@@ -386,6 +386,9 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | Offers | `POST /api/auctions/{id}/offers`, `GET /api/auctions/{id}/offers/mine`, `GET /api/users/me/lot-offers` (`…/{id}/accept-counter`, `…/decline-counter`, `…/withdraw`), `GET /api/seller/lot-offers` (`…/{id}/accept`, `…/decline`, `…/counter`) |
 | Deposits | `GET /api/auctions/{id}/deposit` (public), `POST /api/auctions/{id}/deposit/vnpay`, `GET /api/payments/deposits/vnpay/return`, `GET /api/users/me/deposits`, `GET /api/admin/deposits`, `POST /api/admin/deposits/{id}/refund` |
 | Seller tools | `POST /api/seller/auctions/{id}/relist` (a cheaper draft), `GET`/`PUT /api/seller/vacation`, `/api/seller/templates` (listing templates) |
+| Seller codes | `GET`/`POST /api/seller/coupons`, `POST /api/seller/coupons/{code}/active`, `POST /api/payments/{id}/coupon` (off the goods; the seller bears it) |
+| Chat replies | `GET`/`POST /api/users/me/quick-replies`, `DELETE /api/users/me/quick-replies/{id}` |
+| Media review | `GET /api/admin/media`, `POST /api/admin/media/{IMAGE\|VIDEO}/{id}/keep`, `…/remove` (MODERATOR) |
 | Staff | `GET`/`POST /api/admin/staff`, `PUT /api/admin/staff/{userId}` (ADMIN only), `GET /api/admin/analytics/funnel?days=` |
 | Realtime | STOMP at `/ws`: `/topic/auctions/{id}` for everyone, `/user/queue/notifications` and `/user/queue/messages` for the signed-in user |
 
@@ -398,6 +401,12 @@ Lots starting at 50 million VND or more (`nexbid.deposit.threshold`; 0 turns it 
 10% of the start, between 500 thousand and 10 million, paid through VNPay before the first bid. Bidders who lose are
 owed it back when the lot closes, the winner once they have paid, and an admin returns it by bank transfer from
 the deposits page; a winner who lets the payment lapse forfeits it.
+
+A sealed-bid lot (`"sealed": true` when creating it) takes one hidden bid per person, at least the starting price;
+nobody, the seller included, sees the bids or the leader until the close, and the highest bid wins (the earlier of
+two equal ones). Sealed lots have no buy-now, no auto bid and no anti-sniping. A second win from the same seller,
+paid while the first is still waiting to be sent, ships free in that parcel; the seller's order list says which
+orders go together.
 
 Every endpoint answers in one of two shapes (spec §28), so the client needs one parser:
 
@@ -572,6 +581,26 @@ whole charge.
 
 Without keys the GHN endpoints answer `SHIPPING_UNAVAILABLE`, addresses are typed by hand, no fee guide is shown, and
 any carrier name and tracking number are accepted, as before.
+
+### Backups
+
+[`scripts/backup.sh`](scripts/backup.sh) dumps the database of the Docker stack to `backups/nexbid-<time>.dump`
+(`pg_dump` custom format, compressed) and keeps the newest 14 (`KEEP=`); `--with-media` also archives the
+uploaded photos and videos, which live in the backend's volume rather than the database.
+[`scripts/restore.sh`](scripts/restore.sh) puts a dump back: it asks first (`YES=1` skips the question), stops
+the backend so nothing writes half-way, restores in one transaction and starts the backend again. An older dump
+comes back with its own Flyway history and is migrated forward on start.
+
+```bash
+bash scripts/backup.sh --with-media
+```
+
+```bash
+bash scripts/restore.sh backups/nexbid-20261117T010000Z.dump
+```
+
+For the development services, run either with `COMPOSE_FILE=docker/compose.yaml`. `backups/` is in
+`.gitignore`; copy the files somewhere off the machine for a backup worth the name.
 
 ### Monitoring
 

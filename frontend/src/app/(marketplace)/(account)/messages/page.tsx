@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { QuickReplies } from "@/components/common/quick-replies";
 import { Textarea } from "@/components/ui/textarea";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage } from "@/hooks/use-labels";
@@ -255,6 +256,7 @@ function Conversation({
 
       {thread.open ? (
         <form onSubmit={send} className="border-line border-t p-3">
+          <QuickReplies draft={draft} disabled={isPending} onPick={(body) => setDraft(body)} />
           <label htmlFor="message-draft" className="sr-only">
             {t("draftLabel")}
           </label>

@@ -158,6 +158,12 @@ public class AuditLogService {
     }
 
     @EventListener
+    void onMediaRemoved(com.nexbid.product.MediaReviews.Removed event) {
+        record(event.adminId(), AuditAction.MEDIA_REMOVED, "Product", event.productId(), event.kind(),
+                event.reason() == null ? "REMOVED" : event.reason());
+    }
+
+    @EventListener
     void onOfferAnswered(com.nexbid.bid.LotOfferEvents.Answered event) {
         if ("ACCEPTED".equals(event.outcome())) {
             record(event.sellerId(), AuditAction.LOT_OFFER_ACCEPTED, "Auction", event.auctionId(), null,

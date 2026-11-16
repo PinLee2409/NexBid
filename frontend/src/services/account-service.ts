@@ -30,7 +30,7 @@ import { listWatchlist } from "./watchlist-service";
  */
 
 /** Where the signed-in user stands in one auction they have bid on. */
-export type BidStanding = "WINNING" | "OUTBID" | "WON" | "LOST" | "AWAITING_SELLER";
+export type BidStanding = "WINNING" | "OUTBID" | "WON" | "LOST" | "AWAITING_SELLER" | "SEALED";
 
 export interface MyBidEntry {
   auction: AuctionSummary;

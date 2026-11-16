@@ -116,7 +116,9 @@
     "offers": "Offers",
     "shopSettings": "Shop settings",
     "deposits": "Deposits",
-    "staff": "Staff"
+    "staff": "Staff",
+    "coupons": "Discount codes",
+    "media": "Photo review"
   },
   "footer": {
     "marketplace": "Marketplace",
@@ -654,7 +656,12 @@
     "emailLanguageHint": "The language NexBid writes your emails in.",
     "emailLanguageVi": "Tiếng Việt",
     "emailLanguageEn": "English",
-    "emailLanguageBoth": "Both"
+    "emailLanguageBoth": "Both",
+    "couponApplied": "Seller's code applied",
+    "couponCode": "Seller's discount code",
+    "couponDiscount": "Seller's discount",
+    "paymentShippingCombined": "Free: ships with your other order from this seller",
+    "statusSealed": "Sealed bid placed"
   },
   "becomeSeller": {
     "title": "Become a seller",
@@ -1005,7 +1012,10 @@
     "autoRelistDrop": "Lower the start by",
     "autoRelistPercent": "{percent}%",
     "relistCheaper": "Relist {percent}% lower",
-    "relistedDraft": "A new draft of “{name}” is ready to check and submit."
+    "relistedDraft": "A new draft of “{name}” is ready to check and submit.",
+    "sealedLabel": "Sealed bid",
+    "sealedHint": "Each bidder places one hidden bid; nobody, you included, sees the bids until the close, and the highest wins. No buy-now and no anti-sniping.",
+    "shipsWith": "Ship with the parcel for “{lot}” — the buyer paid its shipping there."
   },
   "admin": {
     "console": "Admin console",
@@ -1427,7 +1437,9 @@
       "SHIPMENT_CANCELLED": "Shipment cancelled",
       "ORDER_ADDRESS_CHANGED": "Address changed",
       "OFFER_RECEIVED": "New offer",
-      "OFFER_ANSWERED": "Offer answered"
+      "OFFER_ANSWERED": "Offer answered",
+      "LOT_RELISTED": "Listed again, lower",
+      "MEDIA_REMOVED": "Media taken down"
     },
     "auditAction": {
       "USER_LOGIN": "User signed in",
@@ -1470,7 +1482,8 @@
       "AUCTION_RELISTED": "Lot relisted",
       "LOT_OFFER_ACCEPTED": "Offer accepted",
       "DEPOSIT_FORFEITED": "Deposit kept",
-      "DEPOSIT_REFUNDED": "Deposit returned"
+      "DEPOSIT_REFUNDED": "Deposit returned",
+      "MEDIA_REMOVED": "Media taken down"
     },
     "role": {
       "BUYER": "Buyer",
@@ -1627,7 +1640,12 @@
     "boughtBody": "Pay for it from Orders.",
     "highestBid": "Highest bid",
     "belowReserveNotice": "Bidding ended below the seller's reserve. The seller has 24 hours to accept the highest bid.",
-    "notSold": "Not sold"
+    "notSold": "Not sold",
+    "sealedTitle": "Sealed-bid lot",
+    "sealedSent": "Your sealed bid is in",
+    "sealedBody": "Everyone bids once, and nobody sees anyone else's bid until the close. The highest bid wins.",
+    "sealedStart": "Starting price",
+    "sealedNoAuto": "One bid each"
   },
   "overlay": {
     "going": "Going.",
@@ -1784,7 +1802,14 @@
     "VACATION_INVALID": "A vacation must end within the next 90 days.",
     "SELLER_ON_VACATION": "You are on vacation. End it in shop settings to submit lots.",
     "TEMPLATE_NOT_FOUND": "That template could not be found.",
-    "TEMPLATE_INVALID": "That template name is taken, or you have reached the limit of 20."
+    "TEMPLATE_INVALID": "That template name is taken, or you have reached the limit of 20.",
+    "COUPON_INVALID": "That code cannot be used here.",
+    "COUPON_NOT_FOUND": "That code could not be found.",
+    "QUICK_REPLY_LIMIT": "You can keep at most 10 quick replies.",
+    "QUICK_REPLY_NOT_FOUND": "That reply could not be found.",
+    "MEDIA_NOT_FOUND": "That photo or video is no longer in the queue.",
+    "SEALED_BID_EXISTS": "You have already placed your sealed bid on this lot.",
+    "SEALED_LOT": "A sealed lot takes one bid per person, not an auto bid."
   },
   "messages": {
     "title": "Messages",
@@ -2017,5 +2042,55 @@
       "shipped": "Shipped",
       "completed": "Completed"
     }
+  },
+  "coupons": {
+    "title": "Discount codes",
+    "subtitle": "Codes off the goods on your lots. You bear the discount: it comes off what you are paid for that sale.",
+    "code": "Code",
+    "kind": "Type",
+    "percent": "Percent",
+    "amount": "Amount",
+    "percentValue": "Percent off (1–50)",
+    "amountValue": "Amount off (VND)",
+    "maxUses": "Uses",
+    "minPrice": "Minimum price (optional)",
+    "until": "Ends (optional)",
+    "followersOnly": "Only for people who follow me",
+    "followersOnlyShort": "followers only",
+    "create": "Create code",
+    "created": "Code {code} created",
+    "emptyTitle": "No codes yet",
+    "emptyBody": "Create one above and share it with your followers.",
+    "percentOff": "{percent}% off",
+    "amountOff": "{amount} off",
+    "from": "from {amount}",
+    "uses": "{used} of {max} used",
+    "ends": "ends {date}",
+    "active": "Active",
+    "paused": "Paused",
+    "activeFor": "{code} active"
+  },
+  "quickReplies": {
+    "save": "Save as reply",
+    "saved": "Reply saved",
+    "delete": "Delete “{body}”",
+    "suggestShipped": "Shipped today, tracking to follow.",
+    "suggestAvailable": "Yes, it's still available.",
+    "suggestThanks": "Thank you for your order!"
+  },
+  "media": {
+    "title": "Photo and video review",
+    "subtitle": "New uploads no one has looked at yet, newest first; lots someone reported come first.",
+    "emptyTitle": "Nothing to review",
+    "emptyBody": "Every photo and video has been looked at.",
+    "reported": "Reported",
+    "photo": "Photo",
+    "video": "Video",
+    "sellerPage": "Seller's page",
+    "reason": "Reason for the seller (if removing)",
+    "keep": "Keep",
+    "remove": "Remove",
+    "kept": "Marked as reviewed",
+    "removed": "Removed; the seller has been told"
   }
 }

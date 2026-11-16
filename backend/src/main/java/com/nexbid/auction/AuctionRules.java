@@ -24,7 +24,8 @@ public final class AuctionRules {
      *     trở đi, mỗi lượt phải vượt giá hiện tại đúng một bước giá.
      */
     public static BigDecimal minimumNextBid(Auction auction) {
-        return auction.getBidCount() == 0
+        // EN: A sealed bid only has to reach the start; what others bid is not known. / VI: Giá kín chỉ cần đạt mức khởi điểm; không ai biết người khác trả bao nhiêu.
+        return auction.getBidCount() == 0 || auction.isSealed()
                 ? auction.getStartingPrice()
                 : auction.getCurrentPrice().add(auction.getMinimumIncrement());
     }
@@ -48,7 +49,7 @@ public final class AuctionRules {
      *     Tính cả biên: khung 30 giây thì lượt trả giá đúng 30 giây trước giờ đóng vẫn được tính.
      */
     public static boolean isLastMinuteBid(Auction auction, Instant now) {
-        if (!auction.isAntiSnipingEnabled()) {
+        if (!auction.isAntiSnipingEnabled() || auction.isSealed()) {
             return false;
         }
 

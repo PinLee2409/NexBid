@@ -68,13 +68,25 @@ public record CreateAuctionRequest(
         // EN: Optional: how much lower each relist starts, in percent. / VI: Không bắt buộc: mỗi lần đăng lại khởi điểm thấp hơn bao nhiêu phần trăm.
         @Min(value = 0, message = "The price drop must be between 0 and 50%")
         @Max(value = 50, message = "The price drop must be between 0 and 50%")
-        Integer relistDropPercent) {
+        Integer relistDropPercent,
+
+        // EN: Optional: a sealed-bid lot. / VI: Không bắt buộc: lô đấu giá kín.
+        Boolean sealed) {
+
+    public CreateAuctionRequest(UUID productId, BigDecimal startingPrice, BigDecimal minimumIncrement,
+            Instant startTime, Instant endTime, Boolean antiSnipingEnabled, Integer antiSnipingWindowSeconds,
+            Integer extensionSeconds, BigDecimal reservePrice, BigDecimal buyNowPrice, Boolean freeShipping,
+            Integer autoRelist, Integer relistDropPercent) {
+        this(productId, startingPrice, minimumIncrement, startTime, endTime, antiSnipingEnabled,
+                antiSnipingWindowSeconds, extensionSeconds, reservePrice, buyNowPrice, freeShipping, autoRelist,
+                relistDropPercent, null);
+    }
 
     public CreateAuctionRequest(UUID productId, BigDecimal startingPrice, BigDecimal minimumIncrement,
             Instant startTime, Instant endTime, Boolean antiSnipingEnabled, Integer antiSnipingWindowSeconds,
             Integer extensionSeconds, BigDecimal reservePrice, BigDecimal buyNowPrice, Boolean freeShipping) {
         this(productId, startingPrice, minimumIncrement, startTime, endTime, antiSnipingEnabled,
-                antiSnipingWindowSeconds, extensionSeconds, reservePrice, buyNowPrice, freeShipping, null, null);
+                antiSnipingWindowSeconds, extensionSeconds, reservePrice, buyNowPrice, freeShipping, null, null, null);
     }
 
 

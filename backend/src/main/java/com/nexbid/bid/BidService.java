@@ -88,6 +88,9 @@ public class BidService {
     public PlacedBidView place(UUID auctionId, UUID bidderId, BigDecimal amount) {
         restriction.check(bidderId, amount);
         deposits.require(auctionId, bidderId);
+        if (auctions.isSealed(auctionId)) {
+            return placeSealed(auctionId, bidderId, amount);
+        }
         LeadTracker leads = new LeadTracker();
         PlacedBidView mine = recorder.record(auctionId, bidderId, amount, leads);
 
@@ -102,6 +105,20 @@ public class BidService {
                 Instant.now(),
                 bidderId.equals(lot.leaderId()),
                 lot.reserveMet());
+    }
+
+    /**
+     * EN: A sealed bid: recorded like any other, but the answer gives nothing away — the price shown stays the start,
+     *     and the bidder is told neither that they lead nor that they do not.
+     * VI: Một lượt giá kín: được ghi như mọi lượt khác, nhưng câu trả lời không để lộ gì — giá hiển thị vẫn là giá khởi
+     *     điểm, và người trả giá không được biết mình có dẫn đầu hay không.
+     */
+    private PlacedBidView placeSealed(UUID auctionId, UUID bidderId, BigDecimal amount) {
+        AuctionService.AcceptedBid accepted = auctions.acceptSealedBid(auctionId, bidderId, amount,
+                who -> bids.existsByAuctionIdAndBidderId(auctionId, who));
+        PlacedBidView placed = recorder.recordSealed(accepted, bidderId, amount);
+        return new PlacedBidView(placed.bid(), accepted.minimumNextBid(), placed.bidCount(), accepted.minimumNextBid(),
+                accepted.endTime(), Instant.now(), false, null);
     }
 
     /**
@@ -133,6 +150,17 @@ public class BidService {
         // EN: A lot the catalogue hides has no public history either.
         // VI: Lô mà danh mục đã giấu thì cũng không có lịch sử công khai.
         auctions.requirePubliclyVisible(auctionId);
+
+        // EN: While a sealed lot runs, a bidder sees only their own bid. / VI: Khi lô kín đang chạy, người trả giá chỉ thấy lượt của chính mình.
+        if (auctions.isSealedAndRunning(auctionId)) {
+            List<Bid> own = viewerId == null ? List.of()
+                    : bids.findByAuctionIdAndBidderIdOrderByCreatedAtDesc(auctionId, viewerId);
+            String name = viewerId == null ? null
+                    : users.findById(viewerId).map(com.nexbid.user.UserAccount::fullName).orElse(null);
+            List<BidView> views = own.stream().map(bid -> new BidView(bid.getId(), auctionId, mask(name), true,
+                    bid.getAmount(), bid.getCreatedAt())).toList();
+            return new PageView<>(views, 1, Math.max(views.size(), 1), views.size(), 1);
+        }
 
         Page<Bid> page = bids.findByAuctionIdOrderByCreatedAtDescAmountDesc(
                 auctionId, PageRequest.of(query.zeroBasedPage(), query.size()));

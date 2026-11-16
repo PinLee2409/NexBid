@@ -54,10 +54,12 @@ class Relisting {
         // EN: A minute ahead, so the scheduler opens it and everyone hears it start. / VI: Sớm một phút, để bộ lập lịch mở nó và mọi người được báo khi bắt đầu.
         Auction next = copyOf(ended, ended.getRelistDropPercent(), now.plusSeconds(60), AuctionStatus.SCHEDULED);
         next.setRelisting(ended.getRelistLeft() - 1, ended.getRelistDropPercent());
-        Auction saved = auctions.save(next);
+        Auction saved = auctions.saveAndFlush(next);
         log.info("Lot {} closed unsold; relisted as {} from {}", ended.getId(), saved.getId(), saved.getStartingPrice());
         events.publishEvent(new AuctionAuditEvent(
                 AuctionAuditEvent.Action.RELISTED, saved.getId(), null, null, saved.getStatus()));
+        events.publishEvent(new AuctionRelistedEvent(ended.getId(), saved.getId(), saved.getSellerId(),
+                ended.getStartingPrice(), saved.getStartingPrice(), saved.getStartTime()));
         return true;
     }
 

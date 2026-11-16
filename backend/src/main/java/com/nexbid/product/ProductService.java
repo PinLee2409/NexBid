@@ -29,6 +29,12 @@ public class ProductService {
     private final CategoryRepository categories;
     private final ProductImageRepository images;
     private final ImageStorage storage;
+    private org.springframework.context.ApplicationEventPublisher events;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setEvents(org.springframework.context.ApplicationEventPublisher events) {
+        this.events = events;
+    }
 
     public ProductService(
             ProductRepository products,
@@ -242,6 +248,27 @@ public class ProductService {
             storage.deleteQuietly(old);
         }
         return saved;
+    }
+
+    /**
+     * EN: An admin takes a product's video down. Returns the seller, who is told.
+     * VI: Admin gỡ video của một sản phẩm. Trả về người bán, người sẽ được báo.
+     */
+    @Transactional
+    public UUID removeVideoAsModerator(UUID productId) {
+        Product product = products.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.PRODUCT_NOT_FOUND, "No product with id " + productId));
+        String old = product.getVideoUrl();
+        product.setVideoUrl(null);
+        products.save(product);
+        if (old != null) {
+            storage.deleteQuietly(old);
+        }
+        // EN: The lot cards carry the video; they are refreshed like after a photo change.
+        // VI: Thẻ lô có chứa video; chúng được làm mới như khi đổi ảnh.
+        events.publishEvent(new ProductImagesChanged(productId));
+        return product.getSellerId();
     }
 
     /** EN: Marks the photos as frames of a 360° turn, or not. / VI: Đánh dấu các ảnh là khung hình xoay 360°, hoặc bỏ. */

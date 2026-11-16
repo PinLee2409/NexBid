@@ -2,6 +2,8 @@
 
 import {
   HandCoins,
+  ImageOff,
+  TrendingDown,
   AlertTriangle,
   BadgeCheck,
   Banknote,
@@ -72,6 +74,8 @@ const ICONS: Record<NotificationType, LucideIcon> = {
   ORDER_ADDRESS_CHANGED: MapPin,
   OFFER_RECEIVED: HandCoins,
   OFFER_ANSWERED: HandCoins,
+  LOT_RELISTED: TrendingDown,
+  MEDIA_REMOVED: ImageOff,
   NEW_QUESTION: MessageCircleQuestion,
   QUESTION_ANSWERED: MessageSquareReply,
   LOT_ALERT: BellRing,
@@ -112,6 +116,8 @@ const TONES: Record<NotificationType, string> = {
   ORDER_ADDRESS_CHANGED: "text-warning",
   OFFER_RECEIVED: "text-signal-text",
   OFFER_ANSWERED: "text-signal-text",
+  LOT_RELISTED: "text-signal-text",
+  MEDIA_REMOVED: "text-warning",
   NEW_QUESTION: "text-signal-text",
   QUESTION_ANSWERED: "text-signal-text",
   LOT_ALERT: "text-signal-text",

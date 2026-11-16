@@ -15,6 +15,12 @@ import com.nexbid.auction.AuctionChannel;
 class BidBroadcaster {
 
     private final SimpMessagingTemplate messages;
+    private com.nexbid.auction.AuctionService auctions;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setAuctions(com.nexbid.auction.AuctionService auctions) {
+        this.auctions = auctions;
+    }
 
     BidBroadcaster(SimpMessagingTemplate messages) {
         this.messages = messages;
@@ -28,6 +34,10 @@ class BidBroadcaster {
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     void onBidPlaced(BidPlacedEvent event) {
+        // EN: Nothing about a sealed lot's bids goes out until it closes. / VI: Không gì về các lượt giá của lô kín được phát ra cho tới khi đóng.
+        if (auctions.isSealedAndRunning(event.placed().bid().auctionId())) {
+            return;
+        }
         messages.convertAndSend(
                 AuctionChannel.topicFor(event.placed().bid().auctionId()),
                 BidPlacedMessage.of(event.placed()));

@@ -70,6 +70,22 @@ function firstUnpaidSales(orders: OrderEntry[]): Set<string> {
  * VI: Những gì người bán đã bán (spec §5.3). Đơn đã trả chờ người bán gửi hàng; sau đó người mua xác nhận đã
  *     nhận ở phía họ.
  */
+/**
+ * EN: "Ship with …": this order's buyer paid no shipping because it travels in the parcel of another of their orders.
+ * VI: "Gửi chung với …": người mua đơn này không trả phí ship vì nó đi chung kiện với một đơn khác của họ.
+ */
+function ShipsWithNote({ entry, orders }: { entry: OrderEntry; orders: OrderEntry[] }) {
+  const t = useTranslations("seller");
+  const lot = entry.payment?.shipsWithAuctionId;
+  if (!lot) return null;
+  const other = orders.find((each) => each.order.auctionId === lot);
+  return (
+    <p className="text-signal-text mt-1 text-xs" data-testid="ships-with">
+      {t("shipsWith", { lot: other?.auction?.product.name ?? lot.slice(0, 8) })}
+    </p>
+  );
+}
+
 export default function SellerOrdersPage() {
   const t = useTranslations("seller");
 
@@ -119,7 +135,12 @@ function SalesList({
             entry={entry}
             messages
             receipt="seller"
-            extra={<BuyerRecordLine entry={entry} />}
+            extra={
+              <>
+                <BuyerRecordLine entry={entry} />
+                <ShipsWithNote entry={entry} orders={orders} />
+              </>
+            }
             action={
               entry.order.status === "PAID" ? (
                 <div className="flex shrink-0 flex-wrap gap-2">

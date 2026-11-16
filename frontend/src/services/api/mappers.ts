@@ -100,6 +100,7 @@ export function toAuction(auction: ApiAuction): Auction {
     buyNowPrice: auction.buyNowPrice === null || auction.buyNowPrice === undefined ? null : Number(auction.buyNowPrice),
     boughtNow: auction.boughtNow ?? false,
     freeShipping: auction.freeShipping ?? false,
+    sealed: auction.sealed ?? false,
     submitAt: auction.submitAt ?? null,
     reserveDecision: auction.reserveDecision ?? null,
     reserveDecisionUntil: auction.reserveDecisionUntil ?? null,
@@ -255,6 +256,9 @@ export function toPayment(payment: ApiPaymentDetails): Payment {
     total: payment.total == null ? amount + (shippingFee ?? 0) : Number(payment.total),
     shippingDiscount: Number(payment.shippingDiscount ?? 0),
     promoCode: payment.promoCode ?? null,
+    sellerDiscount: Number(payment.sellerDiscount ?? 0),
+    sellerCoupon: payment.sellerCoupon ?? null,
+    shipsWithAuctionId: payment.shipsWithAuctionId ?? null,
   };
 }
 

@@ -159,6 +159,25 @@ public class ProductImageService {
     }
 
     /**
+     * EN: An admin takes a photo down, whatever state the product is in. Returns the product it belonged to.
+     * VI: Admin gỡ một ảnh, bất kể sản phẩm đang ở trạng thái nào. Trả về sản phẩm chứa ảnh đó.
+     */
+    @Transactional
+    public UUID removeAsModerator(UUID imageId) {
+        ProductImage image = images.findById(imageId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.IMAGE_NOT_FOUND, "No image with id " + imageId));
+        UUID productId = image.getProduct().getId();
+        String url = image.getImageUrl();
+        images.delete(image);
+        images.flush();
+        reindex(productId);
+        storage.deleteQuietly(url);
+        changed(productId);
+        return productId;
+    }
+
+    /**
      * EN: Moves one image to the front, which is how a seller picks the cover.
      * VI: Đưa một ảnh lên đầu — đây là cách người bán chọn ảnh bìa.
      */

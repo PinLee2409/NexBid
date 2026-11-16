@@ -116,7 +116,9 @@
     "offers": "Đề nghị",
     "shopSettings": "Cài đặt cửa hàng",
     "deposits": "Tiền cọc",
-    "staff": "Nhân viên"
+    "staff": "Nhân viên",
+    "coupons": "Mã giảm giá",
+    "media": "Duyệt ảnh"
   },
   "footer": {
     "marketplace": "Sàn đấu giá",
@@ -654,7 +656,12 @@
     "emailLanguageHint": "Ngôn ngữ NexBid dùng để viết email cho bạn.",
     "emailLanguageVi": "Tiếng Việt",
     "emailLanguageEn": "English",
-    "emailLanguageBoth": "Cả hai"
+    "emailLanguageBoth": "Cả hai",
+    "couponApplied": "Đã áp mã của người bán",
+    "couponCode": "Mã giảm giá của người bán",
+    "couponDiscount": "Người bán giảm",
+    "paymentShippingCombined": "Miễn phí: gửi chung với đơn khác của bạn từ người bán này",
+    "statusSealed": "Đã gửi giá kín"
   },
   "becomeSeller": {
     "title": "Trở thành người bán",
@@ -1005,7 +1012,10 @@
     "autoRelistDrop": "Hạ giá khởi điểm",
     "autoRelistPercent": "{percent}%",
     "relistCheaper": "Đăng lại rẻ hơn {percent}%",
-    "relistedDraft": "Bản nháp mới của “{name}” đã sẵn sàng để kiểm và gửi duyệt."
+    "relistedDraft": "Bản nháp mới của “{name}” đã sẵn sàng để kiểm và gửi duyệt.",
+    "sealedLabel": "Đấu giá kín",
+    "sealedHint": "Mỗi người trả giá gửi một lượt giá ẩn; không ai, kể cả bạn, thấy các lượt giá cho tới khi đóng phiên, và giá cao nhất thắng. Không có mua ngay và không chống bắn tỉa.",
+    "shipsWith": "Gửi chung kiện với “{lot}” — người mua đã trả phí ship ở đơn đó."
   },
   "admin": {
     "console": "Bảng quản trị",
@@ -1427,7 +1437,9 @@
       "SHIPMENT_CANCELLED": "Đã huỷ vận đơn",
       "ORDER_ADDRESS_CHANGED": "Đổi địa chỉ nhận",
       "OFFER_RECEIVED": "Đề nghị mới",
-      "OFFER_ANSWERED": "Đề nghị có trả lời"
+      "OFFER_ANSWERED": "Đề nghị có trả lời",
+      "LOT_RELISTED": "Lô đăng lại rẻ hơn",
+      "MEDIA_REMOVED": "Ảnh hoặc video bị gỡ"
     },
     "auditAction": {
       "USER_LOGIN": "Người dùng đăng nhập",
@@ -1470,7 +1482,8 @@
       "AUCTION_RELISTED": "Lô được đăng lại",
       "LOT_OFFER_ACCEPTED": "Nhận đề nghị",
       "DEPOSIT_FORFEITED": "Giữ tiền cọc",
-      "DEPOSIT_REFUNDED": "Trả lại tiền cọc"
+      "DEPOSIT_REFUNDED": "Trả lại tiền cọc",
+      "MEDIA_REMOVED": "Gỡ ảnh hoặc video"
     },
     "role": {
       "BUYER": "Người mua",
@@ -1627,7 +1640,12 @@
     "boughtBody": "Hãy thanh toán ở mục Đơn hàng.",
     "highestBid": "Giá cao nhất",
     "belowReserveNotice": "Phiên kết thúc dưới giá sàn của người bán. Người bán có 24 giờ để nhận giá cao nhất.",
-    "notSold": "Không bán"
+    "notSold": "Không bán",
+    "sealedTitle": "Lô đấu giá kín",
+    "sealedSent": "Đã gửi giá kín của bạn",
+    "sealedBody": "Mỗi người trả giá một lần, và không ai thấy giá của người khác cho tới khi đóng phiên. Giá cao nhất thắng.",
+    "sealedStart": "Giá khởi điểm",
+    "sealedNoAuto": "Mỗi người một lượt"
   },
   "overlay": {
     "going": "Lần thứ nhất.",
@@ -1784,7 +1802,14 @@
     "VACATION_INVALID": "Kỳ nghỉ phải kết thúc trong vòng 90 ngày tới.",
     "SELLER_ON_VACATION": "Bạn đang nghỉ. Tắt chế độ nghỉ trong cài đặt cửa hàng để gửi duyệt lô.",
     "TEMPLATE_NOT_FOUND": "Không tìm thấy mẫu này.",
-    "TEMPLATE_INVALID": "Tên mẫu đã có, hoặc bạn đã đủ 20 mẫu."
+    "TEMPLATE_INVALID": "Tên mẫu đã có, hoặc bạn đã đủ 20 mẫu.",
+    "COUPON_INVALID": "Không dùng được mã này ở đây.",
+    "COUPON_NOT_FOUND": "Không tìm thấy mã này.",
+    "QUICK_REPLY_LIMIT": "Bạn chỉ lưu được tối đa 10 câu trả lời nhanh.",
+    "QUICK_REPLY_NOT_FOUND": "Không tìm thấy câu trả lời này.",
+    "MEDIA_NOT_FOUND": "Ảnh hoặc video này không còn trong hàng chờ.",
+    "SEALED_BID_EXISTS": "Bạn đã gửi giá kín cho lô này rồi.",
+    "SEALED_LOT": "Lô đấu giá kín chỉ nhận một lượt giá mỗi người, không dùng auto bid."
   },
   "messages": {
     "title": "Tin nhắn",
@@ -2017,5 +2042,55 @@
       "shipped": "Đã gửi hàng",
       "completed": "Hoàn tất"
     }
+  },
+  "coupons": {
+    "title": "Mã giảm giá",
+    "subtitle": "Mã trừ vào tiền hàng trên lô của bạn. Bạn chịu khoản giảm: nó bị trừ vào số tiền bạn nhận cho giao dịch đó.",
+    "code": "Mã",
+    "kind": "Loại",
+    "percent": "Phần trăm",
+    "amount": "Số tiền",
+    "percentValue": "Giảm bao nhiêu phần trăm (1–50)",
+    "amountValue": "Giảm bao nhiêu tiền (VND)",
+    "maxUses": "Số lượt",
+    "minPrice": "Giá tối thiểu (không bắt buộc)",
+    "until": "Hết hạn (không bắt buộc)",
+    "followersOnly": "Chỉ cho người theo dõi tôi",
+    "followersOnlyShort": "chỉ người theo dõi",
+    "create": "Tạo mã",
+    "created": "Đã tạo mã {code}",
+    "emptyTitle": "Chưa có mã nào",
+    "emptyBody": "Tạo một mã ở trên và chia sẻ với người theo dõi bạn.",
+    "percentOff": "Giảm {percent}%",
+    "amountOff": "Giảm {amount}",
+    "from": "từ {amount}",
+    "uses": "Đã dùng {used}/{max}",
+    "ends": "hết hạn {date}",
+    "active": "Đang bật",
+    "paused": "Đang tắt",
+    "activeFor": "Bật mã {code}"
+  },
+  "quickReplies": {
+    "save": "Lưu thành câu trả lời",
+    "saved": "Đã lưu câu trả lời",
+    "delete": "Xoá “{body}”",
+    "suggestShipped": "Đã gửi hàng hôm nay, mã vận đơn sẽ có ngay.",
+    "suggestAvailable": "Dạ, sản phẩm vẫn còn.",
+    "suggestThanks": "Cảm ơn bạn đã mua hàng!"
+  },
+  "media": {
+    "title": "Duyệt ảnh và video",
+    "subtitle": "Ảnh và video mới chưa ai xem, mới nhất trước; lô bị báo cáo được xếp lên đầu.",
+    "emptyTitle": "Không có gì cần duyệt",
+    "emptyBody": "Mọi ảnh và video đều đã được xem.",
+    "reported": "Bị báo cáo",
+    "photo": "Ảnh",
+    "video": "Video",
+    "sellerPage": "Trang người bán",
+    "reason": "Lý do cho người bán (nếu gỡ)",
+    "keep": "Giữ",
+    "remove": "Gỡ",
+    "kept": "Đã đánh dấu đã duyệt",
+    "removed": "Đã gỡ; người bán đã được báo"
   }
 }

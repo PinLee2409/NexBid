@@ -80,6 +80,7 @@ export interface ApiAuction {
   buyNowPrice?: number | null;
   boughtNow?: boolean;
   freeShipping?: boolean;
+  sealed?: boolean;
   submitAt?: IsoDateString | null;
   reserveDecision?: ReserveDecision | null;
   reserveDecisionUntil?: IsoDateString | null;
@@ -201,10 +202,13 @@ export interface ApiPaymentDetails {
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
   shippingFee?: number | null;
-  shippingSource?: "GHN" | "FLAT" | "SELLER" | null;
+  shippingSource?: "GHN" | "FLAT" | "SELLER" | "COMBINED" | null;
   total?: number;
   shippingDiscount?: number;
   promoCode?: string | null;
+  sellerDiscount?: number;
+  sellerCoupon?: string | null;
+  shipsWithAuctionId?: string | null;
 }
 
 export interface ApiPayment {

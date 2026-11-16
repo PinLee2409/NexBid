@@ -97,6 +97,18 @@ public class Order {
     private boolean sellerPaysShipping;
 
     // EN: Shipping the buyer paid on top of the amount; it goes to the seller with the goods. / VI: Phí ship người mua trả thêm ngoài số tiền hàng; trả cho người bán cùng tiền hàng.
+    // EN: What the seller's own code took off the goods. / VI: Phần mã riêng của người bán trừ vào tiền hàng.
+    @Column(name = "seller_discount", nullable = false, precision = 15, scale = 2)
+    private BigDecimal sellerDiscount = BigDecimal.ZERO;
+
+    public BigDecimal getSellerDiscount() {
+        return sellerDiscount;
+    }
+
+    public void discountedBySeller(BigDecimal discount) {
+        this.sellerDiscount = discount == null ? BigDecimal.ZERO : discount;
+    }
+
     @Column(name = "shipping_fee", nullable = false, precision = 15, scale = 2)
     private BigDecimal shippingFee = BigDecimal.ZERO;
 

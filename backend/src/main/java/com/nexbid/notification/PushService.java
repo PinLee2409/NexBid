@@ -89,7 +89,9 @@ public class PushService {
             Map.entry("SHIPMENT_CANCELLED", "Đã huỷ vận đơn"),
             Map.entry("ORDER_ADDRESS_CHANGED", "Đổi địa chỉ nhận"),
             Map.entry("OFFER_RECEIVED", "Có đề nghị mua mới"),
-            Map.entry("OFFER_ANSWERED", "Đề nghị đã có trả lời"));
+            Map.entry("OFFER_ANSWERED", "Đề nghị đã có trả lời"),
+            Map.entry("LOT_RELISTED", "Lô được đăng lại rẻ hơn"),
+            Map.entry("MEDIA_REMOVED", "Ảnh hoặc video bị gỡ"));
 
     private final JdbcTemplate jdbc;
     private final AuctionService auctions;

@@ -38,6 +38,7 @@ public record AuctionView(
         Instant submitAt,
         ReserveDecision reserveDecision,
         Instant reserveDecisionUntil,
+        boolean sealed,
         int relistLeft,
         int relistDropPercent,
         UUID relistedFrom,

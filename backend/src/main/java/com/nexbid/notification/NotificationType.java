@@ -86,5 +86,9 @@ public enum NotificationType {
     /** EN: A buyer made an offer on the seller's lot. / VI: Người mua gửi đề nghị trên lô của người bán. */
     OFFER_RECEIVED,
     /** EN: An offer was accepted, declined or countered. / VI: Đề nghị được nhận, bị từ chối hoặc được trả giá lại. */
-    OFFER_ANSWERED
+    OFFER_ANSWERED,
+    /** EN: A watched lot came back cheaper. / VI: Lô đang theo dõi được đăng lại rẻ hơn. */
+    LOT_RELISTED,
+    /** EN: An admin took down a photo or video. / VI: Admin gỡ một ảnh hoặc video. */
+    MEDIA_REMOVED
 }

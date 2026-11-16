@@ -32,7 +32,7 @@ export function SaveSearchButton({ query }: { query: AuctionQuery }) {
   if (!user) {
     const back = buildAuctionHref({ ...query, page: 1 });
     return (
-      <Button asChild variant="outline" size="sm" className="ml-auto">
+      <Button asChild variant="outline" size="sm" className="ml-auto h-auto max-w-full shrink py-1.5 text-left whitespace-normal">
         <Link href={`/login?redirect=${encodeURIComponent(back)}`}>
           <BellPlus className="size-3.5" aria-hidden="true" />
           {t("saveSearchSignIn")}
@@ -55,7 +55,7 @@ export function SaveSearchButton({ query }: { query: AuctionQuery }) {
   }
 
   return (
-    <Button variant="outline" size="sm" className="ml-auto" onClick={save} disabled={isPending}>
+    <Button variant="outline" size="sm" className="ml-auto h-auto max-w-full shrink py-1.5 text-left whitespace-normal" onClick={save} disabled={isPending}>
       {isPending ? (
         <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
       ) : (

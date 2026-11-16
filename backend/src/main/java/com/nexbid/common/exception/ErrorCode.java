@@ -29,6 +29,13 @@ public enum ErrorCode {
     SELLER_ON_VACATION(HttpStatus.CONFLICT),
     TEMPLATE_NOT_FOUND(HttpStatus.NOT_FOUND),
     TEMPLATE_INVALID(HttpStatus.BAD_REQUEST),
+    COUPON_INVALID(HttpStatus.BAD_REQUEST),
+    COUPON_NOT_FOUND(HttpStatus.NOT_FOUND),
+    QUICK_REPLY_LIMIT(HttpStatus.CONFLICT),
+    QUICK_REPLY_NOT_FOUND(HttpStatus.NOT_FOUND),
+    MEDIA_NOT_FOUND(HttpStatus.NOT_FOUND),
+    SEALED_BID_EXISTS(HttpStatus.CONFLICT),
+    SEALED_LOT(HttpStatus.CONFLICT),
     // EN: Missing, expired, signed out, or replayed after it was replaced. / VI: Thiếu, hết hạn, đã đăng xuất, hoặc bị dùng lại sau khi đã được thay.
     REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED),
     // EN: Too many wrong passwords; Retry-After says when to try again. / VI: Sai mật khẩu quá nhiều lần; Retry-After cho biết khi nào thử lại.

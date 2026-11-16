@@ -28,7 +28,7 @@ const TAB_KEYS: Record<BidTab, string> = {
 function matchesTab(standing: BidStanding, tab: BidTab): boolean {
   switch (tab) {
     case "ACTIVE":
-      return standing === "WINNING" || standing === "OUTBID";
+      return standing === "WINNING" || standing === "OUTBID" || standing === "SEALED";
     case "WINNING":
       return standing === "WINNING";
     case "OUTBID":
@@ -106,6 +106,7 @@ function BidRow({ entry }: { entry: MyBidEntry }) {
     WON: t("statusWon"),
     LOST: t("statusLost"),
     AWAITING_SELLER: t("statusAwaitingSeller"),
+    SEALED: t("statusSealed"),
   };
 
   const tone =

@@ -45,6 +45,7 @@ class OrderBookkeeping {
         orders.findByPaymentId(event.paymentId()).ifPresent(order -> {
             order.moveTo(OrderStatus.PAID);
             order.chargeShipping(event.shippingFee());
+            order.discountedBySeller(event.sellerDiscount());
             order.sellerPaysShipping(auctions.freeShipping(event.auctionId()));
             // EN: A copy, so editing the profile later never redirects a paid parcel.
             // VI: Một bản sao, để sửa hồ sơ sau này không bao giờ đổi hướng kiện hàng đã trả tiền.

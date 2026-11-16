@@ -124,7 +124,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/analytics/**")
                         .hasAnyRole(ADMIN, MODERATOR, FINANCE, SUPPORT)
                         .requestMatchers("/api/admin/auctions/**", "/api/admin/categories/**", "/api/admin/reports/**",
-                                "/api/admin/shill-suspects/**", "/api/admin/seller-applications/**")
+                                "/api/admin/shill-suspects/**", "/api/admin/seller-applications/**",
+                                "/api/admin/media/**")
                         .hasAnyRole(ADMIN, MODERATOR)
                         .requestMatchers("/api/admin/finance/**", "/api/admin/payouts/**", "/api/admin/stray-charges/**",
                                 "/api/admin/promo-codes/**", "/api/admin/deposits/**")

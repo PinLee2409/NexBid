@@ -197,7 +197,12 @@ export function BidTerminal({
 
       {/* The state band — leading, outbid, or accepted — replaces itself. */}
       <AnimatePresence mode="wait" initial={false}>
-        {succeeded ? (
+        {auction.sealed && !room.ended ? (
+          <StateBand key="sealed" tone="accent">
+            <p className="label">{succeeded ? t("sealedSent") : t("sealedTitle")}</p>
+            <p className="mt-2 text-sm leading-relaxed opacity-80">{t("sealedBody")}</p>
+          </StateBand>
+        ) : succeeded ? (
           <StateBand key="accepted" tone="accent">
             <p className="label">{t("bidAccepted")}</p>
             <p className="display mt-2 text-3xl">
@@ -235,7 +240,13 @@ export function BidTerminal({
       {/* Price */}
       <div className="border-line border-b py-6">
         <p className="text-muted-foreground text-sm">
-          {room.ended && room.bidCount > 0 ? (belowReserve ? t("highestBid") : t("soldFor")) : t("currentBid")}
+          {room.ended && room.bidCount > 0
+            ? belowReserve
+              ? t("highestBid")
+              : t("soldFor")
+            : auction.sealed
+              ? t("sealedStart")
+              : t("currentBid")}
         </p>
         <AuctionPriceTicker
           amount={room.currentPrice}
@@ -419,13 +430,17 @@ export function BidTerminal({
               {watched ? t("watching_") : t("watch")}
             </button>
 
-            <AutoBidDialog
-              auctionId={auction.id}
-              minimumNextBid={minimumNextBid}
-              autoBid={room.autoBid}
-              onChange={room.refreshViewer}
-              disabled={isSeller || !user}
-            />
+            {auction.sealed ? (
+              <span className="label-sm text-dim flex items-center justify-center px-2 text-center">{t("sealedNoAuto")}</span>
+            ) : (
+              <AutoBidDialog
+                auctionId={auction.id}
+                minimumNextBid={minimumNextBid}
+                autoBid={room.autoBid}
+                onChange={room.refreshViewer}
+                disabled={isSeller || !user}
+              />
+            )}
           </div>
         </>
       ) : null}

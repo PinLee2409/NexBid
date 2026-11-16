@@ -331,3 +331,87 @@ export interface Funnel {
 export async function getFunnel(days: number): Promise<Funnel> {
   return api<Funnel>("/api/admin/analytics/funnel", { query: { days } });
 }
+
+// ---- seller coupons / mã giảm giá của người bán
+
+export interface SellerCoupon {
+  id: string;
+  code: string;
+  percentOff: number | null;
+  amountOff: number | null;
+  minPrice: number | null;
+  followersOnly: boolean;
+  maxUses: number;
+  used: number;
+  expiresAt: IsoDateString | null;
+  active: boolean;
+  createdAt: IsoDateString;
+}
+
+export interface CouponInput {
+  code: string;
+  percentOff: number | null;
+  amountOff: number | null;
+  minPrice: number | null;
+  followersOnly: boolean;
+  maxUses: number;
+  expiresAt: string | null;
+}
+
+export async function listCoupons(): Promise<SellerCoupon[]> {
+  return api<SellerCoupon[]>("/api/seller/coupons");
+}
+
+export async function createCoupon(input: CouponInput): Promise<SellerCoupon> {
+  return api<SellerCoupon>("/api/seller/coupons", { method: "POST", body: input });
+}
+
+export async function setCouponActive(code: string, active: boolean): Promise<SellerCoupon> {
+  return api<SellerCoupon>(`/api/seller/coupons/${encodeURIComponent(code)}/active`, { method: "POST", body: { active } });
+}
+
+// ---- quick replies / trả lời nhanh
+
+export interface QuickReply {
+  id: string;
+  body: string;
+  createdAt: IsoDateString;
+}
+
+export async function listQuickReplies(): Promise<QuickReply[]> {
+  return api<QuickReply[]>("/api/users/me/quick-replies");
+}
+
+export async function addQuickReply(body: string): Promise<QuickReply> {
+  return api<QuickReply>("/api/users/me/quick-replies", { method: "POST", body: { body: body.trim() } });
+}
+
+export async function deleteQuickReply(id: string): Promise<void> {
+  await api(`/api/users/me/quick-replies/${id}`, { method: "DELETE" });
+}
+
+// ---- media review / duyệt ảnh và video
+
+export interface MediaItem {
+  kind: "IMAGE" | "VIDEO";
+  id: string;
+  productId: string;
+  productName: string;
+  sellerId: string;
+  sellerName: string;
+  url: string;
+  uploadedAt: IsoDateString;
+  reported: boolean;
+}
+
+export async function mediaQueue(): Promise<MediaItem[]> {
+  return api<MediaItem[]>("/api/admin/media");
+}
+
+export async function keepMedia(item: MediaItem): Promise<void> {
+  await api(`/api/admin/media/${item.kind}/${item.id}/keep`, { method: "POST" });
+}
+
+export async function removeMedia(item: MediaItem, reason: string): Promise<void> {
+  await api(`/api/admin/media/${item.kind}/${item.id}/remove`, { method: "POST", body: { reason: reason.trim() || null } });
+}

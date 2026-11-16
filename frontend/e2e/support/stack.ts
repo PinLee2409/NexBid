@@ -124,6 +124,7 @@ export function lapsePayment(auctionId: string): number {
  */
 /** EN: Optional prices a lot can carry. / VI: Các mức giá tuỳ chọn một lô có thể có. */
 export interface LotPrices {
+  sealed?: boolean;
   reservePrice?: number;
   buyNowPrice?: number;
 }

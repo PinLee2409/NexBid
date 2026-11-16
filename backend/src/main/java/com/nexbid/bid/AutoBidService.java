@@ -43,6 +43,9 @@ public class AutoBidService {
 
     @Transactional
     public AutoBidView create(UUID userId, UUID auctionId, BigDecimal maxAmount) {
+        if (auctions.isSealed(auctionId)) {
+            throw new BusinessException(ErrorCode.SEALED_LOT, "A sealed lot takes one bid per person, not an auto bid");
+        }
         restriction.check(userId, maxAmount);
         deposits.require(auctionId, userId);
         Instant now = Instant.now();

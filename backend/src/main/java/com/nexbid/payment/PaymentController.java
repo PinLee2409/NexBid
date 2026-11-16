@@ -73,6 +73,13 @@ public class PaymentController {
         return ApiResponse.of(payments.applyPromo(me.id(), id, request.code()));
     }
 
+    /** EN: Applies (or with a blank code removes) one of the seller's own codes. / VI: Áp (hoặc gỡ khi để trống) mã riêng của người bán. */
+    @PostMapping("/api/payments/{id}/coupon")
+    public ApiResponse<ShippingQuote> coupon(@AuthenticationPrincipal CurrentUser me, @PathVariable UUID id,
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody PromoRequest request) {
+        return ApiResponse.of(payments.applySellerCoupon(me.id(), id, request.code()));
+    }
+
     public record CheckoutRequest(String locale) {
     }
 

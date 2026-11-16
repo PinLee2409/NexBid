@@ -10,5 +10,7 @@ public enum BidStanding {
     WON,
     LOST,
     /** EN: Highest bid, but below the reserve: the seller is deciding. / VI: Giá cao nhất nhưng dưới giá sàn: người bán đang quyết định. */
-    AWAITING_SELLER
+    AWAITING_SELLER,
+    /** EN: A sealed bid is in; nobody knows yet who leads. / VI: Đã gửi giá kín; chưa ai biết ai dẫn đầu. */
+    SEALED
 }

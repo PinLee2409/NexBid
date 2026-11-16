@@ -318,7 +318,8 @@ public class OrderService {
         orders.save(order);
         events.publishEvent(new OrderEvents.Received(order.getId(), actorId, from));
         events.publishEvent(new OrderEvents.Completed(order.getId(), order.getAuctionId(), order.getSellerId(),
-                order.getBuyerId(), order.getAmount(), automatic, at, order.getSellerShipping()));
+                order.getBuyerId(), order.getAmount(), automatic, at, order.getSellerShipping(),
+                order.getSellerDiscount()));
     }
 
     /**

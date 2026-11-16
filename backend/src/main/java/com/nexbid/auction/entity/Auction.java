@@ -132,6 +132,38 @@ public class Auction {
     @Column(name = "submit_at", insertable = false, updatable = false)
     private Instant submitAt;
 
+    // EN: One hidden bid per person; nobody sees the price until the close. / VI: Mỗi người một lượt giá ẩn; không ai thấy giá tới khi đóng.
+    @Column(nullable = false)
+    private boolean sealed;
+
+    public boolean isSealed() {
+        return sealed;
+    }
+
+    public void setSealed(boolean sealed) {
+        this.sealed = sealed;
+    }
+
+    /** EN: Still running with its bids hidden. / VI: Vẫn đang chạy với các lượt giá đang ẩn. */
+    public boolean isSealedAndRunning() {
+        return sealed && status != AuctionStatus.ENDED && status != AuctionStatus.COMPLETED
+                && status != AuctionStatus.CANCELLED && status != AuctionStatus.REMOVED;
+    }
+
+    /**
+     * EN: A sealed bid: it leads only if it beats every bid so far (the earlier of two equal bids keeps the lead);
+     *     either way it is counted.
+     * VI: Một lượt giá kín: chỉ dẫn đầu nếu cao hơn mọi lượt trước đó (hai lượt bằng nhau thì lượt trước giữ vị trí);
+     *     dù thế nào cũng được đếm.
+     */
+    public void applySealedBid(UUID bidderId, BigDecimal amount) {
+        if (bidCount == 0 || amount.compareTo(currentPrice) > 0) {
+            applyBid(bidderId, amount);
+        } else {
+            this.bidCount += 1;
+        }
+    }
+
     @Column(name = "relist_left", nullable = false)
     private int relistLeft;
 

@@ -97,6 +97,7 @@ export function AuctionForm({ products, initialProductId, relist }: AuctionFormP
   const [endDate, setEndDate] = useState(schedule.endDate);
   const [endTime, setEndTime] = useState(schedule.endTime);
   const [antiSniping, setAntiSniping] = useState(relist?.antiSniping.enabled ?? true);
+  const [sealed, setSealed] = useState(false);
   const [freeShipping, setFreeShipping] = useState(relist?.freeShipping ?? false);
   const [autoRelist, setAutoRelist] = useState("0");
   const [relistDrop, setRelistDrop] = useState("10");
@@ -156,12 +157,13 @@ export function AuctionForm({ products, initialProductId, relist }: AuctionFormP
             minimumIncrement: Number(minimumIncrement),
             startTime: startIso,
             endTime: endIso,
-            antiSnipingEnabled: antiSniping,
+            antiSnipingEnabled: antiSniping && !sealed,
             antiSnipingWindowSeconds: Number(snipeWindow),
             extensionSeconds: Number(extension),
             reservePrice: reservePrice ? Number(reservePrice) : undefined,
-            buyNowPrice: buyNowPrice ? Number(buyNowPrice) : undefined,
+            buyNowPrice: buyNowPrice && !sealed ? Number(buyNowPrice) : undefined,
             freeShipping,
+            sealed,
             autoRelist: Number(autoRelist),
             relistDropPercent: Number(autoRelist) > 0 ? Number(relistDrop) : 0,
           },
@@ -330,6 +332,16 @@ export function AuctionForm({ products, initialProductId, relist }: AuctionFormP
               <p className="text-muted-foreground mt-1 text-xs leading-relaxed">{t("freeShippingHint")}</p>
             </div>
             <Switch id="free-shipping" checked={freeShipping} onCheckedChange={setFreeShipping} />
+          </div>
+
+          <div className="border-line mt-6 flex items-start justify-between gap-6 border-t pt-6" data-testid="sealed-option">
+            <div>
+              <Label htmlFor="sealed-bid" className="label">
+                {t("sealedLabel")}
+              </Label>
+              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">{t("sealedHint")}</p>
+            </div>
+            <Switch id="sealed-bid" checked={sealed} onCheckedChange={setSealed} />
           </div>
 
           <div className="border-line mt-6 border-t pt-6" data-testid="auto-relist">

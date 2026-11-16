@@ -98,16 +98,19 @@ public class PayoutService {
         // EN: A new seller's first sales carry no fee, to help them start. / VI: Vài giao dịch đầu của người bán mới không tính phí, để giúp họ bắt đầu.
         Integer earlier = jdbc.queryForObject("SELECT COUNT(*) FROM seller_earnings WHERE seller_id = ? AND order_id <> ?",
                 Integer.class, event.sellerId(), event.orderId());
+        // EN: The seller's own code came off the price; they sold for what was left, and the fee is on that.
+        // VI: Mã riêng của người bán đã trừ vào giá; họ bán với phần còn lại, và phí sàn tính trên phần đó.
+        BigDecimal price = event.sellerDiscount() == null ? event.amount() : event.amount().subtract(event.sellerDiscount());
         BigDecimal fee = earlier != null && earlier < newSellerFreeSales
                 ? BigDecimal.ZERO
-                : event.amount().multiply(feePercent).divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
+                : price.multiply(feePercent).divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
         BigDecimal shipping = event.shippingFee() == null ? BigDecimal.ZERO : event.shippingFee();
         jdbc.update("""
                 INSERT INTO seller_earnings (id, order_id, seller_id, auction_id, gross, fee, shipping, net, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (order_id) DO NOTHING
-                """, UUID.randomUUID(), event.orderId(), event.sellerId(), event.auctionId(), event.amount(), fee,
-                shipping, event.amount().subtract(fee).add(shipping), utc(event.at()));
+                """, UUID.randomUUID(), event.orderId(), event.sellerId(), event.auctionId(), price, fee,
+                shipping, price.subtract(fee).add(shipping), utc(event.at()));
     }
 
     @Transactional(readOnly = true)

@@ -86,7 +86,13 @@ public class Product {
         return videoUrl;
     }
 
+    // EN: Null while an admin has not looked at the current video. / VI: Null khi admin chưa xem video hiện tại.
+    @jakarta.persistence.Column(name = "video_reviewed_at")
+    private java.time.Instant videoReviewedAt;
+
     public void setVideoUrl(String videoUrl) {
+        // EN: A new video waits for review again. / VI: Video mới lại chờ duyệt.
+        this.videoReviewedAt = null;
         this.videoUrl = videoUrl;
     }
 
