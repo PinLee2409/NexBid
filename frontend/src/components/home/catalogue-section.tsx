@@ -50,13 +50,14 @@ export function CatalogueSection({ auctions, serverTime }: CatalogueSectionProps
           className="lg:col-span-7"
         />
 
-        <div className="grid gap-y-14 lg:col-span-5 lg:content-start">
+        {/* EN: Landscape so the pair ends level with the lead lot. / VI: Ảnh ngang để cặp lô kết thúc ngang lô dẫn đầu. */}
+        <div className="grid gap-y-10 lg:col-span-5 lg:content-start">
           {pair.map((auction) => (
             <AuctionCatalogueItem
               key={auction.id}
               auction={auction}
               serverTime={serverTime}
-              scale="standard"
+              scale="compact"
             />
           ))}
         </div>
@@ -83,13 +84,13 @@ export function CatalogueSection({ auctions, serverTime }: CatalogueSectionProps
             scale="wide"
             className="lg:col-span-8"
           />
-          <div className="grid gap-y-14 lg:col-span-4 lg:content-start">
+          <div className="grid gap-y-10 lg:col-span-4 lg:content-start">
             {tail.slice(1).map((auction) => (
               <AuctionCatalogueItem
                 key={auction.id}
                 auction={auction}
                 serverTime={serverTime}
-                scale="standard"
+                scale="compact"
               />
             ))}
           </div>

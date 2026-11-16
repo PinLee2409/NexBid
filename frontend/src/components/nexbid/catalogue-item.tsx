@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import type { AuctionSummary } from "@/types";
 import { useMoney } from "@/hooks/use-money";
 
-type Scale = "hero" | "large" | "standard" | "wide";
+type Scale = "hero" | "large" | "standard" | "wide" | "compact";
 
 interface AuctionCatalogueItemProps {
   auction: AuctionSummary;
@@ -23,17 +23,20 @@ interface AuctionCatalogueItemProps {
 }
 
 const RATIOS: Record<Scale, string> = {
-  hero: "aspect-[4/5]",
+  // EN: Square from lg up, so the lead lot stands as tall as the pair beside it. / VI: Vuông từ lg trở lên, để lô dẫn đầu cao ngang cặp lô bên cạnh.
+  hero: "aspect-[4/5] lg:aspect-square",
   large: "aspect-[4/5]",
   standard: "aspect-square",
   wide: "aspect-[16/9]",
+  compact: "aspect-[16/10]",
 };
 
 const TITLES: Record<Scale, string> = {
   hero: "text-[clamp(1.75rem,3.4vw,3.25rem)]",
   large: "text-[clamp(1.4rem,2.4vw,2.25rem)]",
-  standard: "text-xl sm:text-2xl",
+  standard: "text-lg sm:text-2xl",
   wide: "text-[clamp(1.75rem,3.4vw,3rem)]",
+  compact: "text-xl sm:text-2xl",
 };
 
 /**
@@ -79,7 +82,7 @@ export function AuctionCatalogueItem({
               "display figure over-image absolute top-4 left-4 leading-none transition-all duration-500",
               "text-foreground/70 group-hover:text-signal-text",
               scale === "standard"
-                ? "text-2xl group-hover:text-[28px]"
+                ? "text-lg group-hover:text-xl sm:text-2xl sm:group-hover:text-[28px]"
                 : "text-4xl group-hover:text-5xl",
             )}
             aria-hidden="true"
@@ -118,7 +121,7 @@ export function AuctionCatalogueItem({
                 {isUpcoming ? t("openingLot") : t("current")}
               </p>
               {/* Price rises into place on hover — the lot reacting to you. */}
-              <p className="figure text-xl transition-transform duration-300 group-hover:-translate-y-0.5 sm:text-2xl">
+              <p className="figure text-base transition-transform duration-300 group-hover:-translate-y-0.5 sm:text-2xl">
                 {money.currency(
                   isUpcoming ? auction.startingPrice : auction.currentPrice,
                 )}

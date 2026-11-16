@@ -62,7 +62,9 @@
     "language": "Ngôn ngữ",
     "changeLanguage": "Đổi ngôn ngữ",
     "somethingWentWrong": "Đã có lỗi xảy ra. Vui lòng thử lại.",
-    "starsOutOf": "{rating} trên 5 sao"
+    "starsOutOf": "{rating} trên 5 sao",
+    "showPassword": "Hiện mật khẩu",
+    "hidePassword": "Ẩn mật khẩu"
   },
   "nav": {
     "auctions": "Đấu giá",

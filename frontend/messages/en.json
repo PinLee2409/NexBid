@@ -62,7 +62,9 @@
     "language": "Language",
     "changeLanguage": "Change language",
     "somethingWentWrong": "Something went wrong. Please try again.",
-    "starsOutOf": "{rating} out of 5 stars"
+    "starsOutOf": "{rating} out of 5 stars",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "nav": {
     "auctions": "Auctions",

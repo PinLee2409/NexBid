@@ -257,6 +257,16 @@ class PublicAuctionListApiTest {
 
         mockMvc.perform(get("/api/auctions").param("sort", "ENDING_SOON"))
                 .andExpect(jsonPath("$.data.items[0].product.name").value("Sooner"));
+
+        // EN: Open lots come before ones about to open, and finished lots go last although their time is past.
+        // VI: Lô đang mở đứng trước lô sắp mở, và lô đã xong đứng cuối dù giờ của chúng đã qua.
+        String finished = approvedLot("Finished", "art", new BigDecimal("100"), Duration.ofHours(3));
+        String open = approvedLot("Open now", "art", new BigDecimal("100"), Duration.ofHours(6));
+        jdbc.update("UPDATE auctions SET status = 'ENDED', start_time = now() - interval '2 days', end_time = now() - interval '1 day' WHERE id = ?::uuid", finished);
+        jdbc.update("UPDATE auctions SET status = 'ACTIVE', start_time = now() - interval '1 hour' WHERE id = ?::uuid", open);
+        mockMvc.perform(get("/api/auctions").param("sort", "ENDING_SOON").param("size", "100"))
+                .andExpect(jsonPath("$.data.items[0].product.name").value("Open now"))
+                .andExpect(jsonPath("$.data.items[-1:].product.name").value("Finished"));
     }
 
     @Test

@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 import { FormField } from "@/components/common/form-field";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useApiErrorMessage } from "@/hooks/use-labels";
 import { changePassword } from "@/services/password-service";
 
@@ -58,9 +58,8 @@ export function ChangePassword() {
       <form onSubmit={submit} noValidate className="mt-6 max-w-lg space-y-4">
         <FormField label={t("passwordCurrent")} required>
           {(field) => (
-            <Input
+            <PasswordInput
               {...field}
-              type="password"
               autoComplete="current-password"
               value={current}
               onChange={(event) => setCurrent(event.target.value)}
@@ -71,9 +70,8 @@ export function ChangePassword() {
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField label={t("passwordNew")} required>
             {(field) => (
-              <Input
+              <PasswordInput
                 {...field}
-                type="password"
                 autoComplete="new-password"
                 value={next}
                 onChange={(event) => setNext(event.target.value)}
@@ -83,9 +81,8 @@ export function ChangePassword() {
           </FormField>
           <FormField label={t("passwordAgain")} required>
             {(field) => (
-              <Input
+              <PasswordInput
                 {...field}
-                type="password"
                 autoComplete="new-password"
                 value={again}
                 onChange={(event) => setAgain(event.target.value)}

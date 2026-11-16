@@ -64,9 +64,9 @@ public class PasswordResets {
 
     /**
      * EN: Emails a reset link if the address has an active account. Counted against the sign-in limit for that email and
-     *     address, and at most three open links per account, so the form cannot flood an inbox.
+     *     address, and at most three open links per account: a fourth retires the oldest.
      * VI: Gửi link đặt lại nếu địa chỉ có tài khoản đang hoạt động. Tính vào giới hạn đăng nhập theo email và địa chỉ đó,
-     *     và tối đa ba link còn hiệu lực mỗi tài khoản, để form không làm ngập hộp thư.
+     *     và tối đa ba link còn hiệu lực mỗi tài khoản: link thứ tư thay cho link cũ nhất.
      */
     @Transactional
     public void request(String email, String clientAddress, Instant now) {
@@ -83,7 +83,16 @@ public class PasswordResets {
                 SELECT COUNT(*) FROM password_resets WHERE user_id = ? AND used_at IS NULL AND expires_at > ?
                 """, Integer.class, userId, now.atOffset(ZoneOffset.UTC));
         if (open != null && open >= OPEN_LIMIT) {
-            return;
+            // EN: The newest request wins: the oldest open link stops working, so a person whose earlier emails never
+            //     arrived still gets one. Asking again and again is held back by the sign-in limit above.
+            // VI: Yêu cầu mới nhất được ưu tiên: link cũ nhất còn hạn mất hiệu lực, để người chưa nhận được email trước đó
+            //     vẫn nhận được link. Việc xin link liên tục đã bị giới hạn đăng nhập ở trên chặn.
+            jdbc.update("""
+                    UPDATE password_resets SET used_at = ? WHERE token_hash = (
+                        SELECT token_hash FROM password_resets
+                        WHERE user_id = ? AND used_at IS NULL AND expires_at > ?
+                        ORDER BY created_at LIMIT 1)
+                    """, now.atOffset(ZoneOffset.UTC), userId, now.atOffset(ZoneOffset.UTC));
         }
         byte[] random = new byte[32];
         RANDOM.nextBytes(random);

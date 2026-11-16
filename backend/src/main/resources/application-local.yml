@@ -1,0 +1,9 @@
+# EN: Running the backend on your own machine (IntelliJ, profile "local"): the secrets in backend/.env (git-ignored) are
+#     read as if they were environment variables, so mail, VNPay and GHN work without copying keys into the IDE. Tests
+#     and Docker never use this profile, so they never see those keys. Real environment variables still win.
+# VI: Chạy backend trên máy của bạn (IntelliJ, profile "local"): các secret trong backend/.env (bị git bỏ qua) được đọc
+#     như biến môi trường, nên mail, VNPay và GHN chạy được mà không phải chép key vào IDE. Test và Docker không bao giờ
+#     dùng profile này, nên không thấy các key đó. Biến môi trường thật vẫn được ưu tiên.
+spring:
+  config:
+    import: optional:file:.env[.properties],optional:file:backend/.env[.properties]

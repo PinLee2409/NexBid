@@ -106,6 +106,29 @@ class PasswordApiTest {
                 """, Integer.class, email)).isOne();
     }
 
+    /**
+     * EN: A fourth request still sends a link; the oldest open one stops working instead.
+     * VI: Yêu cầu thứ tư vẫn được gửi link; link cũ nhất còn hạn mất hiệu lực thay vào đó.
+     */
+    @Test
+    void aFourthRequestRetiresTheOldestLink() throws Exception {
+        String email = "many.links@nexbid.com";
+        register(email);
+        forgot(email);
+        String first = latestToken(email);
+        forgot(email);
+        forgot(email);
+        forgot(email).andExpect(status().isOk());
+        String fourth = latestToken(email);
+        assertThat(fourth).isNotEqualTo(first);
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM password_resets r JOIN users u ON u.id = r.user_id
+                WHERE u.email = ? AND r.used_at IS NULL
+                """, Integer.class, email)).isEqualTo(3);
+        reset(first, "first-is-gone").andExpect(jsonPath("$.code").value("PASSWORD_RESET_INVALID"));
+        reset(fourth, "the-newest-works").andExpect(status().isOk());
+    }
+
     @Test
     void aSignedInAccountChangesItsPasswordAndStaysSignedInHere() throws Exception {
         String email = "change.me@nexbid.com";

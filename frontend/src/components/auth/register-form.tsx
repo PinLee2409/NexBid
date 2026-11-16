@@ -11,6 +11,7 @@ import { FormField } from "@/components/common/form-field";
 import { useAuthErrorMessage } from "@/hooks/use-labels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { landingFor, useReturnPath, withReturnPath } from "@/components/auth/use-return-path";
 import { signUp } from "@/services/session-service";
 
@@ -137,9 +138,8 @@ export function RegisterForm() {
           required
         >
           {(field) => (
-            <Input
+            <PasswordInput
               {...field}
-              type="password"
               autoComplete="new-password"
               value={values.password}
               onChange={(event) => setField("password", event.target.value)}
@@ -154,9 +154,8 @@ export function RegisterForm() {
           required
         >
           {(field) => (
-            <Input
+            <PasswordInput
               {...field}
-              type="password"
               autoComplete="new-password"
               value={values.confirmPassword}
               onChange={(event) =>

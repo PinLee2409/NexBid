@@ -57,7 +57,7 @@ export function SpinViewer({ images, className }: { images: ProductImage[]; clas
       onPointerCancel={() => (drag.current = null)}
       onKeyDown={key}
       className={cn(
-        "on-media bg-surface relative aspect-[4/5] cursor-grab touch-pan-y overflow-hidden select-none active:cursor-grabbing lg:aspect-auto lg:h-[calc(100svh-4rem)]",
+        "on-media bg-surface relative aspect-[4/5] cursor-grab touch-pan-y overflow-hidden select-none active:cursor-grabbing sm:aspect-[4/3] lg:aspect-auto lg:h-[min(70svh,720px)]",
         className,
       )}
       data-testid="spin-viewer"

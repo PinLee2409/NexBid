@@ -239,15 +239,27 @@ export async function listCategories(): Promise<Category[]> {
   return categories.map(toCategory);
 }
 
-/** Categories with how many of their lots are live, for the home page's rooms. */
+/**
+ * EN: Categories with how many of their lots are live, for the home page's rooms. A room without its own photograph
+ *     borrows the cover of a lot inside it: a live one first, else the newest of any status.
+ * VI: Danh mục kèm số lô đang mở, cho các phòng ở trang chủ. Phòng chưa có ảnh riêng mượn ảnh bìa của một lô bên
+ *     trong: lô đang mở trước, không thì lô mới nhất ở bất kỳ trạng thái nào.
+ */
 async function listCategoriesWithLiveCounts(): Promise<Category[]> {
   const categories = await listCategories();
-  const counts = await Promise.all(
-    categories.map((category) =>
-      api<ApiPage<ApiAuctionSummary>>("/api/auctions", {
+  return Promise.all(
+    categories.map(async (category) => {
+      const live = await api<ApiPage<ApiAuctionSummary>>("/api/auctions", {
         query: { status: ["ACTIVE"], category: [category.slug], size: 1 },
-      }).then((page) => page.totalItems),
-    ),
+      });
+      let imageUrl = category.imageUrl || live.items[0]?.product.coverImageUrl || "";
+      if (!imageUrl) {
+        const any = await api<ApiPage<ApiAuctionSummary>>("/api/auctions", {
+          query: { category: [category.slug], size: 4 },
+        });
+        imageUrl = any.items.find((item) => item.product.coverImageUrl)?.product.coverImageUrl ?? "";
+      }
+      return { ...category, imageUrl, auctionCount: live.totalItems };
+    }),
   );
-  return categories.map((category, index) => ({ ...category, auctionCount: counts[index] }));
 }

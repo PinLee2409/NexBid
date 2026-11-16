@@ -13,6 +13,7 @@ import { useAuthErrorMessage } from "@/hooks/use-labels";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { landingFor, useReturnPath, withReturnPath } from "@/components/auth/use-return-path";
 import { Label } from "@/components/ui/label";
 import {
@@ -209,9 +210,8 @@ export function LoginForm({ audience = "marketplace" }: LoginFormProps) {
 
         <FormField label={t("password")} error={errors.password} required>
           {(field) => (
-            <Input
+            <PasswordInput
               {...field}
-              type="password"
               autoComplete="current-password"
               value={password}
               onChange={(event) => {

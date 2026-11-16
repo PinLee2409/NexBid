@@ -524,10 +524,12 @@ public class AuctionService {
                         : null,
                 filterByCondition
                         ? AuctionSpecifications.productIn(products.idsInConditions(query.condition()))
-                        : null);
+                        : null,
+                query.sort() == AuctionSort.ENDING_SOON ? AuctionSpecifications.openFirstEndingSoon() : null);
 
-        var page = auctions.findAll(
-                spec, PageRequest.of(query.zeroBasedPage(), query.size(), sortOf(query.sort())));
+        // EN: Ending soon is ordered by the specification above. / VI: Sắp kết thúc được sắp bởi specification ở trên.
+        Sort order = query.sort() == AuctionSort.ENDING_SOON ? Sort.unsorted() : sortOf(query.sort());
+        var page = auctions.findAll(spec, PageRequest.of(query.zeroBasedPage(), query.size(), order));
 
         return PageView.of(page, summarize(page.getContent(), AuctionService::toPublicView));
     }

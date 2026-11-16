@@ -76,7 +76,8 @@ export default async function AuctionsPage(props: PageProps<"/auctions">) {
           ) : (
             <>
               <h2 className="sr-only">{t("resultsHeading")}</h2>
-              <div className="mt-10 grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-12 sm:grid-cols-2 xl:grid-cols-3">
+              {/* EN: Two across even on a phone, so a screen shows more than one lot. / VI: Hai cột kể cả trên điện thoại, để mỗi màn hình thấy hơn một lô. */}
+              <div className="mt-10 grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-6 sm:gap-y-12 xl:grid-cols-3">
                 {result.items.map((auction, index) => (
                   <AuctionCatalogueItem
                     key={auction.id}

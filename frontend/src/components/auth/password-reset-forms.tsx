@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { FormField } from "@/components/common/form-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useApiErrorMessage } from "@/hooks/use-labels";
 import { requestPasswordReset, resetPassword } from "@/services/password-service";
 
@@ -116,9 +117,8 @@ export function ResetPasswordForm({ token }: { token: string }) {
         <form onSubmit={submit} noValidate className="mt-8 space-y-4">
           <FormField label={t("newPassword")} required>
             {(field) => (
-              <Input
+              <PasswordInput
                 {...field}
-                type="password"
                 autoComplete="new-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
@@ -128,9 +128,8 @@ export function ResetPasswordForm({ token }: { token: string }) {
           </FormField>
           <FormField label={t("newPasswordAgain")} required>
             {(field) => (
-              <Input
+              <PasswordInput
                 {...field}
-                type="password"
                 autoComplete="new-password"
                 value={again}
                 onChange={(event) => setAgain(event.target.value)}
