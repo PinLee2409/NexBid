@@ -9,6 +9,8 @@ import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { AutoBidDialog } from "@/components/auction/auto-bid-dialog";
+import { RetractBidDialog } from "@/components/auction/retract-bid-dialog";
+import { ForeignPrice } from "@/components/common/foreign-price";
 import { AuctionClock } from "@/components/nexbid/auction-clock";
 import { BidConfirmLayer } from "@/components/nexbid/bid-confirm-layer";
 import { LiveTag } from "@/components/nexbid/live-pulse";
@@ -31,6 +33,7 @@ import {
   validateBid,
   type BidRejection,
 } from "@/lib/auction-rules";
+import { useGroupedDigits } from "@/hooks/use-grouped-digits";
 import { CURRENCY, parseCurrencyInput } from "@/lib/format";
 import { loginHref } from "@/lib/redirect";
 import { cn } from "@/lib/utils";
@@ -99,6 +102,11 @@ export function BidTerminal({
     const interval = window.setInterval(() => setNow(Date.now() + offset), 1000);
     return () => window.clearInterval(interval);
   }, [serverTime]);
+
+  const bidField = useGroupedDigits(amountInput, (digits) => {
+    setTouched(true);
+    setAmountInput(digits);
+  });
 
   const amount = parseCurrencyInput(amountInput);
   const validation = validateBid({ auction: liveAuction, user, amount, now });
@@ -252,6 +260,7 @@ export function BidTerminal({
           amount={room.currentPrice}
           className="display mt-2 text-[clamp(2.5rem,4vw,3.5rem)]"
         />
+        <ForeignPrice amount={room.currentPrice} className="mt-1" />
         {delta > 0 && !room.ended ? (
           <PriceDelta
             delta={delta}
@@ -325,12 +334,9 @@ export function BidTerminal({
               <input
                 id="terminal-bid"
                 inputMode="numeric"
-                value={amountInput}
+                value={bidField.value}
                 disabled={isSeller || !user}
-                onChange={(event) => {
-                  setTouched(true);
-                  setAmountInput(event.target.value.replace(/[^\d]/g, ""));
-                }}
+                onChange={bidField.onChange}
                 aria-invalid={showInputError}
                 aria-describedby={showInputError ? "terminal-bid-error" : undefined}
                 className="figure h-14 w-full bg-transparent pr-4 text-2xl outline-none disabled:opacity-50"
@@ -463,6 +469,10 @@ export function BidTerminal({
           </span>
         ) : null}
       </div>
+
+      {user && isOpen && room.bids.some((bid) => bid.bidderId === user.id) ? (
+        <RetractBidDialog auctionId={auction.id} onDone={room.retracted} />
+      ) : null}
 
       {auction.antiSniping.enabled && isOpen ? (
         <p className="text-dim py-4 text-xs leading-relaxed">

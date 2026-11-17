@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { AddressForm } from "@/components/account/address-form";
+import { ForeignPrice } from "@/components/common/foreign-price";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useApiErrorMessage } from "@/hooks/use-labels";
@@ -178,6 +179,9 @@ export function PayWithVnpay({ paymentId, className }: { paymentId: string; clas
                 <dd className="figure text-lg" data-testid="payment-total">
                   {money.currency(quote.total)}
                 </dd>
+              </div>
+              <div className="flex justify-end">
+                <ForeignPrice amount={quote.total} />
               </div>
             </dl>
           ) : null}

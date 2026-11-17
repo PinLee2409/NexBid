@@ -156,6 +156,20 @@ public class Auction {
      * VI: Một lượt giá kín: chỉ dẫn đầu nếu cao hơn mọi lượt trước đó (hai lượt bằng nhau thì lượt trước giữ vị trí);
      *     dù thế nào cũng được đếm.
      */
+    /**
+     * EN: Puts the lot back where its remaining bids leave it, after someone took theirs back: the highest remaining
+     *     bid leads at its own amount (bids only ever rose, so that was the price when it was placed); none left means
+     *     the starting price and no leader.
+     * VI: Đưa lô về đúng chỗ các lượt còn lại để nó, sau khi có người rút lượt của mình: lượt cao nhất còn lại dẫn đầu
+     *     với chính số tiền của nó (giá chỉ tăng, nên đó là giá lúc nó được đặt); không còn lượt nào thì về giá khởi
+     *     điểm và không ai dẫn.
+     */
+    public void rewindTo(UUID leaderId, BigDecimal topAmount, int remainingBids) {
+        this.leadingBidderId = leaderId;
+        this.currentPrice = leaderId == null ? startingPrice : topAmount;
+        this.bidCount = remainingBids;
+    }
+
     public void applySealedBid(UUID bidderId, BigDecimal amount) {
         if (bidCount == 0 || amount.compareTo(currentPrice) > 0) {
             applyBid(bidderId, amount);

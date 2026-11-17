@@ -21,6 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { AUCTION_CONFIG } from "@/constants/auction";
 import { CURRENCY, fromDateAndTimeParts } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useGroupedDigits } from "@/hooks/use-grouped-digits";
 import { useApiErrorMessage } from "@/hooks/use-labels";
 import { createAuction } from "@/services/seller-service";
 import type { ProductWithMeta } from "@/services/seller-service";
@@ -633,6 +634,7 @@ function MoneyInput({
   value: string;
   onValueChange: (value: string) => void;
 } & React.ComponentProps<typeof Input>) {
+  const grouped = useGroupedDigits(value, onValueChange);
   return (
     <div className="relative">
       <span
@@ -644,8 +646,8 @@ function MoneyInput({
       <Input
         {...field}
         inputMode="numeric"
-        value={value}
-        onChange={(event) => onValueChange(event.target.value.replace(/[^\d]/g, ""))}
+        value={grouped.value}
+        onChange={grouped.onChange}
         className={cn("figure pl-8", field.className)}
       />
     </div>

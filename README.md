@@ -388,6 +388,8 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | Seller tools | `POST /api/seller/auctions/{id}/relist` (a cheaper draft), `GET`/`PUT /api/seller/vacation`, `/api/seller/templates` (listing templates) |
 | Seller codes | `GET`/`POST /api/seller/coupons`, `POST /api/seller/coupons/{code}/active`, `POST /api/payments/{id}/coupon` (off the goods; the seller bears it) |
 | Chat replies | `GET`/`POST /api/users/me/quick-replies`, `DELETE /api/users/me/quick-replies/{id}` |
+| Bid retraction | `GET /api/auctions/{id}/bids/retraction`, `POST /api/auctions/{id}/bids/retract` (`QUICK` \| `TYPO`), `GET /api/admin/bid-retractions` (MODERATOR) |
+| Exchange rates | `GET /api/fx` — public, reference only (USD, EUR per đồng; refreshed daily) |
 | Media review | `GET /api/admin/media`, `POST /api/admin/media/{IMAGE\|VIDEO}/{id}/keep`, `…/remove` (MODERATOR) |
 | Staff | `GET`/`POST /api/admin/staff`, `PUT /api/admin/staff/{userId}` (ADMIN only), `GET /api/admin/analytics/funnel?days=` |
 | Realtime | STOMP at `/ws`: `/topic/auctions/{id}` for everyone, `/user/queue/notifications` and `/user/queue/messages` for the signed-in user |
@@ -407,6 +409,16 @@ nobody, the seller included, sees the bids or the leader until the close, and th
 two equal ones). Sealed lots have no buy-now, no auto bid and no anti-sniping. A second win from the same seller,
 paid while the first is still waiting to be sent, ships free in that parcel; the seller's order list says which
 orders go together.
+
+A bidder can take their bids on a lot back in the first 5 minutes after their last bid, or later when that bid is
+plainly a typo (at least twice the price it went over) — never in the lot's last 10 minutes, and at most 3 times in
+30 days. All of their bids on that lot go and their auto bid there is turned off; the lot goes back to its highest
+remaining bid, and the room hears the new price. Other bidders' auto bids that answered the withdrawn bid stay as
+they were placed. Moderators see every retraction at `/admin/bid-retractions`. Prices can also be shown in US
+dollars or euros, as a reference under the đồng figure (picked in the footer, kept in the browser); the rates come
+once a day from a free public feed (`NEXBID_FX_ENABLED=false` keeps the built-in rates) and payment stays in VND.
+The home page opens on a slideshow of the five most contested live lots, which pauses on hover, keyboard focus or
+its own button, follows swipes and arrow keys, and does not move on by itself when the reader asks for less motion.
 
 Every endpoint answers in one of two shapes (spec §28), so the client needs one parser:
 

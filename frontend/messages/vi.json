@@ -118,7 +118,8 @@
     "deposits": "Tiền cọc",
     "staff": "Nhân viên",
     "coupons": "Mã giảm giá",
-    "media": "Duyệt ảnh"
+    "media": "Duyệt ảnh",
+    "retractions": "Lượt bị rút"
   },
   "footer": {
     "marketplace": "Sàn đấu giá",
@@ -1551,7 +1552,14 @@
     "endsIn": "Kết thúc sau",
     "bidNow": "Trả giá ngay",
     "scroll": "Cuộn",
-    "viewLot": "Xem sản phẩm"
+    "viewLot": "Xem sản phẩm",
+    "showcase": "Các lô đang trưng bày",
+    "slide": "Lô {index} trên {total}",
+    "goTo": "Xem lô {index}: {name}",
+    "previous": "Lô trước",
+    "next": "Lô sau",
+    "pause": "Tạm dừng trình chiếu",
+    "play": "Tiếp tục trình chiếu"
   },
   "catalogue": {
     "title": "Danh mục",
@@ -1809,7 +1817,10 @@
     "QUICK_REPLY_NOT_FOUND": "Không tìm thấy câu trả lời này.",
     "MEDIA_NOT_FOUND": "Ảnh hoặc video này không còn trong hàng chờ.",
     "SEALED_BID_EXISTS": "Bạn đã gửi giá kín cho lô này rồi.",
-    "SEALED_LOT": "Lô đấu giá kín chỉ nhận một lượt giá mỗi người, không dùng auto bid."
+    "SEALED_LOT": "Lô đấu giá kín chỉ nhận một lượt giá mỗi người, không dùng auto bid.",
+    "RETRACTION_NOT_ALLOWED": "Lượt trả giá này không thể rút lại nữa.",
+    "RETRACTION_TOO_LATE": "Không thể rút lượt trong 10 phút cuối của lô.",
+    "RETRACTION_LIMIT": "Bạn đã rút lượt 3 lần trong 30 ngày qua."
   },
   "messages": {
     "title": "Tin nhắn",
@@ -2092,5 +2103,55 @@
     "remove": "Gỡ",
     "kept": "Đã đánh dấu đã duyệt",
     "removed": "Đã gỡ; người bán đã được báo"
+  },
+  "fx": {
+    "reference": "quy đổi tham khảo; bạn trả bằng VND",
+    "change": "Hiện giá thêm bằng",
+    "off": "Chỉ tiền đồng",
+    "USD": "Đô la Mỹ",
+    "EUR": "Euro",
+    "note": "Một con số tham khảo dưới giá, theo tỷ giá hôm nay. Bạn luôn thanh toán bằng VND."
+  },
+  "retract": {
+    "open": "Rút lại lượt trả giá",
+    "title": "Rút lại các lượt trả giá?",
+    "rules": "Mọi lượt của bạn trên lô này bị xoá và auto bid của bạn ở đây bị tắt; giá trở về mức các lượt khác cho biết. Trong 5 phút đầu thì lý do gì cũng được; sau đó chỉ khi gõ nhầm rõ ràng (ít nhất gấp đôi mức giá bạn trả vượt lên). Không bao giờ trong 10 phút cuối, và tối đa 3 lần trong 30 ngày.",
+    "reason": "Lý do",
+    "reasons": {
+      "QUICK": "Tôi đổi ý",
+      "TYPO": "Tôi gõ nhầm số tiền"
+    },
+    "reasonHints": {
+      "QUICK": "Chỉ trong 5 phút đầu sau lượt cuối của bạn.",
+      "TYPO": "Lượt cuối của bạn ít nhất gấp đôi mức giá nó vượt qua. Bạn có thể trả lại đúng số ngay sau đó."
+    },
+    "note": "Ghi chú cho nhân viên (không bắt buộc)",
+    "quota": "Đã dùng {used} trên {limit} lần trong 30 ngày qua.",
+    "effect": "Nhân viên xem được mọi lần rút. Rút quá thường xuyên có thể khiến tài khoản bị hạn chế.",
+    "checking": "Đang kiểm tra điều kiện…",
+    "cancel": "Giữ lượt của tôi",
+    "confirm": "Rút lại",
+    "done": "{count, plural, other {Đã rút # lượt trả giá của bạn.}}",
+    "blocked": {
+      "RETRACTION_NOT_ALLOWED": "Đã quá 5 phút đầu và lượt cuối của bạn không giống gõ nhầm, nên lượt đó vẫn giữ.",
+      "RETRACTION_TOO_LATE": "Lô đóng trong vòng 10 phút; không thể rút lượt nữa.",
+      "RETRACTION_LIMIT": "Bạn đã dùng hết số lần rút trong 30 ngày qua.",
+      "AUCTION_NOT_ACTIVE": "Lô này không mở để trả giá."
+    }
+  },
+  "retractLog": {
+    "title": "Rút lại lượt trả giá",
+    "subtitle": "Mọi lượt bị rút, mới nhất trước. Một người rút nhiều lần thì nên xem kỹ.",
+    "emptyTitle": "Chưa có lần rút nào",
+    "emptyBody": "Chưa ai rút lại lượt trả giá.",
+    "when": "Lúc",
+    "bidder": "Người trả giá",
+    "lot": "Lô",
+    "amount": "Lượt cao nhất",
+    "reason": "Lý do",
+    "price": "Giá trước → sau",
+    "recent": "{count, plural, other {# lần rút trong 30 ngày}}",
+    "bids": "{count, plural, other {# lượt}}",
+    "wasLeading": "Đang dẫn đầu"
   }
 }

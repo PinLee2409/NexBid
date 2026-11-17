@@ -52,6 +52,8 @@ public class SecurityConfig {
             // EN: Every countdown on the site measures against this, so it must answer before sign-in.
             // VI: Mọi đồng hồ đếm ngược trên site đo theo mốc này, nên nó phải trả lời từ trước khi đăng nhập.
             "/api/server-time",
+            // EN: Reference exchange rates for showing prices in other currencies. / VI: Tỷ giá tham khảo để hiện giá bằng tiền khác.
+            "/api/fx",
             // EN: Browsing is public — someone deciding whether to join must see what is on offer.
             // VI: Duyệt hàng là công khai — người đang cân nhắc tham gia phải xem được có gì.
             "/api/categories", "/api/categories/**",
@@ -97,6 +99,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auctions/*/reports").authenticated()
                         .requestMatchers("/api/auctions/*/watch").authenticated()
                         .requestMatchers("/api/auctions/*/auto-bid").authenticated()
+                        .requestMatchers("/api/auctions/*/bids/retraction", "/api/auctions/*/bids/retract").authenticated()
                         // EN: A seller's reviews are shown on public lot pages. / VI: Đánh giá người bán hiện trên trang lô công khai.
                         .requestMatchers(HttpMethod.GET, "/api/sellers/*/reviews").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/sellers/*/profile").permitAll()
@@ -125,7 +128,7 @@ public class SecurityConfig {
                         .hasAnyRole(ADMIN, MODERATOR, FINANCE, SUPPORT)
                         .requestMatchers("/api/admin/auctions/**", "/api/admin/categories/**", "/api/admin/reports/**",
                                 "/api/admin/shill-suspects/**", "/api/admin/seller-applications/**",
-                                "/api/admin/media/**")
+                                "/api/admin/media/**", "/api/admin/bid-retractions/**", "/api/admin/bid-retractions")
                         .hasAnyRole(ADMIN, MODERATOR)
                         .requestMatchers("/api/admin/finance/**", "/api/admin/payouts/**", "/api/admin/stray-charges/**",
                                 "/api/admin/promo-codes/**", "/api/admin/deposits/**")

@@ -1,6 +1,7 @@
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 
+import { CurrencySwitcher } from "@/components/layout/currency-switcher";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { ThemeSwitcher } from "@/components/layout/theme-switcher";
 import { Logo } from "@/components/layout/logo";
@@ -45,6 +46,7 @@ export function SiteFooter() {
             <h2 className="label-sm text-dim">{tc("language")}</h2>
             <div className="mt-3 flex flex-col items-start gap-1">
               <LocaleSwitcher variant="full" className="-ml-2" />
+              <CurrencySwitcher className="-ml-2" />
               <ThemeSwitcher variant="full" className="-ml-2" />
             </div>
 

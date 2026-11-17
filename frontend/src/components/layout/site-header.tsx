@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
 
+import { CurrencySwitcher } from "@/components/layout/currency-switcher";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { Logo } from "@/components/layout/logo";
 import { ThemeSwitcher } from "@/components/layout/theme-switcher";
@@ -335,6 +336,7 @@ function MobileMenu({
         <div className="border-line mt-2 border-t px-5 py-4">
           <p className="label-sm text-dim pb-2">{tc("language")}</p>
           <LocaleSwitcher variant="full" className="-ml-2" />
+          <CurrencySwitcher className="-ml-2" />
         </div>
 
         <div className="border-line border-b px-5 py-4">

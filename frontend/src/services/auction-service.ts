@@ -193,6 +193,8 @@ export interface HomeFeed {
   endingSoon: AuctionSummary[];
   upcoming: AuctionSummary[];
   featured: AuctionSummary | null;
+  /** EN: The lots taking turns on the opening stage, the featured one first. / VI: Các lô lần lượt lên sân khấu mở đầu, lô nổi bật đầu tiên. */
+  showcase: AuctionSummary[];
   /** A second live lot for the editorial spread, with its description and photos. */
   editorial: AuctionSummary | null;
   categories: Category[];
@@ -209,7 +211,7 @@ export async function getHomeFeed(): Promise<HomeFeed> {
     fetchPage({ statuses: ["ACTIVE"], endingSoon: true, sort: "ENDING_SOON", pageSize: 4 }),
     fetchPage({ statuses: ["SCHEDULED"], sort: "ENDING_SOON", pageSize: 4 }),
     // The showcase lot: the most contested auction still running.
-    fetchPage({ statuses: ["ACTIVE"], sort: "MOST_BIDS", pageSize: 1 }),
+    fetchPage({ statuses: ["ACTIVE"], sort: "MOST_BIDS", pageSize: 5 }),
     listCategoriesWithLiveCounts(),
     getServerTime(),
   ]);
@@ -229,6 +231,7 @@ export async function getHomeFeed(): Promise<HomeFeed> {
     endingSoon: endingSoon.items,
     upcoming: upcoming.items,
     featured: showcase,
+    showcase: showcase ? [showcase, ...featured.items.slice(1)] : [],
     editorial,
     categories,
     stats: { liveCount: live.totalItems },

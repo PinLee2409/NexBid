@@ -32,6 +32,21 @@ class BidBroadcaster {
      * VI: Sau khi commit, không bao giờ trong lúc đang chạy (spec §46). Phát tin trong transaction là thông
      *     báo một mức giá mà rollback vẫn có thể thu hồi — và trình duyệt sẽ không bao giờ nghe lời đính chính.
      */
+    /**
+     * EN: A retraction moves the price back; the room hears the new figures, never who took their bids back.
+     * VI: Một lần rút đưa giá về; phòng đấu giá nghe các con số mới, không bao giờ biết ai đã rút.
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    void onBidRetracted(BidRetractions.BidRetractedEvent event) {
+        if (auctions.isSealedAndRunning(event.auctionId())) {
+            return;
+        }
+        var result = event.result();
+        messages.convertAndSend(AuctionChannel.topicFor(event.auctionId()), new BidRetractedMessage(
+                BidRetractedMessage.TYPE, event.auctionId(), result.currentPrice(), result.bidCount(),
+                result.minimumNextBid(), result.reserveMet(), java.time.Instant.now()));
+    }
+
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     void onBidPlaced(BidPlacedEvent event) {
         // EN: Nothing about a sealed lot's bids goes out until it closes. / VI: Không gì về các lượt giá của lô kín được phát ra cho tới khi đóng.

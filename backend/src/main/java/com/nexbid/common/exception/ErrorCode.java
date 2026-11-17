@@ -36,6 +36,9 @@ public enum ErrorCode {
     MEDIA_NOT_FOUND(HttpStatus.NOT_FOUND),
     SEALED_BID_EXISTS(HttpStatus.CONFLICT),
     SEALED_LOT(HttpStatus.CONFLICT),
+    RETRACTION_NOT_ALLOWED(HttpStatus.CONFLICT),
+    RETRACTION_TOO_LATE(HttpStatus.CONFLICT),
+    RETRACTION_LIMIT(HttpStatus.CONFLICT),
     // EN: Missing, expired, signed out, or replayed after it was replaced. / VI: Thiếu, hết hạn, đã đăng xuất, hoặc bị dùng lại sau khi đã được thay.
     REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED),
     // EN: Too many wrong passwords; Retry-After says when to try again. / VI: Sai mật khẩu quá nhiều lần; Retry-After cho biết khi nào thử lại.

@@ -34,9 +34,9 @@ export default async function HomePage() {
    */
   return (
     <>
-      {feed.featured ? (
+      {feed.showcase.length > 0 ? (
         <OpeningStage
-          auction={feed.featured}
+          auctions={feed.showcase}
           serverTime={feed.serverTime}
           liveCount={feed.stats.liveCount}
         />

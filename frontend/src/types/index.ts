@@ -47,6 +47,9 @@ export const ERROR_CODES = [
   "MEDIA_NOT_FOUND",
   "SEALED_BID_EXISTS",
   "SEALED_LOT",
+  "RETRACTION_NOT_ALLOWED",
+  "RETRACTION_TOO_LATE",
+  "RETRACTION_LIMIT",
   "REFRESH_TOKEN_INVALID",
   "LOGIN_RATE_LIMITED",
   "ALREADY_SELLER",
@@ -534,6 +537,15 @@ export type AuctionEvent =
   | {
       type: "AUCTION_REMOVED";
       auctionId: Id;
+      serverTime: IsoDateString;
+    }
+  | {
+      /** EN: Someone took their bids back; the figures the lot now stands at. / VI: Có người rút lượt; các con số lô đang đứng. */
+      type: "BID_RETRACTED";
+      auctionId: Id;
+      currentPrice: number;
+      totalBids: number;
+      reserveMet: boolean | null;
       serverTime: IsoDateString;
     }
   | {

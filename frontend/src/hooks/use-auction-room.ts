@@ -42,6 +42,8 @@ interface AuctionRoomState {
 type RoomAction =
   | { type: "event"; event: AuctionEvent }
   | { type: "reconcile"; bids: Bid[]; autoBid: AutoBid | null; viewerId: string }
+  | { type: "bids"; bids: Bid[] }
+  | { type: "selfRetracted" }
   | { type: "ended" }
   | { type: "dismissOutbid" }
   | { type: "dismissExtension" };
@@ -68,6 +70,18 @@ function reducer(state: AuctionRoomState, action: RoomAction): AuctionRoomState 
             Math.max(0, Math.round((new Date(event.endTime).getTime() - new Date(state.endTime).getTime()) / 1000));
           return { ...state, endTime: event.endTime, lastExtensionSeconds: added };
         }
+
+        case "BID_RETRACTED":
+          // EN: The price may fall; rows above it are gone. The re-read that follows brings the exact list.
+          // VI: Giá có thể giảm; các dòng cao hơn đã mất. Lần đọc lại ngay sau đó mang về danh sách chính xác.
+          return {
+            ...state,
+            currentPrice: event.currentPrice,
+            bidCount: event.totalBids,
+            bids: state.bids.filter((bid) => bid.amount <= event.currentPrice),
+            freshBidIds: [],
+            reserveMet: event.reserveMet ?? state.reserveMet,
+          };
 
         case "AUCTION_STARTED":
           return state.status === "SCHEDULED" ? { ...state, status: "ACTIVE" } : state;
@@ -112,6 +126,13 @@ function reducer(state: AuctionRoomState, action: RoomAction): AuctionRoomState 
       };
     }
 
+    case "bids":
+      return { ...state, bids: action.bids, freshBidIds: [] };
+
+    case "selfRetracted":
+      // EN: Losing the lead by taking one's own bids back is not being outbid. / VI: Mất vị trí dẫn vì tự rút lượt không phải là bị vượt giá.
+      return { ...state, isHighestBidder: false, outbid: false };
+
     case "ended":
       return state.ended ? state : { ...state, ended: true };
 
@@ -155,6 +176,8 @@ export interface AuctionRoom extends AuctionRoomState {
   dismissExtension: () => void;
   /** Re-reads where the signed-in reader stands, e.g. after they bid or set an auto bid. */
   refreshViewer: () => void;
+  /** EN: After the reader took their own bids back. / VI: Sau khi người đọc tự rút các lượt của mình. */
+  retracted: () => void;
 }
 
 export function useAuctionRoom(
@@ -165,7 +188,14 @@ export function useAuctionRoom(
   const pending = useRef<number | null>(null);
 
   const reconcile = useCallback(async () => {
-    if (!viewerId) return;
+    if (!viewerId) {
+      try {
+        dispatch({ type: "bids", bids: await listBids(auction.id) });
+      } catch {
+        // EN: The live list stays. / VI: Danh sách realtime giữ nguyên.
+      }
+      return;
+    }
     try {
       const [bids, autoBid] = await Promise.all([listBids(auction.id), getAutoBid(auction.id)]);
       dispatch({ type: "reconcile", bids, autoBid, viewerId });
@@ -194,8 +224,9 @@ export function useAuctionRoom(
     return subscribeToAuction(auction.id, (event) => {
       dispatch({ type: "event", event });
       if (event.type === "BID_PLACED") scheduleReconcile();
+      if (event.type === "BID_RETRACTED") void reconcile();
     });
-  }, [auction.id, scheduleReconcile]);
+  }, [auction.id, scheduleReconcile, reconcile]);
 
   useEffect(() => () => {
     if (pending.current !== null) window.clearTimeout(pending.current);
@@ -208,6 +239,10 @@ export function useAuctionRoom(
     [],
   );
   const refreshViewer = useCallback(() => void reconcile(), [reconcile]);
+  const retracted = useCallback(() => {
+    dispatch({ type: "selfRetracted" });
+    void reconcile();
+  }, [reconcile]);
 
-  return { ...state, markEnded, dismissOutbid, dismissExtension, refreshViewer };
+  return { ...state, markEnded, dismissOutbid, dismissExtension, refreshViewer, retracted };
 }

@@ -444,6 +444,28 @@ public class AuctionService {
                 auction.getStartingPrice(), auction.getEndTime(), now, null, null);
     }
 
+    /**
+     * EN: Sets the lot to what its remaining bids say after a retraction. The caller holds the bidding lock (taken with
+     *     {@link #lockBiddingState}) and has already deleted the bids, in the same transaction.
+     * VI: Đặt lô theo những gì các lượt còn lại cho biết sau một lần rút giá. Bên gọi đang giữ khoá trả giá (lấy bằng
+     *     {@link #lockBiddingState}) và đã xoá các lượt, trong cùng transaction.
+     */
+    @Transactional
+    public BiddingState rewindAfterRetraction(UUID auctionId, UUID leaderId, BigDecimal topAmount, int remainingBids,
+            Instant at) {
+        Auction auction = auctions.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+        auction.rewindTo(leaderId, topAmount, remainingBids);
+        auctions.save(auction);
+        return stateOf(Optional.of(auction), auctionId, at);
+    }
+
+    /** EN: The price a lot opened at. / VI: Giá mở đầu của một lô. */
+    public BigDecimal startingPriceOf(UUID auctionId) {
+        return offerTermsOf(auctionId).startingPrice();
+    }
+
     /** EN: A lot its winner left unpaid (spec §17). / VI: Một lô bị người thắng bỏ không trả (spec §17). */
     public record UnpaidLot(UUID auctionId, UUID sellerId, UUID productId, UUID winnerId) {
     }

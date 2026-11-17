@@ -415,3 +415,75 @@ export async function keepMedia(item: MediaItem): Promise<void> {
 export async function removeMedia(item: MediaItem, reason: string): Promise<void> {
   await api(`/api/admin/media/${item.kind}/${item.id}/remove`, { method: "POST", body: { reason: reason.trim() || null } });
 }
+
+// ---- bid retraction / rút lại lượt trả giá
+
+export type RetractionReason = "QUICK" | "TYPO";
+
+export interface RetractionEligibility {
+  hasBids: boolean;
+  quick: boolean;
+  quickUntil: IsoDateString | null;
+  typo: boolean;
+  usedThisMonth: number;
+  monthlyLimit: number;
+  /** EN: The error code a retraction would get now; null when allowed. / VI: Mã lỗi nếu rút lúc này; null khi được phép. */
+  blockedBy: string | null;
+}
+
+export async function retractionEligibility(auctionId: string): Promise<RetractionEligibility> {
+  return api<RetractionEligibility>(`/api/auctions/${auctionId}/bids/retraction`);
+}
+
+export interface Retracted {
+  bidsRemoved: number;
+  priceBefore: number;
+  currentPrice: number;
+  bidCount: number;
+}
+
+export async function retractBids(auctionId: string, reason: RetractionReason, note: string): Promise<Retracted> {
+  return api<Retracted>(`/api/auctions/${auctionId}/bids/retract`, {
+    method: "POST",
+    body: { reason, note: note.trim() || null },
+  });
+}
+
+export interface RetractionLogEntry {
+  id: string;
+  auctionId: string;
+  lotNumber: number;
+  lotName: string;
+  bidderId: string;
+  bidderName: string;
+  bidderEmail: string;
+  amount: number;
+  bidsRemoved: number;
+  bidPlacedAt: IsoDateString;
+  reason: RetractionReason;
+  note: string | null;
+  priceBefore: number;
+  priceAfter: number;
+  wasLeading: boolean;
+  /** EN: This bidder's retractions in the last 30 days. / VI: Số lần người này rút trong 30 ngày qua. */
+  bidderRetractions30d: number;
+  createdAt: IsoDateString;
+}
+
+export async function retractionLog(): Promise<RetractionLogEntry[]> {
+  return api<RetractionLogEntry[]>("/api/admin/bid-retractions");
+}
+
+// ---- reference exchange rates / tỷ giá tham khảo
+
+export interface ExchangeRates {
+  base: "VND";
+  rates: { currency: string; vndPer: number }[];
+  source: string;
+  updatedAt: IsoDateString | null;
+}
+
+/** `GET /api/fx` — public. */
+export async function exchangeRates(): Promise<ExchangeRates> {
+  return api<ExchangeRates>("/api/fx");
+}

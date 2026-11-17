@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAsyncData } from "@/hooks/use-async-data";
+import { useGroupedDigits } from "@/hooks/use-grouped-digits";
 import { useApiErrorMessage } from "@/hooks/use-labels";
 import {
   answerOffer,
@@ -31,6 +32,7 @@ export default function SellerOffersPage() {
   const [isPending, startTransition] = useTransition();
   const [countering, setCountering] = useState<string | null>(null);
   const [counter, setCounter] = useState("");
+  const counterField = useGroupedDigits(counter, setCounter);
   const { state, refresh } = useAsyncData("seller-lot-offers", sellerOffers);
 
   function run(task: () => Promise<unknown>, done: string) {
@@ -64,8 +66,8 @@ export default function SellerOffersPage() {
           <Input
             aria-label={t("counterAmount")}
             inputMode="numeric"
-            value={counter}
-            onChange={(event) => setCounter(event.target.value)}
+            value={counterField.value}
+            onChange={counterField.onChange}
             className="mono-figure h-9 w-36"
             autoFocus
           />

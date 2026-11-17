@@ -94,6 +94,15 @@ function toEvent(message: ApiAuctionMessage): AuctionEvent | null {
       };
     case "AUCTION_REMOVED":
       return { type: "AUCTION_REMOVED", auctionId: message.auctionId, serverTime: message.serverTime };
+    case "BID_RETRACTED":
+      return {
+        type: "BID_RETRACTED",
+        auctionId: message.auctionId,
+        currentPrice: Number(message.currentPrice),
+        totalBids: message.bidCount,
+        reserveMet: message.reserveMet ?? null,
+        serverTime: message.serverTime,
+      };
     case "VIEWER_COUNT":
       return { type: "VIEWERS_CHANGED", auctionId: message.auctionId, viewerCount: message.viewerCount, serverTime: new Date().toISOString() };
     default:

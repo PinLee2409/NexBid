@@ -1,4 +1,4 @@
-import { data, expect, signIn, test } from "./support/test";
+import { data, expect, newLot, signIn, test } from "./support/test";
 
 /**
  * EN: A reader who chose Vietnamese sees Vietnamese, errors included. The server always answers in English;
@@ -33,4 +33,23 @@ test("a list that fails to load says why in Vietnamese, not in the server's Engl
 
   await expect(page.getByText("Bạn không có quyền thực hiện thao tác này.")).toBeVisible();
   await expect(page.getByText("You may not see these bids")).toHaveCount(0);
+});
+
+test("the bid field groups thousands the Vietnamese way while typing", async ({ context, page }) => {
+  const lot = await newLot("Grouped input", true);
+  await signIn(context, data.users.alex);
+  await page.goto(`/auctions/${lot.id}`);
+  const field = page.locator("#terminal-bid");
+  await expect(field).toHaveValue("1.000.000");
+
+  await field.fill("");
+  await field.pressSequentially("12600000");
+  await expect(field).toHaveValue("12.600.000");
+  // EN: Deleting in the middle keeps the caret where it was. / VI: Xoá ở giữa vẫn giữ con trỏ đúng chỗ.
+  await field.press("Home");
+  await field.press("ArrowRight");
+  await field.press("ArrowRight");
+  await field.press("Backspace");
+  await field.type("3");
+  await expect(field).toHaveValue("13.600.000");
 });

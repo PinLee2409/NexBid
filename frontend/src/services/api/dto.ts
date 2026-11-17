@@ -348,7 +348,16 @@ export type ApiAuctionMessage =
       sold?: boolean;
       serverTime: IsoDateString;
     }
-  | { type: "VIEWER_COUNT"; auctionId: string; viewerCount: number };
+  | { type: "VIEWER_COUNT"; auctionId: string; viewerCount: number }
+  | {
+      type: "BID_RETRACTED";
+      auctionId: string;
+      currentPrice: number;
+      bidCount: number;
+      minimumNextBid: number;
+      reserveMet?: boolean | null;
+      serverTime: IsoDateString;
+    };
 
 /** EN: `/api/users/me/address`; empty parts arrive as null. / VI: Các phần trống tới dưới dạng null. */
 export interface ApiShippingAddress {

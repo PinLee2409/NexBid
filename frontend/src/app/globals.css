@@ -402,6 +402,22 @@
   animation: nexbid-flash 900ms ease-out;
 }
 
+/* Opening stage: the bar under the lot on show fills while it stays. */
+@keyframes nexbid-stage-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.stage-progress {
+  animation-name: nexbid-stage-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
 /* Market ticker: a slow, continuous crawl. */
 @keyframes nexbid-marquee {
   from {

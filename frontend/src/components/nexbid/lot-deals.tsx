@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage } from "@/hooks/use-labels";
+import { useGroupedDigits } from "@/hooks/use-grouped-digits";
 import { useMoney } from "@/hooks/use-money";
 import { loginHref } from "@/lib/redirect";
 import {
@@ -137,6 +138,7 @@ function OfferPanel({
   const format = useFormatter();
   const errorMessage = useApiErrorMessage();
   const [amount, setAmount] = useState("");
+  const amountField = useGroupedDigits(amount, setAmount);
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -273,10 +275,8 @@ function OfferPanel({
               <Input
                 {...field}
                 inputMode="numeric"
-                value={amount}
-                onChange={(event) =>
-                  setAmount(event.target.value.replace(/[^\d.,\s]/g, ""))
-                }
+                value={amountField.value}
+                onChange={amountField.onChange}
                 placeholder={String(startingPrice)}
                 className="mono-figure"
               />

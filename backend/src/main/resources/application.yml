@@ -248,6 +248,25 @@ nexbid:
       unpaid-wins: ${NEXBID_RESTRICT_UNPAID_WINS:2}
       from-amount: ${NEXBID_RESTRICT_FROM_AMOUNT:20000000}
 
+  retraction:
+    # EN: A bid can be taken back without reason this long after it was placed, or as a typing mistake when it is at
+    #     least typo-factor times the price it went over; never in a lot's last closing-guard; monthly-limit per 30 days.
+    # VI: Được rút một lượt không cần lý do trong khoảng này sau khi đặt, hoặc như gõ nhầm khi nó ít nhất typo-factor lần
+    #     mức giá nó vượt qua; không bao giờ trong closing-guard cuối của lô; tối đa monthly-limit lần mỗi 30 ngày.
+    quick-window: ${NEXBID_RETRACTION_QUICK_WINDOW:PT5M}
+    typo-factor: ${NEXBID_RETRACTION_TYPO_FACTOR:2}
+    closing-guard: ${NEXBID_RETRACTION_CLOSING_GUARD:PT10M}
+    monthly-limit: ${NEXBID_RETRACTION_MONTHLY_LIMIT:3}
+
+  fx:
+    # EN: Reference rates for showing prices in USD/EUR, refreshed at most once per max-age. false keeps the stored or
+    #     built-in rates and never calls out.
+    # VI: Tỷ giá tham khảo để hiện giá bằng USD/EUR, làm mới tối đa mỗi max-age một lần. false giữ tỷ giá đã lưu hoặc
+    #     có sẵn và không bao giờ gọi ra ngoài.
+    enabled: ${NEXBID_FX_ENABLED:true}
+    feed-url: ${NEXBID_FX_FEED_URL:https://open.er-api.com/v6/latest/USD}
+    max-age: PT20H
+
   alert:
     # EN: When the daily email of new lots matching saved searches and followed sellers goes out (Vietnam time).
     # VI: Lúc gửi email hằng ngày về lô mới khớp bộ lọc đã lưu và người bán đang theo dõi (giờ Việt Nam).
