@@ -37,6 +37,7 @@ public class BidService {
     private final BidRecorder recorder;
     private final ProxyBidding proxies;
     private final BidderRestriction restriction;
+    private final com.nexbid.auction.LotDeposits deposits;
 
     BidService(
             BidRepository bids,
@@ -44,7 +45,10 @@ public class BidService {
             UserService users,
             BidRecorder recorder,
             ProxyBidding proxies,
-            BidderRestriction restriction) {
+            BidderRestriction restriction,
+            com.nexbid.auction.LotDeposits deposits) {
+
+        this.deposits = deposits;
 
         this.restriction = restriction;
 
@@ -83,6 +87,10 @@ public class BidService {
     @Transactional
     public PlacedBidView place(UUID auctionId, UUID bidderId, BigDecimal amount) {
         restriction.check(bidderId, amount);
+        deposits.require(auctionId, bidderId);
+        if (auctions.isSealed(auctionId)) {
+            return placeSealed(auctionId, bidderId, amount);
+        }
         LeadTracker leads = new LeadTracker();
         PlacedBidView mine = recorder.record(auctionId, bidderId, amount, leads);
 
@@ -100,6 +108,20 @@ public class BidService {
     }
 
     /**
+     * EN: A sealed bid: recorded like any other, but the answer gives nothing away — the price shown stays the start,
+     *     and the bidder is told neither that they lead nor that they do not.
+     * VI: Một lượt giá kín: được ghi như mọi lượt khác, nhưng câu trả lời không để lộ gì — giá hiển thị vẫn là giá khởi
+     *     điểm, và người trả giá không được biết mình có dẫn đầu hay không.
+     */
+    private PlacedBidView placeSealed(UUID auctionId, UUID bidderId, BigDecimal amount) {
+        AuctionService.AcceptedBid accepted = auctions.acceptSealedBid(auctionId, bidderId, amount,
+                who -> bids.existsByAuctionIdAndBidderId(auctionId, who));
+        PlacedBidView placed = recorder.recordSealed(accepted, bidderId, amount);
+        return new PlacedBidView(placed.bid(), accepted.minimumNextBid(), placed.bidCount(), accepted.minimumNextBid(),
+                accepted.endTime(), Instant.now(), false, null);
+    }
+
+    /**
      * EN: Buys the lot outright at its buy-now price, before anyone has bid: the bid is recorded like any other,
      *     then the lot closes in the buyer's name and the usual payment opens — one transaction.
      * VI: Mua đứt lô với giá mua ngay, trước khi có ai trả giá: lượt đó được ghi như mọi lượt khác, rồi lô đóng đứng
@@ -107,6 +129,7 @@ public class BidService {
      */
     @Transactional
     public PlacedBidView buyNow(UUID auctionId, UUID buyerId) {
+        deposits.require(auctionId, buyerId);
         AuctionService.AcceptedBid accepted = auctions.buyNow(auctionId, buyerId);
         // EN: The price is known only once the lot is locked; refusing here rolls the purchase back.
         // VI: Chỉ biết giá khi đã khoá lô; từ chối ở đây sẽ huỷ luôn lần mua.
@@ -127,6 +150,17 @@ public class BidService {
         // EN: A lot the catalogue hides has no public history either.
         // VI: Lô mà danh mục đã giấu thì cũng không có lịch sử công khai.
         auctions.requirePubliclyVisible(auctionId);
+
+        // EN: While a sealed lot runs, a bidder sees only their own bid. / VI: Khi lô kín đang chạy, người trả giá chỉ thấy lượt của chính mình.
+        if (auctions.isSealedAndRunning(auctionId)) {
+            List<Bid> own = viewerId == null ? List.of()
+                    : bids.findByAuctionIdAndBidderIdOrderByCreatedAtDesc(auctionId, viewerId);
+            String name = viewerId == null ? null
+                    : users.findById(viewerId).map(com.nexbid.user.UserAccount::fullName).orElse(null);
+            List<BidView> views = own.stream().map(bid -> new BidView(bid.getId(), auctionId, mask(name), true,
+                    bid.getAmount(), bid.getCreatedAt())).toList();
+            return new PageView<>(views, 1, Math.max(views.size(), 1), views.size(), 1);
+        }
 
         Page<Bid> page = bids.findByAuctionIdOrderByCreatedAtDescAmountDesc(
                 auctionId, PageRequest.of(query.zeroBasedPage(), query.size()));

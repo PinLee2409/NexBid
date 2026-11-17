@@ -17,7 +17,17 @@ for (const role of ROLES) {
       // EN: Nothing may push the page wider than the screen. innerWidth would grow with it (a phone zooms out to fit), clientWidth does not.
       // VI: Không gì được đẩy trang rộng hơn màn hình. innerWidth sẽ nở theo (điện thoại thu nhỏ cho vừa), clientWidth thì không.
       const width = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
-      if (width[0] > width[1]) problems.push(`${path} — ${width[0]}px wide on a ${width[1]}px screen`);
+      if (width[0] > width[1]) {
+        // EN: Name what sticks out, so a failure says where to look. / VI: Chỉ ra phần nhô ra, để khi hỏng biết phải xem ở đâu.
+        const culprits = await page.evaluate((limit) =>
+          [...document.querySelectorAll("body *")]
+            .filter((el) => el.getBoundingClientRect().right > limit + 1 && (el.parentElement?.getBoundingClientRect().right ?? 0) <= limit + 1)
+            .slice(0, 3)
+            .map((el) => `<${el.tagName.toLowerCase()} class="${String(el.className).slice(0, 80)}">${(el.textContent ?? "").slice(0, 40)}`),
+          width[1],
+        );
+        problems.push(`${path} — ${width[0]}px wide on a ${width[1]}px screen: ${culprits.join(" | ")}`);
+      }
       // EN: Phone-only problems too, such as a table that scrolls sideways. / VI: Cả lỗi chỉ có trên điện thoại, như bảng cuộn ngang.
       problems.push(...(await accessibilityProblems(page, path)));
     }

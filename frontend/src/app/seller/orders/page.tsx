@@ -29,6 +29,7 @@ import { useApiErrorMessage } from "@/hooks/use-labels";
 import type { OrderEntry } from "@/services/order-service";
 import {
   bookGhn,
+  cancelGhn,
   ghnLabelUrl,
   listSecondChances,
   listSoldOrders,
@@ -69,6 +70,22 @@ function firstUnpaidSales(orders: OrderEntry[]): Set<string> {
  * VI: Những gì người bán đã bán (spec §5.3). Đơn đã trả chờ người bán gửi hàng; sau đó người mua xác nhận đã
  *     nhận ở phía họ.
  */
+/**
+ * EN: "Ship with …": this order's buyer paid no shipping because it travels in the parcel of another of their orders.
+ * VI: "Gửi chung với …": người mua đơn này không trả phí ship vì nó đi chung kiện với một đơn khác của họ.
+ */
+function ShipsWithNote({ entry, orders }: { entry: OrderEntry; orders: OrderEntry[] }) {
+  const t = useTranslations("seller");
+  const lot = entry.payment?.shipsWithAuctionId;
+  if (!lot) return null;
+  const other = orders.find((each) => each.order.auctionId === lot);
+  return (
+    <p className="text-signal-text mt-1 text-xs" data-testid="ships-with">
+      {t("shipsWith", { lot: other?.auction?.product.name ?? lot.slice(0, 8) })}
+    </p>
+  );
+}
+
 export default function SellerOrdersPage() {
   const t = useTranslations("seller");
 
@@ -117,7 +134,13 @@ function SalesList({
             key={entry.order.id}
             entry={entry}
             messages
-            extra={<BuyerRecordLine entry={entry} />}
+            receipt="seller"
+            extra={
+              <>
+                <BuyerRecordLine entry={entry} />
+                <ShipsWithNote entry={entry} orders={orders} />
+              </>
+            }
             action={
               entry.order.status === "PAID" ? (
                 <div className="flex shrink-0 flex-wrap gap-2">
@@ -125,7 +148,10 @@ function SalesList({
                   <ShipButton entry={entry} onShipped={onChanged} />
                 </div>
               ) : entry.order.ghnBooked && entry.order.status === "PROCESSING" ? (
-                <PrintLabelButton orderId={entry.order.id} />
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <PrintLabelButton orderId={entry.order.id} />
+                  <CancelGhnButton orderId={entry.order.id} onCancelled={onChanged} />
+                </div>
               ) : chance ? (
                 <SecondChanceAction entry={entry} chance={chance} onOffered={onChanged} />
               ) : entry.order.status === "COMPLETED" ? (
@@ -306,6 +332,9 @@ function BookGhnButton({ entry, onBooked }: { entry: OrderEntry; onBooked: () =>
             <DialogTitle>{t("bookGhnTitle")}</DialogTitle>
             <DialogDescription>{t("bookGhnBody")}</DialogDescription>
           </DialogHeader>
+          {entry.payment?.shippingSource === "SELLER" ? (
+            <p className="text-dim text-sm">{t("bookGhnSellerPays")}</p>
+          ) : null}
           {entry.payment?.shippingFee ? (
             <p className="text-dim text-sm">
               {t("bookGhnShipping", { fee: money.currency(entry.payment.shippingFee) })}
@@ -318,6 +347,58 @@ function BookGhnButton({ entry, onBooked }: { entry: OrderEntry; onBooked: () =>
             <Button onClick={book} disabled={isPending}>
               {isPending ? <Loader2 className="size-4 animate-spin" /> : <PackageCheck className="size-4" />}
               {t("bookGhnConfirm")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+/**
+ * EN: Cancels NexBid's GHN booking while GHN has not picked the parcel up; the order goes back to waiting to ship.
+ * VI: Huỷ đơn GHN NexBid đã đặt khi GHN chưa lấy kiện; đơn quay lại chờ gửi.
+ */
+function CancelGhnButton({ orderId, onCancelled }: { orderId: string; onCancelled: () => void }) {
+  const t = useTranslations("seller");
+  const tc = useTranslations("common");
+  const errorMessage = useApiErrorMessage();
+  const [isPending, startTransition] = useTransition();
+  const [open, setOpen] = useState(false);
+
+  function cancel() {
+    startTransition(async () => {
+      try {
+        await cancelGhn(orderId);
+      } catch (error) {
+        toast.error(errorMessage(error));
+        return;
+      }
+      setOpen(false);
+      toast.success(t("ghnCancelled"));
+      onCancelled();
+    });
+  }
+
+  return (
+    <>
+      <Button size="sm" variant="ghost" onClick={() => setOpen(true)} disabled={isPending}>
+        <RotateCcw className="size-4" />
+        {t("cancelGhn")}
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("cancelGhnTitle")}</DialogTitle>
+            <DialogDescription>{t("cancelGhnBody")}</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
+              {tc("cancel")}
+            </Button>
+            <Button variant="destructive" onClick={cancel} disabled={isPending}>
+              {isPending ? <Loader2 className="size-4 animate-spin" /> : <RotateCcw className="size-4" />}
+              {t("cancelGhnConfirm")}
             </Button>
           </div>
         </DialogContent>

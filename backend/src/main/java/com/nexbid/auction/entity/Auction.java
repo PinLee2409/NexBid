@@ -124,6 +124,95 @@ public class Auction {
     @Column(name = "bought_now", nullable = false)
     private boolean boughtNow;
 
+    /** EN: The seller pays the parcel; the buyer pays only the goods. / VI: Người bán trả tiền gửi kiện; người mua chỉ trả tiền hàng. */
+    @Column(name = "free_shipping", nullable = false)
+    private boolean freeShipping;
+
+    // EN: When a draft goes for approval on its own; written by LotBatch only. / VI: Lúc bản nháp tự gửi duyệt; chỉ LotBatch ghi.
+    @Column(name = "submit_at", insertable = false, updatable = false)
+    private Instant submitAt;
+
+    // EN: One hidden bid per person; nobody sees the price until the close. / VI: Mỗi người một lượt giá ẩn; không ai thấy giá tới khi đóng.
+    @Column(nullable = false)
+    private boolean sealed;
+
+    public boolean isSealed() {
+        return sealed;
+    }
+
+    public void setSealed(boolean sealed) {
+        this.sealed = sealed;
+    }
+
+    /** EN: Still running with its bids hidden. / VI: Vẫn đang chạy với các lượt giá đang ẩn. */
+    public boolean isSealedAndRunning() {
+        return sealed && status != AuctionStatus.ENDED && status != AuctionStatus.COMPLETED
+                && status != AuctionStatus.CANCELLED && status != AuctionStatus.REMOVED;
+    }
+
+    /**
+     * EN: A sealed bid: it leads only if it beats every bid so far (the earlier of two equal bids keeps the lead);
+     *     either way it is counted.
+     * VI: Một lượt giá kín: chỉ dẫn đầu nếu cao hơn mọi lượt trước đó (hai lượt bằng nhau thì lượt trước giữ vị trí);
+     *     dù thế nào cũng được đếm.
+     */
+    /**
+     * EN: Puts the lot back where its remaining bids leave it, after someone took theirs back: the highest remaining
+     *     bid leads at its own amount (bids only ever rose, so that was the price when it was placed); none left means
+     *     the starting price and no leader.
+     * VI: Đưa lô về đúng chỗ các lượt còn lại để nó, sau khi có người rút lượt của mình: lượt cao nhất còn lại dẫn đầu
+     *     với chính số tiền của nó (giá chỉ tăng, nên đó là giá lúc nó được đặt); không còn lượt nào thì về giá khởi
+     *     điểm và không ai dẫn.
+     */
+    public void rewindTo(UUID leaderId, BigDecimal topAmount, int remainingBids) {
+        this.leadingBidderId = leaderId;
+        this.currentPrice = leaderId == null ? startingPrice : topAmount;
+        this.bidCount = remainingBids;
+    }
+
+    public void applySealedBid(UUID bidderId, BigDecimal amount) {
+        if (bidCount == 0 || amount.compareTo(currentPrice) > 0) {
+            applyBid(bidderId, amount);
+        } else {
+            this.bidCount += 1;
+        }
+    }
+
+    @Column(name = "relist_left", nullable = false)
+    private int relistLeft;
+
+    @Column(name = "relist_drop_percent", nullable = false)
+    private int relistDropPercent;
+
+    @Column(name = "relisted_from", updatable = false)
+    private UUID relistedFrom;
+
+    public int getRelistLeft() {
+        return relistLeft;
+    }
+
+    public int getRelistDropPercent() {
+        return relistDropPercent;
+    }
+
+    public UUID getRelistedFrom() {
+        return relistedFrom;
+    }
+
+    /** EN: Up to five automatic relists, each up to half off. / VI: Tối đa năm lần tự đăng lại, mỗi lần hạ tối đa một nửa. */
+    public void setRelisting(int times, int dropPercent) {
+        this.relistLeft = Math.clamp(times, 0, 5);
+        this.relistDropPercent = Math.clamp(dropPercent, 0, 50);
+    }
+
+    public void setRelistedFrom(UUID relistedFrom) {
+        this.relistedFrom = relistedFrom;
+    }
+
+    public Instant getSubmitAt() {
+        return submitAt;
+    }
+
     @Enumerated(EnumType.STRING)
     @Column(name = "reserve_decision", length = 16)
     private ReserveDecision reserveDecision;
@@ -257,6 +346,13 @@ public class Auction {
      * EN: Buy-now: the buyer's bid at the buy-now price closes the lot on the spot, in their name.
      * VI: Mua ngay: lượt trả giá bằng giá mua ngay đóng lô tại chỗ, đứng tên người mua.
      */
+    /** EN: Sold to an accepted offer: closes now, not as a buy-now. / VI: Bán cho một đề nghị được nhận: đóng ngay, không tính là mua ngay. */
+    public void closeSoldByOffer(Instant at) {
+        this.status = AuctionStatus.ENDED;
+        this.endTime = at;
+        this.winnerId = this.leadingBidderId;
+    }
+
     public void closeBoughtNow(Instant at) {
         this.status = AuctionStatus.ENDED;
         this.endTime = at;
@@ -384,6 +480,14 @@ public class Auction {
 
     public void setReservePrice(BigDecimal reservePrice) {
         this.reservePrice = reservePrice;
+    }
+
+    public boolean isFreeShipping() {
+        return freeShipping;
+    }
+
+    public void setFreeShipping(boolean freeShipping) {
+        this.freeShipping = freeShipping;
     }
 
     public BigDecimal getBuyNowPrice() {

@@ -29,6 +29,12 @@ public class ProductService {
     private final CategoryRepository categories;
     private final ProductImageRepository images;
     private final ImageStorage storage;
+    private org.springframework.context.ApplicationEventPublisher events;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setEvents(org.springframework.context.ApplicationEventPublisher events) {
+        this.events = events;
+    }
 
     public ProductService(
             ProductRepository products,
@@ -59,6 +65,7 @@ public class ProductService {
                 request.condition(),
                 status);
         product.setParcel(request.parcel());
+        product.setItems(request.items());
 
         return toView(products.save(product));
     }
@@ -153,6 +160,7 @@ public class ProductService {
         product.setDescription(request.description().trim());
         product.setCondition(request.condition());
         product.setParcel(request.parcel());
+        product.setItems(request.items());
 
         if (request.published() != null) {
             product.setStatus(request.published() ? ProductStatus.AVAILABLE : ProductStatus.DRAFT);
@@ -212,6 +220,66 @@ public class ProductService {
         urls.forEach(storage::deleteQuietly);
     }
 
+    /**
+     * EN: Replaces the product's video; the old file is removed.
+     * VI: Thay video của sản phẩm; file cũ bị xoá.
+     */
+    @Transactional
+    public ProductView setVideo(UUID sellerId, UUID productId, org.springframework.web.multipart.MultipartFile file) {
+        Product product = ownedProduct(sellerId, productId);
+        requireEditable(product);
+        String old = product.getVideoUrl();
+        product.setVideoUrl(storage.storeVideo(file));
+        ProductView saved = toView(products.save(product));
+        if (old != null) {
+            storage.deleteQuietly(old);
+        }
+        return saved;
+    }
+
+    @Transactional
+    public ProductView removeVideo(UUID sellerId, UUID productId) {
+        Product product = ownedProduct(sellerId, productId);
+        requireEditable(product);
+        String old = product.getVideoUrl();
+        product.setVideoUrl(null);
+        ProductView saved = toView(products.save(product));
+        if (old != null) {
+            storage.deleteQuietly(old);
+        }
+        return saved;
+    }
+
+    /**
+     * EN: An admin takes a product's video down. Returns the seller, who is told.
+     * VI: Admin gỡ video của một sản phẩm. Trả về người bán, người sẽ được báo.
+     */
+    @Transactional
+    public UUID removeVideoAsModerator(UUID productId) {
+        Product product = products.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.PRODUCT_NOT_FOUND, "No product with id " + productId));
+        String old = product.getVideoUrl();
+        product.setVideoUrl(null);
+        products.save(product);
+        if (old != null) {
+            storage.deleteQuietly(old);
+        }
+        // EN: The lot cards carry the video; they are refreshed like after a photo change.
+        // VI: Thẻ lô có chứa video; chúng được làm mới như khi đổi ảnh.
+        events.publishEvent(new ProductImagesChanged(productId));
+        return product.getSellerId();
+    }
+
+    /** EN: Marks the photos as frames of a 360° turn, or not. / VI: Đánh dấu các ảnh là khung hình xoay 360°, hoặc bỏ. */
+    @Transactional
+    public ProductView setSpinView(UUID sellerId, UUID productId, boolean spin) {
+        Product product = ownedProduct(sellerId, productId);
+        requireEditable(product);
+        product.setSpinView(spin);
+        return toView(products.save(product));
+    }
+
     private void requireEditable(Product product) {
         if (product.getStatus() == ProductStatus.IN_AUCTION
                 || product.getStatus() == ProductStatus.SOLD) {
@@ -259,6 +327,9 @@ public class ProductService {
                 product.getCondition(),
                 product.getStatus(),
                 product.getParcel(),
+                product.getItems(),
+                product.getVideoUrl(),
+                product.isSpinView(),
                 product.getCreatedAt(),
                 product.getUpdatedAt());
     }

@@ -14,9 +14,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     không được lọt vào commit.
  */
 @ConfigurationProperties(prefix = "nexbid.storage")
-public record StorageProperties(Path imagesDir, long maxImageBytes, String publicPath) {
+public record StorageProperties(Path imagesDir, long maxImageBytes, String publicPath, long maxVideoBytes) {
 
     public StorageProperties {
+        maxVideoBytes = maxVideoBytes <= 0 ? 20L * 1024 * 1024 : maxVideoBytes;
         imagesDir = imagesDir == null ? Path.of("var", "images") : imagesDir;
         maxImageBytes = maxImageBytes <= 0 ? 5L * 1024 * 1024 : maxImageBytes;
         publicPath = publicPath == null || publicPath.isBlank() ? "/media/products" : publicPath;

@@ -30,8 +30,11 @@ public class AutoBidService {
 
     private final BidderRestriction restriction;
 
+    private final com.nexbid.auction.LotDeposits deposits;
+
     AutoBidService(AutoBidRepository autoBids, AuctionService auctions, ProxyBidding proxies,
-            BidderRestriction restriction) {
+            BidderRestriction restriction, com.nexbid.auction.LotDeposits deposits) {
+        this.deposits = deposits;
         this.restriction = restriction;
         this.autoBids = autoBids;
         this.auctions = auctions;
@@ -40,7 +43,11 @@ public class AutoBidService {
 
     @Transactional
     public AutoBidView create(UUID userId, UUID auctionId, BigDecimal maxAmount) {
+        if (auctions.isSealed(auctionId)) {
+            throw new BusinessException(ErrorCode.SEALED_LOT, "A sealed lot takes one bid per person, not an auto bid");
+        }
         restriction.check(userId, maxAmount);
+        deposits.require(auctionId, userId);
         Instant now = Instant.now();
         BiddingState lot = requireBiddable(auctionId, userId, now);
 
@@ -65,6 +72,7 @@ public class AutoBidService {
 
     @Transactional
     public AutoBidView update(UUID userId, UUID auctionId, BigDecimal maxAmount) {
+        deposits.require(auctionId, userId);
         restriction.check(userId, maxAmount);
         Instant now = Instant.now();
         BiddingState lot = requireBiddable(auctionId, userId, now);

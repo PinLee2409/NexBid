@@ -18,6 +18,14 @@ public final class MessageEvents {
             String body, Instant at, boolean firstUnread) {
     }
 
+    /** EN: The reader saw what the other side wrote, up to {@code at}. / VI: Người đọc đã xem những gì bên kia viết, tới {@code at}. */
+    public record Read(UUID orderId, UUID readerId, UUID writerId, Instant at) {
+    }
+
+    /** EN: Someone is typing in an order's conversation. / VI: Ai đó đang gõ trong cuộc trò chuyện của đơn. */
+    public record Typing(UUID orderId, UUID fromId, UUID toId) {
+    }
+
     /** EN: An admin opened an order's messages. / VI: Admin đã mở tin nhắn của một đơn. */
     public record AdminRead(UUID adminId, UUID orderId, int messages) {
     }

@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { AuctionListRowSkeleton } from "@/components/common/loading-skeleton";
 import { PageHeader } from "@/components/layout/page-header";
 import { ImportLotsDialog } from "@/components/seller/import-lots-dialog";
+import { ScheduleDraftsDialog } from "@/components/seller/schedule-drafts-dialog";
 import { Button } from "@/components/ui/button";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage } from "@/hooks/use-labels";
@@ -21,6 +22,7 @@ import {
   listMyAuctions,
   submitAuctionForApproval,
 } from "@/services/seller-service";
+import { relistLot } from "@/services/market-service";
 import type { AuctionSummary } from "@/types";
 import { useMoney } from "@/hooks/use-money";
 
@@ -37,6 +39,12 @@ export default function SellerAuctionsPage() {
         actions={
           <div className="flex flex-wrap gap-2">
             <ImportLotsDialog onImported={refresh} />
+            {state.status === "success" ? (
+              <ScheduleDraftsDialog
+                drafts={state.data.filter((auction) => auction.status === "DRAFT")}
+                onDone={refresh}
+              />
+            ) : null}
             <Button asChild>
               <Link href="/seller/auctions/create">
                 <Plus className="size-4" />
@@ -88,6 +96,7 @@ function SellerAuctionRow({
 }) {
   const t = useTranslations("seller");
   const tc = useTranslations("common");
+  const format = useFormatter();
   const [isPending, startTransition] = useTransition();
   const errorMessage = useApiErrorMessage();
 
@@ -108,10 +117,32 @@ function SellerAuctionRow({
     });
   }
 
+  /** EN: A new draft 10% cheaper, to check and submit. / VI: Bản nháp mới rẻ hơn 10%, để kiểm rồi gửi duyệt. */
+  function handleQuickRelist() {
+    startTransition(async () => {
+      try {
+        await relistLot(auction.id, 10);
+      } catch (error) {
+        toast.error(errorMessage(error));
+        return;
+      }
+      onChanged();
+      toast.success(t("relistedDraft", { name: auction.product.name }));
+    });
+  }
+
   return (
     <>
       <AuctionListItem
         auction={auction}
+        meta={
+          auction.status === "DRAFT" && auction.submitAt
+            ? {
+                label: t("submitAtMeta"),
+                value: format.dateTime(new Date(auction.submitAt), { dateStyle: "short", timeStyle: "short" }),
+              }
+            : undefined
+        }
         actions={
           <>
             {canSubmit ? (
@@ -126,6 +157,11 @@ function SellerAuctionRow({
                   <RotateCcw className="size-3.5" />
                   {t("relist")}
                 </Link>
+              </Button>
+            ) : null}
+            {isRelistable(auction.status, auction.product.status) ? (
+              <Button size="sm" variant="ghost" onClick={handleQuickRelist} disabled={isPending}>
+                {t("relistCheaper", { percent: 10 })}
               </Button>
             ) : null}
             <Button asChild size="sm" variant="outline">

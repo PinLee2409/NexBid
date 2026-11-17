@@ -95,6 +95,10 @@ public class User {
         this.roles.add(role);
     }
 
+    public void removeRole(com.nexbid.user.RoleName name) {
+        this.roles.removeIf(role -> role.getName() == name);
+    }
+
     public boolean isBlocked() {
         return this.status == UserStatus.BLOCKED;
     }

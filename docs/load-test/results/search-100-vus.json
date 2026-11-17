@@ -1,0 +1,14 @@
+{
+  "vus": 100,
+  "seconds": 75,
+  "rps": 150.1,
+  "error_rate": 0,
+  "suggest": {
+    "count": 11255,
+    "p50_ms": 1.4,
+    "p95_ms": 3.4,
+    "p99_ms": 8.3,
+    "max_ms": 31.4
+  },
+  "thresholds_passed": true
+}

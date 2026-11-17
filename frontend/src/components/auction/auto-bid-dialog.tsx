@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useApiErrorMessage, useBidRejectionMessage } from "@/hooks/use-labels";
+import { useGroupedDigits } from "@/hooks/use-grouped-digits";
 import { CURRENCY, parseCurrencyInput } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { removeAutoBid, saveAutoBid } from "@/services/bid-service";
@@ -58,6 +59,10 @@ export function AutoBidDialog({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const errorMessage = useApiErrorMessage();
+  const maxField = useGroupedDigits(value, (digits) => {
+    setValue(digits);
+    setError(null);
+  });
 
   function handleSave() {
     const amount = parseCurrencyInput(value);
@@ -128,11 +133,8 @@ export function AutoBidDialog({
             <Input
               id="auto-bid-max"
               inputMode="numeric"
-              value={value}
-              onChange={(event) => {
-                setValue(event.target.value.replace(/[^\d]/g, ""));
-                setError(null);
-              }}
+              value={maxField.value}
+              onChange={maxField.onChange}
               aria-invalid={error !== null}
               aria-describedby={error ? "auto-bid-error" : "auto-bid-hint"}
               className="figure h-12 pl-8 text-lg"

@@ -364,6 +364,17 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | Alerts | `GET`/`POST /api/alerts/searches`, `DELETE /api/alerts/searches/{id}` (saved catalogue searches, 10 each), `GET /api/alerts/sellers`, `GET`/`PUT`/`DELETE /api/alerts/sellers/{id}` (follow a seller) |
 | Sign-in extras | `POST /api/auth/login/2fa` (the code step), `POST /api/auth/google` (Google ID token), `GET /api/auth/providers`, `GET /api/users/me/2fa`, `POST /api/users/me/2fa/setup`, `…/enable`, `…/disable` |
 | Finance | `GET /api/admin/finance/reconciliation?from=&to=`, `GET /api/admin/finance/charges.csv`, `GET /api/admin/finance/revenue`, `GET /api/admin/finance/revenue.csv` |
+| Passwords | `POST /api/auth/password/forgot`, `POST /api/auth/password/reset`, `POST /api/users/me/password` |
+| Seller page | `GET /api/sellers/{id}/profile` (public) |
+| Product media | `PUT/DELETE /api/seller/products/{id}/video` (MP4/WebM, 20 MB), `PUT /api/seller/products/{id}/spin` |
+| Chat signals | `POST /api/orders/{id}/messages/read`, `POST /api/orders/{id}/messages/typing` |
+| Price hint | `GET /api/seller/auctions/price-hint?productId=` |
+| Statements | `GET /api/seller/statements?month=yyyy-MM`, `GET /api/seller/statements.csv?month=` |
+| Seller batch | `POST /api/seller/auctions/batch` (same times for many drafts; submit now, at `submitAt`, or not yet) |
+| Push | `GET /api/users/me/push/key`, `POST /api/users/me/push` (subscribe this browser), `POST /api/users/me/push/status`, `POST /api/users/me/push/unsubscribe` |
+| Vouchers | `GET/POST /api/admin/promo-codes`, `POST /api/admin/promo-codes/{code}/active`, `POST /api/payments/{id}/promo` |
+| Calendar | `GET /api/auctions/calendar?from=&to=` (Vietnam dates, at most 62 days) |
+| GHN changes | `POST /api/seller/orders/{id}/ghn/cancel` (before pickup), `POST /api/users/me/orders/{id}/address` (paid, not yet shipped) |
 | Seller import | `POST /api/seller/auctions/import` (multipart: `file` CSV and `images`; template at `/templates/nexbid-lots.csv`) |
 | Trust | `GET /api/admin/shill-suspects` (seller–bidder pairs whose bidding looks like shill bidding, with the signals), `POST /api/admin/shill-suspects/clear` (audited) |
 | Lot extras | `GET /api/auctions/{id}/similar` (open lots in the same category), `GET /api/auctions/cards?ids=…` (recently viewed), `POST /api/auctions/{id}/views` (one visit a day per viewer), `GET /api/seller/auctions/stats` (the seller's figures) |
@@ -371,10 +382,43 @@ Swagger UI: http://localhost:8080/swagger-ui.html — sign in with `POST /api/au
 | Buyer | `/api/users/me`, `…/me/bids`, `…/me/wins`, `…/me/payments`, `…/me/orders` (`…/{id}/received`, `…/{id}/dispute`), `…/me/bank-account` (payouts and refunds go here), `…/me/watchlist`, `…/me/offers` (`…/{id}/accept`, `…/{id}/decline`), `…/me/orders/{id}/review`, `…/me/seller-application`, `/api/notifications`, `GET /api/sellers/{id}/reviews` (public) |
 | Seller | `/api/seller/products`, `/api/seller/products/{id}/images`, `/api/seller/auctions`, `/api/seller/auctions/{id}/second-chance`, `/api/seller/auctions/{id}/reserve-decision`, `/api/seller/second-chances`, `/api/seller/orders` (`…/{id}/ship`), `/api/seller/earnings`, `/api/seller/questions/{id}/answer` |
 | Admin | `/api/admin/auctions`, `/api/admin/categories`, `/api/admin/users`, `/api/admin/users/{id}/block`, `/api/admin/users/{id}/verified` (the verified seller badge), `/api/admin/seller-applications` (`…/{id}/approve`, `…/{id}/reject`), `/api/admin/orders` (`…/{id}/refund-account`, `…/{id}/refund` with the bank transfer's reference), `/api/admin/disputes` (`…/{id}/resolve`), `/api/admin/payouts` (`…/due`; recording one sends the amount the admin transferred and is refused if the balance moved), `/api/admin/stray-charges` (`…/{id}/refund`: VNPay charges no payment could use), `/api/admin/emails` (`…/{id}/retry` a failed email), `/api/seller/orders/{id}/buyer-review`, `/api/admin/analytics`, `/api/admin/audit-logs` |
+| Search | `GET /api/auctions/suggest?q=` (lots and sellers while typing, accents ignored, a spelling when nothing matches), `GET /api/auctions/{id}/price-history` (what similar lots sold for) — public |
+| Offers | `POST /api/auctions/{id}/offers`, `GET /api/auctions/{id}/offers/mine`, `GET /api/users/me/lot-offers` (`…/{id}/accept-counter`, `…/decline-counter`, `…/withdraw`), `GET /api/seller/lot-offers` (`…/{id}/accept`, `…/decline`, `…/counter`) |
+| Deposits | `GET /api/auctions/{id}/deposit` (public), `POST /api/auctions/{id}/deposit/vnpay`, `GET /api/payments/deposits/vnpay/return`, `GET /api/users/me/deposits`, `GET /api/admin/deposits`, `POST /api/admin/deposits/{id}/refund` |
+| Seller tools | `POST /api/seller/auctions/{id}/relist` (a cheaper draft), `GET`/`PUT /api/seller/vacation`, `/api/seller/templates` (listing templates) |
+| Seller codes | `GET`/`POST /api/seller/coupons`, `POST /api/seller/coupons/{code}/active`, `POST /api/payments/{id}/coupon` (off the goods; the seller bears it) |
+| Chat replies | `GET`/`POST /api/users/me/quick-replies`, `DELETE /api/users/me/quick-replies/{id}` |
+| Bid retraction | `GET /api/auctions/{id}/bids/retraction`, `POST /api/auctions/{id}/bids/retract` (`QUICK` \| `TYPO`), `GET /api/admin/bid-retractions` (MODERATOR) |
+| Exchange rates | `GET /api/fx` — public, reference only (USD, EUR per đồng; refreshed daily) |
+| Media review | `GET /api/admin/media`, `POST /api/admin/media/{IMAGE\|VIDEO}/{id}/keep`, `…/remove` (MODERATOR) |
+| Staff | `GET`/`POST /api/admin/staff`, `PUT /api/admin/staff/{userId}` (ADMIN only), `GET /api/admin/analytics/funnel?days=` |
 | Realtime | STOMP at `/ws`: `/topic/auctions/{id}` for everyone, `/user/queue/notifications` and `/user/queue/messages` for the signed-in user |
 
-`/api/admin/**` needs the ADMIN role and `/api/seller/**` needs SELLER. The frontend hides those menus
-too, but that is decoration — the server is what refuses.
+`/api/seller/**` needs SELLER. `/api/admin/**` needs ADMIN, or one of the narrower staff roles for its own part:
+MODERATOR (lots, categories, reports, shill suspects, seller requests), FINANCE (payouts, deposits, finance,
+vouchers, orders and disputes) and SUPPORT (users, emails, orders and disputes); staff management and the audit log
+stay ADMIN only. The frontend hides those menus too, but that is decoration — the server is what refuses.
+
+Lots starting at 50 million VND or more (`nexbid.deposit.threshold`; 0 turns it off) ask bidders for a deposit of
+10% of the start, between 500 thousand and 10 million, paid through VNPay before the first bid. Bidders who lose are
+owed it back when the lot closes, the winner once they have paid, and an admin returns it by bank transfer from
+the deposits page; a winner who lets the payment lapse forfeits it.
+
+A sealed-bid lot (`"sealed": true` when creating it) takes one hidden bid per person, at least the starting price;
+nobody, the seller included, sees the bids or the leader until the close, and the highest bid wins (the earlier of
+two equal ones). Sealed lots have no buy-now, no auto bid and no anti-sniping. A second win from the same seller,
+paid while the first is still waiting to be sent, ships free in that parcel; the seller's order list says which
+orders go together.
+
+A bidder can take their bids on a lot back in the first 5 minutes after their last bid, or later when that bid is
+plainly a typo (at least twice the price it went over) — never in the lot's last 10 minutes, and at most 3 times in
+30 days. All of their bids on that lot go and their auto bid there is turned off; the lot goes back to its highest
+remaining bid, and the room hears the new price. Other bidders' auto bids that answered the withdrawn bid stay as
+they were placed. Moderators see every retraction at `/admin/bid-retractions`. Prices can also be shown in US
+dollars or euros, as a reference under the đồng figure (picked in the footer, kept in the browser); the rates come
+once a day from a free public feed (`NEXBID_FX_ENABLED=false` keeps the built-in rates) and payment stays in VND.
+The home page opens on a slideshow of the five most contested live lots, which pauses on hover, keyboard focus or
+its own button, follows swipes and arrow keys, and does not move on by itself when the reader asks for less motion.
 
 Every endpoint answers in one of two shapes (spec §28), so the client needs one parser:
 
@@ -549,6 +593,26 @@ whole charge.
 
 Without keys the GHN endpoints answer `SHIPPING_UNAVAILABLE`, addresses are typed by hand, no fee guide is shown, and
 any carrier name and tracking number are accepted, as before.
+
+### Backups
+
+[`scripts/backup.sh`](scripts/backup.sh) dumps the database of the Docker stack to `backups/nexbid-<time>.dump`
+(`pg_dump` custom format, compressed) and keeps the newest 14 (`KEEP=`); `--with-media` also archives the
+uploaded photos and videos, which live in the backend's volume rather than the database.
+[`scripts/restore.sh`](scripts/restore.sh) puts a dump back: it asks first (`YES=1` skips the question), stops
+the backend so nothing writes half-way, restores in one transaction and starts the backend again. An older dump
+comes back with its own Flyway history and is migrated forward on start.
+
+```bash
+bash scripts/backup.sh --with-media
+```
+
+```bash
+bash scripts/restore.sh backups/nexbid-20261117T010000Z.dump
+```
+
+For the development services, run either with `COMPOSE_FILE=docker/compose.yaml`. `backups/` is in
+`.gitignore`; copy the files somewhere off the machine for a backup worth the name.
 
 ### Monitoring
 

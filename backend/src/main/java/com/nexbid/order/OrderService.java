@@ -51,6 +51,7 @@ public class OrderService {
     private final BuyerReviews buyerReviews;
     private final GhnShipping ghn;
     private final com.nexbid.order.shipping.GhnBookings bookings;
+    private final com.nexbid.user.AddressBook addresses;
 
     public OrderService(
             OrderRepository orders,
@@ -63,7 +64,9 @@ public class OrderService {
             BankAccounts bankAccounts,
             BuyerReviews buyerReviews,
             GhnShipping ghn,
-            com.nexbid.order.shipping.GhnBookings bookings) {
+            com.nexbid.order.shipping.GhnBookings bookings,
+            com.nexbid.user.AddressBook addresses) {
+        this.addresses = addresses;
         this.ghn = ghn;
         this.bookings = bookings;
         this.buyerReviews = buyerReviews;
@@ -207,6 +210,54 @@ public class OrderService {
         return views(List.of(order), payments.detailsOf(List.of(order.getPaymentId()))).getFirst();
     }
 
+    /**
+     * EN: Cancels the GHN pickup NexBid booked, while GHN has not picked the parcel up: the order is PAID again, so the
+     *     seller can book again (to an address the buyer corrected, say) or ship another way.
+     * VI: Huỷ đơn GHN lấy hàng mà NexBid đã đặt, khi GHN chưa lấy kiện: đơn lại là PAID, để người bán đặt lại (tới địa chỉ
+     *     người mua đã sửa chẳng hạn) hoặc gửi cách khác.
+     */
+    @Transactional
+    public OrderView cancelGhn(UUID sellerId, UUID orderId) {
+        Order order = orders.findLockedById(orderId)
+                .filter(found -> found.getSellerId().equals(sellerId))
+                .orElseThrow(() -> notFound(orderId));
+        if (order.getStatus() != OrderStatus.PROCESSING || !order.isGhnBooked()) {
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID, "Only a GHN booking made through NexBid can be cancelled");
+        }
+        String code = order.getTrackingNumber();
+        bookings.cancel(code);
+        order.cancelShipment();
+        move(order, OrderStatus.PROCESSING, OrderStatus.PAID, "Only a shipped order can be cancelled");
+        events.publishEvent(new OrderEvents.ShipmentCancelled(order.getId(), sellerId, order.getBuyerId(),
+                order.getAuctionId(), code));
+        return views(List.of(order), payments.detailsOf(List.of(order.getPaymentId()))).getFirst();
+    }
+
+    /**
+     * EN: The buyer sends a paid, not yet shipped order to the address now in their profile. The shipping charged stays
+     *     as paid; GHN is booked to the new address.
+     * VI: Người mua chuyển đơn đã trả, chưa gửi sang địa chỉ hiện có trong hồ sơ. Phí ship đã thu giữ nguyên; GHN được
+     *     đặt tới địa chỉ mới.
+     */
+    @Transactional
+    public OrderView useCurrentAddress(UUID buyerId, UUID orderId) {
+        Order order = orders.findLockedById(orderId)
+                .filter(found -> found.getBuyerId().equals(buyerId))
+                .orElseThrow(() -> notFound(orderId));
+        if (order.getStatus() != OrderStatus.PAID) {
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID,
+                    "The address can change only before the seller ships");
+        }
+        com.nexbid.user.ShippingAddress address = addresses.addressOf(buyerId).orElseThrow(() ->
+                new BusinessException(ErrorCode.ADDRESS_REQUIRED, "Add a delivery address first"));
+        order.deliverTo(address.recipient(), address.phone(), address.oneLine());
+        order.deliverToGhn(address.onGhn() ? address.districtId() : null, address.onGhn() ? address.wardCode() : null);
+        orders.save(order);
+        events.publishEvent(new OrderEvents.AddressChanged(order.getId(), buyerId, order.getSellerId(),
+                order.getAuctionId()));
+        return views(List.of(order), payments.detailsOf(List.of(order.getPaymentId()))).getFirst();
+    }
+
     /** EN: GHN's printable label for an order NexBid booked. / VI: Phiếu GHN in được cho đơn NexBid đã đặt. */
     public String ghnLabel(UUID sellerId, UUID orderId) {
         Order order = orders.findById(orderId)
@@ -267,7 +318,8 @@ public class OrderService {
         orders.save(order);
         events.publishEvent(new OrderEvents.Received(order.getId(), actorId, from));
         events.publishEvent(new OrderEvents.Completed(order.getId(), order.getAuctionId(), order.getSellerId(),
-                order.getBuyerId(), order.getAmount(), automatic, at, order.getSellerShipping()));
+                order.getBuyerId(), order.getAmount(), automatic, at, order.getSellerShipping(),
+                order.getSellerDiscount()));
     }
 
     /**

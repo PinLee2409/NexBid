@@ -8,3 +8,6 @@ docs/qa/
 
 # Local logs (e.g. a dev server writing to dev.log)
 *.log
+
+# Database dumps from scripts/backup.sh
+backups/

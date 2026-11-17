@@ -4,6 +4,7 @@ import { Gavel, ShieldAlert, UserRound, Users } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 
+import { ConversionFunnel } from "@/components/common/conversion-funnel";
 import { StatTileSkeleton } from "@/components/common/loading-skeleton";
 import { StatTile } from "@/components/common/stat-tile";
 import { PageHeader } from "@/components/layout/page-header";
@@ -12,11 +13,51 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useEnumLabels } from "@/hooks/use-labels";
 import { cn } from "@/lib/utils";
+import { ADMIN_NAV, canSeeAdminItem } from "@/constants/site";
 import { getActivity, getAdminStats, listAuditLogs } from "@/services/admin-service";
+import { hasRole, useSession } from "@/services/session-service";
 import type { ApiAnalyticsHour } from "@/services/api/dto";
 import { useMoney } from "@/hooks/use-money";
 
+/**
+ * EN: Admins see the full overview; staff with a narrower role see the activity, the funnel and links to their own part
+ *     of the console, since the counts above come from pages they cannot open.
+ * VI: Admin thấy toàn bộ trang tổng quan; nhân viên có vai trò hẹp hơn thấy hoạt động, phễu và các link tới phần của họ,
+ *     vì các con số ở trên lấy từ những trang họ không mở được.
+ */
 export default function AdminOverviewPage() {
+  const { user } = useSession();
+  return hasRole(user, "ADMIN") ? <FullOverview /> : <StaffOverview />;
+}
+
+function StaffOverview() {
+  const t = useTranslations("admin");
+  const tn = useTranslations("nav");
+  const { user } = useSession();
+  const links = ADMIN_NAV.filter((item) => item.href !== "/admin" && canSeeAdminItem(user?.roles ?? [], item));
+  return (
+    <>
+      <PageHeader title={t("overviewTitle")} description={t("staffOverviewSubtitle")} />
+      <ul className="mt-8 flex flex-wrap gap-2" data-testid="staff-links">
+        {links.map((item) => (
+          <li key={item.href}>
+            <Link
+              href={item.href}
+              className="label border-line hover:border-signal-text hover:text-signal-text inline-flex items-center gap-2 border px-4 py-2.5 transition-colors"
+            >
+              <item.icon className="size-4" aria-hidden="true" />
+              {tn(item.labelKey)}
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <ActivitySection />
+      <ConversionFunnel />
+    </>
+  );
+}
+
+function FullOverview() {
   const t = useTranslations("admin");
   const tc = useTranslations("common");
   const labels = useEnumLabels();
@@ -75,6 +116,8 @@ export default function AdminOverviewPage() {
       </div>
 
       <ActivitySection />
+
+      <ConversionFunnel />
 
       <section className="mt-16" aria-labelledby="activity-heading">
         <div className="border-line flex items-baseline justify-between gap-4 border-b pb-4">

@@ -18,7 +18,7 @@ import type { Locale } from "@/i18n/config";
  *     Không hiện gì khi GHN tắt, người bán chưa có địa chỉ GHN, hoặc GHN không trả lời; mời thêm địa chỉ khi người xem
  *     chưa có. Hỏi lại khi người xem đăng nhập hoặc đăng xuất.
  */
-export function ShippingEstimateRow({ auctionId }: { auctionId: string }) {
+export function ShippingEstimateRow({ auctionId, free = false }: { auctionId: string; free?: boolean }) {
   const t = useTranslations("auction");
   const locale = useLocale() as Locale;
   const { user, hydrated } = useSession();
@@ -26,7 +26,7 @@ export function ShippingEstimateRow({ auctionId }: { auctionId: string }) {
   const viewer = user?.id ?? null;
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || free) return;
     let live = true;
     getShippingEstimate(auctionId).then(
       (found) => live && setEstimate(found),
@@ -35,7 +35,21 @@ export function ShippingEstimateRow({ auctionId }: { auctionId: string }) {
     return () => {
       live = false;
     };
-  }, [auctionId, hydrated, viewer]);
+  }, [auctionId, hydrated, viewer, free]);
+
+  if (free) {
+    return (
+      <div className="border-line flex items-baseline justify-between gap-8 border-b py-3.5">
+        <dt className="label-sm text-dim inline-flex items-center gap-1.5">
+          <Truck className="size-3.5" aria-hidden="true" />
+          {t("shippingEstimate")}
+        </dt>
+        <dd className="text-success text-right text-sm font-medium" data-testid="free-shipping">
+          {t("freeShipping")}
+        </dd>
+      </div>
+    );
+  }
 
   if (!estimate || (estimate.state !== "READY" && estimate.state !== "NEEDS_ADDRESS")) return null;
 

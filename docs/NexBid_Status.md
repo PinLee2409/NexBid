@@ -1,6 +1,6 @@
 # NexBid: hiện trạng và việc tiếp theo
 
-Cập nhật: 15/11/2026 (đợt 21–26: thu phí ship, tạo đơn GHN trên NexBid, tìm không dấu, lô tương tự, đăng lại, thống kê lô, phát hiện tự trả giá, đăng nhập hai bước, đăng nhập Google, đối soát và doanh thu, nhập lô từ CSV). Lịch sử chi tiết từng đợt nằm trong [NexBid_Backlog.md](NexBid_Backlog.md).
+Cập nhật: 15/11/2026 (đợt 28: quên và đổi mật khẩu, mã QR cho đăng nhập hai bước, đánh giá chi tiết và trang người bán, video và ảnh 360°, chat có "đang gõ" và "đã xem", gợi ý giá khởi điểm, cài đặt như ứng dụng (PWA), bảng kê tháng cho người bán). Lịch sử chi tiết từng đợt nằm trong [NexBid_Backlog.md](NexBid_Backlog.md).
 
 ## 1. Web đã tới đâu
 
@@ -29,6 +29,21 @@ Cập nhật: 15/11/2026 (đợt 21–26: thu phí ship, tạo đơn GHN trên N
 - Đơn bán: xem địa chỉ giao, chọn đơn vị vận chuyển và nhập mã vận đơn; mã GHN được kiểm với GHN, sai thì báo ngay.
 - "Gửi bằng GHN": NexBid tự tạo vận đơn GHN bằng tài khoản của sàn, có mã và phiếu in ngay; sàn trả tiền GHN từ phí ship người mua đã trả.
 - Nhập nhiều lô từ file CSV kèm ảnh (tối đa 50 dòng), mỗi dòng thành lô nháp; có file mẫu.
+- Lên lịch nhiều lô nháp một lúc: cùng giờ mở, giờ đóng, và gửi duyệt ngay hoặc hẹn giờ.
+- Lô gồm nhiều món (bán theo bộ): sản phẩm liệt kê các món và số lượng; trang lô hiện danh sách.
+- Người bán có thể chọn miễn phí vận chuyển; người mua chỉ trả tiền hàng.
+- Huỷ đơn GHN trước khi lấy hàng để đặt lại; người mua đổi địa chỉ nhận của đơn chưa gửi.
+- Lịch đấu giá (/calendar) theo ngày; theo dõi lô là đặt nhắc.
+- Thông báo đẩy trên trình duyệt (Web Push), bật trong trang Hồ sơ.
+- Biên nhận in được (lưu PDF) cho người mua và bảng kê cho người bán.
+- Quên mật khẩu (link qua email, 30 phút, một lần) và đổi mật khẩu trong trang Hồ sơ.
+- Mã QR khi bật đăng nhập hai bước.
+- Đánh giá người bán theo đóng gói, đúng mô tả, tốc độ; trang công khai của người bán (/sellers/{id}).
+- Video ngắn và chế độ xem 360° cho sản phẩm.
+- Tin nhắn đơn hàng có "đang gõ…" và "đã xem".
+- Gợi ý giá khởi điểm khi đăng lô, theo giá bán của các lô tương tự.
+- Cài NexBid lên màn hình chính (PWA), có trang offline.
+- Bảng kê tháng cho người bán (/seller/statements), tải CSV hoặc in PDF.
 - Đăng lại lô không bán được (sao chép giá và cài đặt), trang Thống kê: người xem, theo dõi, trả giá từng lô, tỉ lệ bán được.
 - Thu nhập: số tiền chờ chi trả, đã nhận, phí sàn 5% (chỉ tính trên tiền hàng), phí ship người mua đã trả được cộng lại, tài khoản ngân hàng nhận tiền.
 
@@ -36,6 +51,8 @@ Cập nhật: 15/11/2026 (đợt 21–26: thu phí ship, tạo đơn GHN trên N
 - Duyệt lô, quản lý danh mục, người dùng (khoá / mở khoá, xác minh người bán), yêu cầu bán hàng.
 - Đơn hàng: hoàn tiền bằng chuyển khoản thủ công vào tài khoản người mua đã cho, kèm mã giao dịch.
 - Khiếu nại: hoàn tiền cho người mua hoặc giữ giao dịch, kèm ghi chú; đọc tin nhắn giữa hai bên (mỗi lần đọc ghi vào nhật ký).
+- Voucher phí ship do admin phát (/admin/promos); ba giao dịch đầu của người bán mới không tính phí sàn.
+- Biểu đồ phí sàn theo tháng (Tài chính) và lô được xem nhiều nhất (Thống kê người bán).
 - Tài chính: đối soát VNPay theo ngày (đã thu, áp vào lô, phải trả lại, đã hoàn, đã chi), doanh thu theo tháng, danh mục, người bán; xuất CSV mở bằng Excel.
 - Chi trả cho người bán: danh sách người bán đang chờ tiền, ghi nhận chuyển khoản kèm mã giao dịch.
 - Khoản VNPay thu thừa (trễ hạn hoặc trả hai lần): hiện ở trang Đơn hàng để chuyển khoản trả lại.

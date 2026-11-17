@@ -59,6 +59,28 @@ Machine: Intel Core i5-12500H (12 cores / 16 threads), 24 GB RAM, Windows 11, Do
 16 CPUs and 11.5 GB for the VM. k6 ran in a container on the same machine and the same compose network,
 so it competed with the backend for CPU. These are one laptop's numbers, not a capacity plan.
 
+## Search suggestions
+
+[`search-load.js`](search-load.js) loads the search box's `GET /api/auctions/suggest`: each visitor types a word
+from the demo catalogue (with and without Vietnamese marks, and a few typos), one request per keystroke from the
+second letter, 120–300 ms apart, then reads for 1–3 s before the next word. Run against the Docker stack with the
+demo data (`docs/demo/seed.mjs`, `enrich.mjs`, `extras.mjs`); ramp 15 s, hold 60 s.
+
+| Visitors | Requests/s | Errors | p50 | p95 | p99 | max |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 100 | 150.1 | 0.00% | 1.4 ms | 3.4 ms | 8.3 ms | 31.4 ms |
+| 500 | 761.1 | 0.00% | 0.8 ms | 1.5 ms | 3.3 ms | 14.9 ms |
+
+Answers are cached in Redis for 30 seconds per query, and a few hundred visitors typing thirty words send the
+same few hundred prefixes over and over, so nearly every request after the first seconds is a cache hit — which is
+the case the cache is for. The figures are therefore the cache's, not the database's: a catalogue with far more
+distinct queries would see more misses, each one an accent-folded trigram lookup. Results are written to
+`results/search-<n>-vus.json`, beside the bidding results, never over them.
+
+```bash
+docker compose --profile load-test run --rm -e VUS=100 k6 run --quiet /scripts/search-load.js
+```
+
 ## Run it
 
 ```bash

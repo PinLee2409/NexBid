@@ -19,11 +19,13 @@ test("a buyer rates the seller once the goods arrive, and the seller's lots show
 
   const dialog = page.getByRole("dialog");
   // EN: The radio is visually hidden; a person clicks the star, which is its label. / VI: Nút radio bị ẩn; người dùng bấm vào ngôi sao, chính là label của nó.
-  const fourStars = dialog.getByRole("radio", { name: "4 out of 5 stars" });
+  const fourStars = dialog.getByRole("radio", { name: "4 out of 5 stars" }).first();
   // EN: The inner locator is matched inside each label, so it must not start from the dialog. / VI: Locator bên trong được tìm trong từng label, nên không được bắt đầu từ dialog.
   await dialog
     .locator("label")
     .filter({ has: page.getByRole("radio", { name: "4 out of 5 stars" }) })
+    // EN: The overall stars come first; the three optional aspects follow. / VI: Sao tổng thể đứng đầu; ba khía cạnh tuỳ chọn theo sau.
+    .first()
     .click();
   await expect(fourStars).toBeChecked();
   await dialog.getByLabel("Comment").fill(comment);

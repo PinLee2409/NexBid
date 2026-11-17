@@ -43,8 +43,40 @@ export async function listPayments(): Promise<PaymentEntry[]> {
 export interface ShippingQuote {
   amount: number;
   shippingFee: number;
-  source: "GHN" | "FLAT";
+  /** EN: COMBINED: rides free in the parcel of another paid win from the same seller. / VI: COMBINED: đi miễn phí trong kiện của một lô thắng khác đã trả của cùng người bán. */
+  source: "GHN" | "FLAT" | "SELLER" | "COMBINED";
   total: number;
+  /** EN: Taken off the shipping by a voucher. / VI: Phần voucher trừ vào phí ship. */
+  shippingDiscount: number;
+  promoCode: string | null;
+  /** EN: Taken off the goods by the seller's own code. / VI: Phần mã riêng của người bán trừ vào tiền hàng. */
+  sellerDiscount: number;
+  sellerCoupon: string | null;
+  combinedWithAuctionId: string | null;
+}
+
+function toQuote(quote: ShippingQuote): ShippingQuote {
+  return {
+    ...quote,
+    amount: Number(quote.amount),
+    shippingFee: Number(quote.shippingFee),
+    total: Number(quote.total),
+    shippingDiscount: Number(quote.shippingDiscount ?? 0),
+    promoCode: quote.promoCode ?? null,
+    sellerDiscount: Number(quote.sellerDiscount ?? 0),
+    sellerCoupon: quote.sellerCoupon ?? null,
+    combinedWithAuctionId: quote.combinedWithAuctionId ?? null,
+  };
+}
+
+/** `POST /api/payments/{id}/coupon` — applies one of the seller's own codes, or removes it with an empty code. */
+export async function applySellerCoupon(paymentId: string, code: string): Promise<ShippingQuote> {
+  return toQuote(await api<ShippingQuote>(`/api/payments/${paymentId}/coupon`, { method: "POST", body: { code } }));
+}
+
+/** `POST /api/payments/{id}/promo` — applies a shipping voucher, or removes it with an empty code. */
+export async function applyPromo(paymentId: string, code: string): Promise<ShippingQuote> {
+  return toQuote(await api<ShippingQuote>(`/api/payments/${paymentId}/promo`, { method: "POST", body: { code } }));
 }
 
 /**
@@ -53,13 +85,7 @@ export interface ShippingQuote {
  * and returns the total VNPay will charge. Kept until the address changes.
  */
 export async function quoteShipping(paymentId: string): Promise<ShippingQuote> {
-  const quote = await api<ShippingQuote>(`/api/payments/${paymentId}/shipping-quote`, { method: "POST" });
-  return {
-    ...quote,
-    amount: Number(quote.amount),
-    shippingFee: Number(quote.shippingFee),
-    total: Number(quote.total),
-  };
+  return toQuote(await api<ShippingQuote>(`/api/payments/${paymentId}/shipping-quote`, { method: "POST" }));
 }
 
 /**

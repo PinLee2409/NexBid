@@ -115,6 +115,8 @@ services:
       # EN: How often unpaid payments and unanswered offers are closed; the end-to-end run shortens it.
       # VI: Bao lâu một lần các khoản chưa trả và đề nghị chưa trả lời bị đóng; lần chạy end-to-end rút ngắn nó.
       NEXBID_PAYMENT_EXPIRY_INTERVAL_MS: ${NEXBID_PAYMENT_EXPIRY_INTERVAL_MS:-60000}
+      # EN: A new seller's first sales carry no fee; the end-to-end run sets 0 so its sums match. / VI: Vài giao dịch đầu của người bán mới không tính phí; lần chạy end-to-end đặt 0 để số khớp.
+      NEXBID_NEW_SELLER_FREE_SALES: ${NEXBID_NEW_SELLER_FREE_SALES:-3}
       # EN: Traces go to Tempo (monitoring profile) only when NEXBID_TRACING_EXPORT=true; log lines carry the trace id anyway.
       # VI: Trace chỉ được gửi tới Tempo (profile monitoring) khi NEXBID_TRACING_EXPORT=true; dòng log luôn mang trace id.
       NEXBID_TRACING_EXPORT: ${NEXBID_TRACING_EXPORT:-false}

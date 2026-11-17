@@ -64,6 +64,8 @@ public class AuctionService {
     private final LotCache cards;
     private final LotViewers viewers;
     private final Duration reserveWindow;
+    private final Relisting relisting;
+    private final com.nexbid.user.Vacations vacations;
 
     AuctionService(
             AuctionRepository auctions,
@@ -73,7 +75,11 @@ public class AuctionService {
             ApplicationEventPublisher events,
             LotCache cards,
             LotViewers viewers,
-            @Value("${nexbid.auction.reserve-decision-window}") Duration reserveWindow) {
+            @Value("${nexbid.auction.reserve-decision-window}") Duration reserveWindow,
+            Relisting relisting,
+            com.nexbid.user.Vacations vacations) {
+        this.relisting = relisting;
+        this.vacations = vacations;
         this.auctions = auctions;
         this.products = products;
         this.images = images;
@@ -128,13 +134,13 @@ public class AuctionService {
             // VI: Người thắng được chọn trong cùng khoá đã đóng việc trả giá (guide §27, spec §12).
             auction.close();
 
-            if (auction.getWinnerId() == null) {
+            events.publishEvent(AuctionLifecycleEvent.ended(auction));
+
+            if (auction.getWinnerId() == null && !relisting.relist(auction, now)) {
                 // EN: Nothing was sold, so the product is the seller's to list again.
                 // VI: Chưa bán được gì, nên sản phẩm trở lại tay người bán để đăng lại.
                 products.markAuctionState(auction.getProductId(), ProductStatus.AVAILABLE);
             }
-
-            events.publishEvent(AuctionLifecycleEvent.ended(auction));
         }
 
         auctions.saveAll(due);
@@ -236,7 +242,9 @@ public class AuctionService {
 
     private void refuse(Auction auction, boolean lapsed, Instant now) {
         auction.refuseBelowReserve(lapsed);
-        products.markAuctionState(auction.getProductId(), ProductStatus.AVAILABLE);
+        if (!relisting.relist(auction, now)) {
+            products.markAuctionState(auction.getProductId(), ProductStatus.AVAILABLE);
+        }
         events.publishEvent(new ReserveEvents.Refused(auction.getId(), auction.getSellerId(),
                 auction.getLeadingBidderId(), auction.getCurrentPrice(), lapsed, now));
     }
@@ -293,6 +301,169 @@ public class AuctionService {
         auctions.save(auction);
         events.publishEvent(new ReserveEvents.BoughtNow(auctionId, buyerId, auction.getCurrentPrice(), at));
         events.publishEvent(AuctionLifecycleEvent.ended(auction));
+    }
+
+    /**
+     * EN: An accepted offer, first half: the buyer's bid at the agreed price, under the bidding lock. Like buy-now, only
+     *     while bidding is open and before anyone has bid. The bid module records it, then calls
+     *     {@link #closeSoldByOffer}.
+     * VI: Đề nghị được nhận, nửa đầu: lượt trả giá của người mua bằng giá đã thoả thuận, trong khoá trả giá. Như mua
+     *     ngay, chỉ khi đang mở trả giá và chưa ai trả giá. Module bid ghi lại lượt đó, rồi gọi {@link #closeSoldByOffer}.
+     */
+    @Transactional
+    public AcceptedBid sellByOffer(UUID auctionId, UUID buyerId, BigDecimal price) {
+        Auction auction = auctions.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+        Instant now = Instant.now();
+        if (!AuctionRules.isOpenForBidding(auction, now) || auction.getBuyNowPrice() == null
+                || auction.getBidCount() > 0) {
+            throw new BusinessException(ErrorCode.OFFER_UNAVAILABLE,
+                    "Offers close once the lot has a bid or stops taking them");
+        }
+        if (auction.isOwnedBy(buyerId)) {
+            throw new BusinessException(ErrorCode.SELLER_CANNOT_BID, "You cannot buy your own lot");
+        }
+        auction.applyBid(buyerId, price);
+        auctions.save(auction);
+        return new AcceptedBid(auction.getId(), auction.getCurrentPrice(), auction.getBidCount(),
+                AuctionRules.minimumNextBid(auction), auction.getEndTime(), now, null, auction.reserveMet());
+    }
+
+    /** EN: An accepted offer, second half: the lot closes in the buyer's name and the usual payment opens. / VI: Đề nghị được nhận, nửa sau: lô đóng đứng tên người mua và khoản thanh toán như thường lệ được mở. */
+    @Transactional
+    public void closeSoldByOffer(UUID auctionId, UUID buyerId, Instant at) {
+        Auction auction = auctions.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+        if (auction.getStatus() != AuctionStatus.ACTIVE || auction.getBidCount() != 1
+                || !buyerId.equals(auction.getLeadingBidderId())) {
+            throw new IllegalStateException("closeSoldByOffer must follow sellByOffer for the same buyer");
+        }
+        auction.closeSoldByOffer(at);
+        auctions.save(auction);
+        events.publishEvent(new ReserveEvents.BoughtNow(auctionId, buyerId, auction.getCurrentPrice(), at));
+        events.publishEvent(AuctionLifecycleEvent.ended(auction));
+    }
+
+    /** EN: Whether a lot is open and still takes offers. / VI: Lô có đang mở và còn nhận đề nghị không. */
+    public boolean takesOffers(UUID auctionId, Instant now) {
+        return auctions.findById(auctionId)
+                .filter(auction -> AuctionRules.isOpenForBidding(auction, now))
+                .filter(auction -> auction.getBuyNowPrice() != null && auction.getBidCount() == 0)
+                .isPresent();
+    }
+
+    /** EN: The buy-now and starting prices of a lot, for checking an offer. / VI: Giá mua ngay và giá khởi điểm của một lô, để kiểm một đề nghị. */
+    public record OfferTerms(UUID sellerId, BigDecimal startingPrice, BigDecimal buyNowPrice, Instant endTime) {
+    }
+
+    public OfferTerms offerTermsOf(UUID auctionId) {
+        Auction auction = auctions.findById(auctionId)
+                .filter(found -> PUBLIC_STATUSES.contains(found.getStatus()))
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+        return new OfferTerms(auction.getSellerId(), auction.getStartingPrice(), auction.getBuyNowPrice(),
+                auction.getEndTime());
+    }
+
+    /**
+     * EN: Copies a lot that closed unsold into a new draft for the same product, starting {@code dropPercent} lower
+     *     and opening an hour from now for as long as the old one ran. The seller checks it and submits it as usual.
+     * VI: Chép một lô đã đóng mà không bán được thành bản nháp mới cho cùng sản phẩm, khởi điểm thấp hơn
+     *     {@code dropPercent} và mở sau một giờ, kéo dài bằng lô cũ. Người bán kiểm tra rồi gửi duyệt như thường lệ.
+     */
+    @Transactional
+    public AuctionView relistAsDraft(UUID sellerId, UUID auctionId, int dropPercent) {
+        Auction old = auctions.findByIdAndSellerId(auctionId, sellerId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+        boolean unsold = (old.getStatus() == AuctionStatus.ENDED && old.getWinnerId() == null
+                && old.getReserveDecision() != ReserveDecision.PENDING)
+                || old.getStatus() == AuctionStatus.CANCELLED;
+        if (!unsold || auctions.holdsProduct(old.getProductId())
+                || products.getOwned(sellerId, old.getProductId()).status() != ProductStatus.AVAILABLE) {
+            throw new BusinessException(ErrorCode.RELIST_NOT_ALLOWED,
+                    "Only a lot that closed unsold, whose product is free, can be listed again");
+        }
+        Instant start = Instant.now().plus(Duration.ofHours(1)).truncatedTo(java.time.temporal.ChronoUnit.MINUTES);
+        Auction copy = Relisting.copyOf(old, Math.clamp(dropPercent, 0, 50), start, AuctionStatus.DRAFT);
+        Auction saved = auctions.saveAndFlush(copy);
+        events.publishEvent(new AuctionAuditEvent(
+                AuctionAuditEvent.Action.CREATED, saved.getId(), sellerId, null, saved.getStatus()));
+        return toView(saved);
+    }
+
+    /** EN: Whether the lot takes sealed bids and is still running. / VI: Lô có nhận giá kín và vẫn đang chạy không. */
+    public boolean isSealedAndRunning(UUID auctionId) {
+        return auctions.findSealedStatus(auctionId)
+                .filter(status -> status != AuctionStatus.ENDED && status != AuctionStatus.COMPLETED
+                        && status != AuctionStatus.CANCELLED && status != AuctionStatus.REMOVED)
+                .isPresent();
+    }
+
+    public boolean isSealed(UUID auctionId) {
+        return auctions.findSealedStatus(auctionId).isPresent();
+    }
+
+    /**
+     * EN: A sealed bid, under the bidding lock: at least the start, and one per person ({@code alreadyBid} is asked
+     *     once the lock is held, so two quick tries cannot both pass). No anti-sniping, no outbid notice — the price
+     *     stays hidden until the close.
+     * VI: Một lượt giá kín, trong khoá trả giá: ít nhất bằng giá khởi điểm, và mỗi người một lượt ({@code alreadyBid}
+     *     được hỏi khi đã giữ khoá, để hai lần thử liền nhau không cùng lọt). Không chống bắn tỉa, không báo bị vượt
+     *     giá — giá vẫn ẩn tới khi đóng.
+     */
+    @Transactional
+    public AcceptedBid acceptSealedBid(UUID auctionId, UUID bidderId, BigDecimal amount,
+            java.util.function.Predicate<UUID> alreadyBid) {
+        Auction auction = auctions.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+        Instant now = Instant.now();
+        if (auction.getStatus() == AuctionStatus.ENDED || auction.getStatus() == AuctionStatus.COMPLETED
+                || !now.isBefore(auction.getEndTime())) {
+            throw new BusinessException(ErrorCode.AUCTION_ALREADY_ENDED, "This auction has already ended");
+        }
+        if (!AuctionRules.isOpenForBidding(auction, now)) {
+            throw new BusinessException(ErrorCode.AUCTION_NOT_ACTIVE, "This auction is not open for bidding");
+        }
+        if (auction.isOwnedBy(bidderId)) {
+            throw new BusinessException(ErrorCode.SELLER_CANNOT_BID, "You cannot bid on your own auction");
+        }
+        if (amount.compareTo(auction.getStartingPrice()) < 0) {
+            throw new BusinessException(ErrorCode.BID_TOO_LOW,
+                    "The bid must be at least " + auction.getStartingPrice().toPlainString());
+        }
+        if (alreadyBid.test(bidderId)) {
+            throw new BusinessException(ErrorCode.SEALED_BID_EXISTS, "You have already placed your sealed bid");
+        }
+        auction.applySealedBid(bidderId, amount);
+        auctions.save(auction);
+        return new AcceptedBid(auction.getId(), auction.getCurrentPrice(), auction.getBidCount(),
+                auction.getStartingPrice(), auction.getEndTime(), now, null, null);
+    }
+
+    /**
+     * EN: Sets the lot to what its remaining bids say after a retraction. The caller holds the bidding lock (taken with
+     *     {@link #lockBiddingState}) and has already deleted the bids, in the same transaction.
+     * VI: Đặt lô theo những gì các lượt còn lại cho biết sau một lần rút giá. Bên gọi đang giữ khoá trả giá (lấy bằng
+     *     {@link #lockBiddingState}) và đã xoá các lượt, trong cùng transaction.
+     */
+    @Transactional
+    public BiddingState rewindAfterRetraction(UUID auctionId, UUID leaderId, BigDecimal topAmount, int remainingBids,
+            Instant at) {
+        Auction auction = auctions.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+        auction.rewindTo(leaderId, topAmount, remainingBids);
+        auctions.save(auction);
+        return stateOf(Optional.of(auction), auctionId, at);
+    }
+
+    /** EN: The price a lot opened at. / VI: Giá mở đầu của một lô. */
+    public BigDecimal startingPriceOf(UUID auctionId) {
+        return offerTermsOf(auctionId).startingPrice();
     }
 
     /** EN: A lot its winner left unpaid (spec §17). / VI: Một lô bị người thắng bỏ không trả (spec §17). */
@@ -369,6 +540,11 @@ public class AuctionService {
         return new UnpaidLot(auction.getId(), auction.getSellerId(), auction.getProductId(), auction.getWinnerId());
     }
 
+    /** EN: Whether the seller pays the parcel. / VI: Người bán có trả tiền gửi kiện không. */
+    public boolean freeShipping(UUID auctionId) {
+        return auctions.findById(auctionId).map(Auction::isFreeShipping).orElse(false);
+    }
+
     public UUID sellerOf(UUID auctionId) {
         return auctions.findById(auctionId)
                 .map(Auction::getSellerId)
@@ -406,6 +582,10 @@ public class AuctionService {
                 request.extensionSeconds() == null ? 120 : request.extensionSeconds());
         auction.setReservePrice(request.reservePrice());
         auction.setBuyNowPrice(request.buyNowPrice());
+        auction.setFreeShipping(Boolean.TRUE.equals(request.freeShipping()));
+        auction.setRelisting(request.autoRelist() == null ? 0 : request.autoRelist(),
+                request.relistDropPercent() == null ? 0 : request.relistDropPercent());
+        sealIfAsked(auction, request);
 
         try {
             // EN: Flushed here so the unique index answers inside this try, and the lot number comes back.
@@ -420,6 +600,22 @@ public class AuctionService {
             throw new BusinessException(
                     ErrorCode.PRODUCT_ALREADY_IN_AUCTION,
                     "This product already has an auction that has not finished");
+        }
+    }
+
+    /**
+     * EN: A sealed lot has no buy-now (the price is not public to compare against) and no anti-sniping (nobody can
+     *     react to a hidden bid).
+     * VI: Lô kín không có mua ngay (giá không công khai để so) và không chống bắn tỉa (không ai phản ứng được với giá ẩn).
+     */
+    private static void sealIfAsked(Auction auction, CreateAuctionRequest request) {
+        boolean sealed = Boolean.TRUE.equals(request.sealed());
+        if (sealed && request.buyNowPrice() != null) {
+            throw new BusinessException(ErrorCode.AUCTION_PRICES_INVALID, "A sealed lot cannot have a buy-now price");
+        }
+        auction.setSealed(sealed);
+        if (sealed) {
+            auction.setAntiSnipingEnabled(false);
         }
     }
 
@@ -460,7 +656,11 @@ public class AuctionService {
         auction.setStartingPrice(request.startingPrice());
         auction.setReservePrice(request.reservePrice());
         auction.setBuyNowPrice(request.buyNowPrice());
+        auction.setFreeShipping(Boolean.TRUE.equals(request.freeShipping()));
+        auction.setRelisting(request.autoRelist() == null ? 0 : request.autoRelist(),
+                request.relistDropPercent() == null ? 0 : request.relistDropPercent());
         auction.setMinimumIncrement(request.minimumIncrement());
+        sealIfAsked(auction, request);
         auction.setStartTime(request.startTime());
         auction.setEndTime(request.endTime());
         auction.setAntiSnipingEnabled(Boolean.TRUE.equals(request.antiSnipingEnabled()));
@@ -517,10 +717,12 @@ public class AuctionService {
                         : null,
                 filterByCondition
                         ? AuctionSpecifications.productIn(products.idsInConditions(query.condition()))
-                        : null);
+                        : null,
+                query.sort() == AuctionSort.ENDING_SOON ? AuctionSpecifications.openFirstEndingSoon() : null);
 
-        var page = auctions.findAll(
-                spec, PageRequest.of(query.zeroBasedPage(), query.size(), sortOf(query.sort())));
+        // EN: Ending soon is ordered by the specification above. / VI: Sắp kết thúc được sắp bởi specification ở trên.
+        Sort order = query.sort() == AuctionSort.ENDING_SOON ? Sort.unsorted() : sortOf(query.sort());
+        var page = auctions.findAll(spec, PageRequest.of(query.zeroBasedPage(), query.size(), order));
 
         return PageView.of(page, summarize(page.getContent(), AuctionService::toPublicView));
     }
@@ -599,6 +801,21 @@ public class AuctionService {
         return auctions.findIdsOpeningBetween(from, to);
     }
 
+    /**
+     * EN: The auction calendar: approved lots opening from {@code from} (inclusive) to {@code to}, soonest first, at most
+     *     300. Any span longer than 62 days is cut to 62.
+     * VI: Lịch đấu giá: các lô đã duyệt mở từ {@code from} (tính cả) tới {@code to}, sớm nhất trước, tối đa 300. Khoảng
+     *     dài hơn 62 ngày bị cắt còn 62.
+     */
+    public List<AuctionSummaryView> calendar(Instant from, Instant to) {
+        Instant until = to.isAfter(from.plus(java.time.Duration.ofDays(62))) ? from.plus(java.time.Duration.ofDays(62)) : to;
+        if (!until.isAfter(from)) {
+            return List.of();
+        }
+        return publicSummariesOf(auctions.findScheduledOpeningIn(from, until,
+                org.springframework.data.domain.PageRequest.of(0, 300)));
+    }
+
     /** EN: Running lots closing in (from, to]. / VI: Các lô đang chạy sẽ đóng trong khoảng (from, to]. */
     public List<UUID> closingBetween(Instant from, Instant to) {
         return auctions.findIdsClosingBetween(from, to);
@@ -639,7 +856,8 @@ public class AuctionService {
                                     && bidderId.equals(auction.getLeadingBidderId())
                                     ? BidStanding.AWAITING_SELLER
                                     : BidStanding.LOST;
-                    default -> bidderId.equals(auction.getLeadingBidderId()) ? BidStanding.WINNING : BidStanding.OUTBID;
+                    default -> auction.isSealed() ? BidStanding.SEALED
+                            : bidderId.equals(auction.getLeadingBidderId()) ? BidStanding.WINNING : BidStanding.OUTBID;
                 }));
     }
 
@@ -840,7 +1058,9 @@ public class AuctionService {
 
         return new AuctionDetailPublicView(
                 toPublicView(auction),
-                new AuctionDetailPublicView.Product(card.productId(), card.name(), card.description(), card.condition()),
+                new AuctionDetailPublicView.Product(card.productId(), card.name(), card.description(), card.condition(),
+                        card.items() == null ? List.of() : card.items(), card.videoUrl(),
+                        Boolean.TRUE.equals(card.spinView())),
                 card.category(),
                 card.images(),
                 new AuctionDetailPublicView.Seller(auction.getSellerId(), card.sellerName(),
@@ -868,6 +1088,24 @@ public class AuctionService {
     }
 
     /**
+     * EN: New opening and closing times for a draft the caller owns.
+     * VI: Giờ mở và giờ đóng mới cho một bản nháp của người gọi.
+     */
+    @Transactional
+    public AuctionView rescheduleDraft(UUID sellerId, UUID auctionId, Instant startTime, Instant endTime) {
+        Auction auction = auctions.findByIdAndSellerId(auctionId, sellerId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ErrorCode.AUCTION_NOT_FOUND, "No auction with id " + auctionId));
+        if (auction.getStatus() != AuctionStatus.DRAFT) {
+            throw new BusinessException(ErrorCode.AUCTION_NOT_EDITABLE, "Only a draft can be rescheduled");
+        }
+        requireSaneSchedule(startTime, endTime);
+        auction.setStartTime(startTime);
+        auction.setEndTime(endTime);
+        return toView(auctions.save(auction));
+    }
+
+    /**
      * EN: Sends a draft to an admin (guide §15). From here the seller cannot change it — the terms an
      *     admin approves have to be the terms that run.
      * VI: Gửi bản nháp cho admin (guide §15). Từ đây người bán không sửa được nữa — điều khoản admin duyệt
@@ -887,6 +1125,7 @@ public class AuctionService {
         // EN: Checked again on the way out. A draft may have sat for days while its end time went past.
         // VI: Kiểm lại lần nữa lúc gửi đi. Bản nháp có thể nằm đó nhiều ngày và mốc kết thúc đã trôi qua.
         requireSaneSchedule(auction.getStartTime(), auction.getEndTime());
+        vacations.requireAtWork(sellerId, Instant.now());
 
         auction.setStatus(AuctionStatus.PENDING_APPROVAL);
         return toView(auctions.save(auction));
@@ -1120,13 +1359,16 @@ public class AuctionService {
     }
 
     private static AuctionView toView(Auction auction, UUID winnerShown, boolean reserveShown) {
+        // EN: A running sealed lot shows its start, never the bids, to anyone — the seller included.
+        // VI: Lô kín đang chạy chỉ hiện giá khởi điểm, không bao giờ hiện các lượt giá, với bất kỳ ai — kể cả người bán.
+        boolean hidden = auction.isSealedAndRunning();
         return new AuctionView(
                 auction.getId(),
                 auction.getLotNumber(),
                 auction.getProductId(),
                 auction.getSellerId(),
                 auction.getStartingPrice(),
-                auction.getCurrentPrice(),
+                hidden ? auction.getStartingPrice() : auction.getCurrentPrice(),
                 auction.getMinimumIncrement(),
                 auction.getStartTime(),
                 auction.getEndTime(),
@@ -1141,11 +1383,17 @@ public class AuctionService {
                 auction.getRejectionReason(),
                 reserveShown ? auction.getReservePrice() : null,
                 auction.getReservePrice() != null,
-                auction.reserveMet(),
+                hidden ? null : auction.reserveMet(),
                 auction.getBuyNowPrice(),
                 auction.isBoughtNow(),
+                auction.isFreeShipping(),
+                auction.getSubmitAt(),
                 auction.getReserveDecision(),
                 auction.getReserveDecisionUntil(),
+                auction.isSealed(),
+                reserveShown ? auction.getRelistLeft() : 0,
+                reserveShown ? auction.getRelistDropPercent() : 0,
+                auction.getRelistedFrom(),
                 auction.getCreatedAt(),
                 auction.getUpdatedAt());
     }

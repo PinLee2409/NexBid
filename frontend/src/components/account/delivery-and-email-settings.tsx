@@ -8,10 +8,16 @@ import { AddressForm } from "@/components/account/address-form";
 import { BankAccountForm } from "@/components/account/bank-account-form";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useApiErrorMessage } from "@/hooks/use-labels";
-import { getEmailPreferences, getShippingAddress, saveEmailPreferences } from "@/services/account-service";
+import {
+  getEmailPreferences,
+  getShippingAddress,
+  saveEmailPreferences,
+  type EmailLanguage,
+} from "@/services/account-service";
 import { getMyBankAccount } from "@/services/bank-account-service";
 
 /**
@@ -29,6 +35,7 @@ export function DeliveryAndEmailSettings() {
   const [isPending, startTransition] = useTransition();
   const [outbid, setOutbid] = useState<boolean | null>(null);
   const [digest, setDigest] = useState<boolean | null>(null);
+  const [language, setLanguage] = useState<EmailLanguage | null>(null);
 
   // EN: The email footer links to #email; scroll there once the section exists. / VI: Footer email trỏ tới #email; cuộn tới khi phần này đã có.
   useEffect(() => {
@@ -37,6 +44,22 @@ export function DeliveryAndEmailSettings() {
 
   const outbidOn = outbid ?? (preferences.state.status === "success" ? preferences.state.data.outbid : true);
   const digestOn = digest ?? (preferences.state.status === "success" ? preferences.state.data.digest !== false : true);
+  const languageNow: EmailLanguage =
+    language ?? (preferences.state.status === "success" ? (preferences.state.data.language ?? "both") : "both");
+
+  function changeLanguage(next: EmailLanguage) {
+    const before = languageNow;
+    setLanguage(next);
+    startTransition(async () => {
+      try {
+        await saveEmailPreferences({ outbid: outbidOn, digest: digestOn, language: next });
+        toast.success(t("emailSaved"));
+      } catch (error) {
+        setLanguage(before);
+        toast.error(errorMessage(error));
+      }
+    });
+  }
 
   function toggleOutbid(next: boolean) {
     setOutbid(next);
@@ -147,6 +170,29 @@ export function DeliveryAndEmailSettings() {
             disabled={isPending || preferences.state.status === "loading"}
             onCheckedChange={toggleDigest}
           />
+        </div>
+
+        <div className="border-line flex max-w-2xl items-start justify-between gap-6 border-b py-5">
+          <div>
+            <Label htmlFor="email-language" className="text-base font-medium">
+              {t("emailLanguage")}
+            </Label>
+            <p className="text-muted-foreground mt-1 text-sm leading-relaxed">{t("emailLanguageHint")}</p>
+          </div>
+          <Select
+            value={languageNow}
+            onValueChange={(value) => changeLanguage(value as EmailLanguage)}
+            disabled={isPending || preferences.state.status === "loading"}
+          >
+            <SelectTrigger id="email-language" className="h-10 w-44 shrink-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="vi">{t("emailLanguageVi")}</SelectItem>
+              <SelectItem value="en">{t("emailLanguageEn")}</SelectItem>
+              <SelectItem value="both">{t("emailLanguageBoth")}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </section>
     </>

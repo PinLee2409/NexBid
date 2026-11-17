@@ -25,6 +25,19 @@ public interface BidRepository extends JpaRepository<Bid, UUID> {
 
     List<Bid> findByBidderIdOrderByCreatedAtDesc(UUID bidderId);
 
+    boolean existsByAuctionIdAndBidderId(UUID auctionId, UUID bidderId);
+
+    List<Bid> findByAuctionIdAndBidderIdOrderByCreatedAtDesc(UUID auctionId, UUID bidderId);
+
+    /** EN: The leading bid: highest, the earlier of two equal. / VI: Lượt dẫn đầu: cao nhất, lượt trước nếu bằng nhau. */
+    java.util.Optional<Bid> findFirstByAuctionIdOrderByAmountDescCreatedAtAsc(UUID auctionId);
+
+    long countByAuctionId(UUID auctionId);
+
+    /** EN: The highest bid on the lot before an instant; null when there was none. / VI: Lượt cao nhất trên lô trước một thời điểm; null nếu chưa có. */
+    @Query("SELECT MAX(b.amount) FROM Bid b WHERE b.auctionId = :auctionId AND b.createdAt < :before")
+    BigDecimal maxAmountBefore(@Param("auctionId") UUID auctionId, @Param("before") Instant before);
+
     @Query("SELECT DISTINCT b.bidderId FROM Bid b WHERE b.auctionId = :auctionId")
     List<UUID> findDistinctBidderIds(@Param("auctionId") UUID auctionId);
 

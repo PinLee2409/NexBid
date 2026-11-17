@@ -50,6 +50,7 @@ class GoogleSignIn {
     private final String keysUrl;
     private volatile Map<String, PublicKey> keys = Map.of();
     private volatile Instant keysUntil = Instant.EPOCH;
+    private volatile Instant fetchedAt = Instant.EPOCH;
 
     GoogleSignIn(@Value("${nexbid.auth.google.client-id:}") String clientId,
             @Value("${nexbid.auth.google.keys-url:https://www.googleapis.com/oauth2/v3/certs}") String keysUrl) {
@@ -107,7 +108,9 @@ class GoogleSignIn {
             throw refused("The token names no key");
         }
         PublicKey found = Instant.now().isBefore(keysUntil) ? keys.get(keyId) : null;
-        if (found == null) {
+        // EN: An unknown key id refetches at most once a minute, so made-up ids cannot make us hammer Google.
+        // VI: Id khoá lạ chỉ tải lại tối đa mỗi phút một lần, để id bịa ra không bắt ta gọi Google liên tục.
+        if (found == null && (Instant.now().isAfter(keysUntil) || Instant.now().isAfter(fetchedAt.plusSeconds(60)))) {
             reload();
             found = keys.get(keyId);
         }
@@ -118,6 +121,7 @@ class GoogleSignIn {
     }
 
     private synchronized void reload() {
+        fetchedAt = Instant.now();
         JsonNode body;
         try {
             body = http.get().uri(keysUrl).retrieve().body(JsonNode.class);

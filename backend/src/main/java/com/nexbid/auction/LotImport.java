@@ -50,7 +50,7 @@ public class LotImport {
     static final int MAX_ROWS = 50;
     static final List<String> COLUMNS = List.of("name", "description", "category", "condition", "starting_price",
             "increment", "buy_now_price", "reserve_price", "start", "end", "images", "weight_g", "length_cm",
-            "width_cm", "height_cm");
+            "width_cm", "height_cm", "free_shipping", "items");
     private static final Set<String> REQUIRED = Set.of("name", "description", "category", "condition",
             "starting_price", "increment", "start", "end");
     private static final ZoneId VIETNAM = ZoneId.of("Asia/Ho_Chi_Minh");
@@ -150,10 +150,11 @@ public class LotImport {
         }
 
         CreateProductRequest product = new CreateProductRequest(name, row.getOrDefault("description", ""), categoryId,
-                condition, true, parcel);
+                condition, true, parcel, items(row.getOrDefault("items", ""), errors));
         violations(validator.validate(product), errors);
+        Boolean freeShipping = yesNo(row.getOrDefault("free_shipping", ""), errors);
         CreateAuctionRequest lot = new CreateAuctionRequest(UUID.randomUUID(), starting, increment, start, end, true,
-                null, null, reserve, buyNow);
+                null, null, reserve, buyNow, freeShipping);
         violations(validator.validate(lot), errors);
         if (!errors.isEmpty()) {
             return new RowResult(line, name, null, errors);
@@ -166,11 +167,14 @@ public class LotImport {
                     images.add(sellerId, created.id(), files, created.name());
                 }
                 return auctions.create(sellerId, new CreateAuctionRequest(created.id(), starting, increment, start, end,
-                        true, null, null, reserve, buyNow)).id();
+                        true, null, null, reserve, buyNow, freeShipping)).id();
             });
             return new RowResult(line, name, auctionId, List.of());
         } catch (BusinessException ex) {
             return new RowResult(line, name, null, List.of(ex.getMessage()));
+        } catch (RuntimeException ex) {
+            // EN: Anything else (a clash in the database, say) fails this row only. / VI: Lỗi khác (vd. xung đột trong DB) chỉ làm hỏng dòng này.
+            return new RowResult(line, name, null, List.of("this row could not be saved"));
         }
     }
 
@@ -204,6 +208,37 @@ public class LotImport {
         }
         errors.add(column + ": a whole number of đồng, e.g. 1500000 or 1.500.000");
         return null;
+    }
+
+    /**
+     * EN: "Teacup x6|Saucer x6": the pieces of a set; a piece without "x N" counts once.
+     * VI: "Tách x6|Đĩa x6": các món của một bộ; món không ghi "x N" tính là một.
+     */
+    private static List<com.nexbid.product.BundleItem> items(String value, List<String> errors) {
+        List<com.nexbid.product.BundleItem> found = new ArrayList<>();
+        for (String piece : value.split("\\|")) {
+            if (piece.isBlank()) {
+                continue;
+            }
+            java.util.regex.Matcher counted = java.util.regex.Pattern.compile("^(.*?)\\s*[x×]\\s*(\\d{1,3})$").matcher(piece.trim());
+            found.add(counted.matches()
+                    ? new com.nexbid.product.BundleItem(counted.group(1).trim(), Integer.valueOf(counted.group(2)))
+                    : new com.nexbid.product.BundleItem(piece.trim(), 1));
+        }
+        return found;
+    }
+
+    /** EN: yes/no, true/false, 1/0, có/không; blank is no. / VI: yes/no, true/false, 1/0, có/không; để trống là không. */
+    private static Boolean yesNo(String value, List<String> errors) {
+        String clean = value.trim().toLowerCase(Locale.ROOT);
+        if (clean.isEmpty() || List.of("no", "false", "0", "không", "khong").contains(clean)) {
+            return false;
+        }
+        if (List.of("yes", "true", "1", "có", "co").contains(clean)) {
+            return true;
+        }
+        errors.add("free_shipping: yes or no");
+        return false;
     }
 
     private static Instant time(Map<String, String> row, String column, List<String> errors) {

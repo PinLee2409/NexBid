@@ -253,6 +253,8 @@
     text-transform: uppercase;
     letter-spacing: -0.015em;
     line-height: 0.86;
+    /* Big uppercase type: a long unbroken name (a model number, a run of letters) breaks rather than widening the page. */
+    overflow-wrap: anywhere;
   }
 
   /*
@@ -398,6 +400,22 @@
 
 .flash-signal {
   animation: nexbid-flash 900ms ease-out;
+}
+
+/* Opening stage: the bar under the lot on show fills while it stays. */
+@keyframes nexbid-stage-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.stage-progress {
+  animation-name: nexbid-stage-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
 }
 
 /* Market ticker: a slow, continuous crawl. */

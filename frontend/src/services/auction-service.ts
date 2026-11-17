@@ -57,6 +57,12 @@ export async function listAuctions(query: AuctionQuery = {}): Promise<AuctionLis
  * `GET /api/auctions/{id}/similar` — open or upcoming lots in the same
  * category, other sellers first. Empty when it cannot be asked.
  */
+/** `GET /api/auctions/calendar` — lots opening between two Vietnam dates, soonest first. */
+export async function listCalendar(from: string, to: string): Promise<AuctionSummary[]> {
+  const items = await api<ApiAuctionSummary[]>("/api/auctions/calendar", { query: { from, to } });
+  return items.map((item) => toSummary(item));
+}
+
 export async function listSimilarLots(auctionId: string): Promise<AuctionSummary[]> {
   try {
     const items = await api<ApiAuctionSummary[]>(`/api/auctions/${auctionId}/similar`);
@@ -103,6 +109,9 @@ export async function getAuction(auctionId: string): Promise<AuctionDetail | nul
       name: detail.product.name,
       description: detail.product.description,
       condition: detail.product.condition,
+      items: detail.product.items ?? [],
+      videoUrl: detail.product.videoUrl ?? null,
+      spinView: detail.product.spinView ?? false,
       status: "IN_AUCTION",
       images: detail.images.map((image) => toImage(image, detail.product.name)),
       createdAt: auction.createdAt,
@@ -130,6 +139,42 @@ export async function getSellerReputation(sellerId: string, latest = 3): Promise
   }
 }
 
+/** EN: A seller's public page. / VI: Trang công khai của người bán. */
+export interface SellerProfile {
+  id: string;
+  displayName: string;
+  verified: boolean;
+  memberSince: string;
+  followers: number;
+  score: SellerReputation;
+  onSale: AuctionSummary[];
+  sold: AuctionSummary[];
+  /** EN: Set while the seller is on vacation. / VI: Có giá trị khi người bán đang nghỉ. */
+  awayUntil?: string | null;
+  awayNote?: string | null;
+}
+
+/** `GET /api/sellers/{id}/profile` — null when there is no such seller. */
+export async function getSellerProfile(sellerId: string): Promise<SellerProfile | null> {
+  try {
+    const data = await api<
+      Omit<SellerProfile, "score" | "onSale" | "sold"> & {
+        score: ApiSellerReviews;
+        onSale: ApiAuctionSummary[];
+        sold: ApiAuctionSummary[];
+      }
+    >(`/api/sellers/${sellerId}/profile`);
+    return {
+      ...data,
+      score: toReputation(data.score),
+      onSale: data.onSale.map((item) => toSummary(item)),
+      sold: data.sold.map((item) => toSummary(item)),
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** Lots open right now, for the header's "LIVE 09" counter. */
 export async function getLiveCount(): Promise<number> {
   try {
@@ -148,6 +193,8 @@ export interface HomeFeed {
   endingSoon: AuctionSummary[];
   upcoming: AuctionSummary[];
   featured: AuctionSummary | null;
+  /** EN: The lots taking turns on the opening stage, the featured one first. / VI: Các lô lần lượt lên sân khấu mở đầu, lô nổi bật đầu tiên. */
+  showcase: AuctionSummary[];
   /** A second live lot for the editorial spread, with its description and photos. */
   editorial: AuctionSummary | null;
   categories: Category[];
@@ -164,7 +211,7 @@ export async function getHomeFeed(): Promise<HomeFeed> {
     fetchPage({ statuses: ["ACTIVE"], endingSoon: true, sort: "ENDING_SOON", pageSize: 4 }),
     fetchPage({ statuses: ["SCHEDULED"], sort: "ENDING_SOON", pageSize: 4 }),
     // The showcase lot: the most contested auction still running.
-    fetchPage({ statuses: ["ACTIVE"], sort: "MOST_BIDS", pageSize: 1 }),
+    fetchPage({ statuses: ["ACTIVE"], sort: "MOST_BIDS", pageSize: 5 }),
     listCategoriesWithLiveCounts(),
     getServerTime(),
   ]);
@@ -184,6 +231,7 @@ export async function getHomeFeed(): Promise<HomeFeed> {
     endingSoon: endingSoon.items,
     upcoming: upcoming.items,
     featured: showcase,
+    showcase: showcase ? [showcase, ...featured.items.slice(1)] : [],
     editorial,
     categories,
     stats: { liveCount: live.totalItems },
@@ -197,15 +245,27 @@ export async function listCategories(): Promise<Category[]> {
   return categories.map(toCategory);
 }
 
-/** Categories with how many of their lots are live, for the home page's rooms. */
+/**
+ * EN: Categories with how many of their lots are live, for the home page's rooms. A room without its own photograph
+ *     borrows the cover of a lot inside it: a live one first, else the newest of any status.
+ * VI: Danh mục kèm số lô đang mở, cho các phòng ở trang chủ. Phòng chưa có ảnh riêng mượn ảnh bìa của một lô bên
+ *     trong: lô đang mở trước, không thì lô mới nhất ở bất kỳ trạng thái nào.
+ */
 async function listCategoriesWithLiveCounts(): Promise<Category[]> {
   const categories = await listCategories();
-  const counts = await Promise.all(
-    categories.map((category) =>
-      api<ApiPage<ApiAuctionSummary>>("/api/auctions", {
+  return Promise.all(
+    categories.map(async (category) => {
+      const live = await api<ApiPage<ApiAuctionSummary>>("/api/auctions", {
         query: { status: ["ACTIVE"], category: [category.slug], size: 1 },
-      }).then((page) => page.totalItems),
-    ),
+      });
+      let imageUrl = category.imageUrl || live.items[0]?.product.coverImageUrl || "";
+      if (!imageUrl) {
+        const any = await api<ApiPage<ApiAuctionSummary>>("/api/auctions", {
+          query: { category: [category.slug], size: 4 },
+        });
+        imageUrl = any.items.find((item) => item.product.coverImageUrl)?.product.coverImageUrl ?? "";
+      }
+      return { ...category, imageUrl, auctionCount: live.totalItems };
+    }),
   );
-  return categories.map((category, index) => ({ ...category, auctionCount: counts[index] }));
 }

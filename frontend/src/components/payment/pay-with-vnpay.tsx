@@ -6,13 +6,21 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { AddressForm } from "@/components/account/address-form";
+import { ForeignPrice } from "@/components/common/foreign-price";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useApiErrorMessage } from "@/hooks/use-labels";
 import { useMoney } from "@/hooks/use-money";
 import { getShippingAddress } from "@/services/account-service";
 import { ApiError } from "@/services/api/http";
-import { quoteShipping, startVnpayCheckout, type ShippingQuote } from "@/services/payment-service";
+import {
+  applyPromo,
+  applySellerCoupon,
+  quoteShipping,
+  startVnpayCheckout,
+  type ShippingQuote,
+} from "@/services/payment-service";
+import { Input } from "@/components/ui/input";
 import type { ShippingAddress } from "@/types";
 
 /**
@@ -31,6 +39,32 @@ export function PayWithVnpay({ paymentId, className }: { paymentId: string; clas
   const [isPending, startTransition] = useTransition();
   const [address, setAddress] = useState<{ initial: ShippingAddress | null } | null>(null);
   const [quote, setQuote] = useState<ShippingQuote | null>(null);
+  const [code, setCode] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+
+  function sellerCoupon(next: string) {
+    startTransition(async () => {
+      try {
+        setQuote(await applySellerCoupon(paymentId, next));
+        if (next) toast.success(t("couponApplied"));
+        setCouponCode("");
+      } catch (error) {
+        toast.error(errorMessage(error));
+      }
+    });
+  }
+
+  function voucher(next: string) {
+    startTransition(async () => {
+      try {
+        setQuote(await applyPromo(paymentId, next));
+        if (next) toast.success(t("promoApplied"));
+        setCode("");
+      } catch (error) {
+        toast.error(errorMessage(error));
+      }
+    });
+  }
 
   function review() {
     startTransition(async () => {
@@ -87,18 +121,111 @@ export function PayWithVnpay({ paymentId, className }: { paymentId: string; clas
                 <dt className="text-dim">
                   {t("paymentShipping")}
                   <span className="label-sm text-dim block">
-                    {quote.source === "GHN" ? t("paymentShippingGhn") : t("paymentShippingFlat")}
+                    {quote.source === "COMBINED"
+                      ? t("paymentShippingCombined")
+                      : quote.source === "SELLER"
+                      ? t("paymentShippingSeller")
+                      : quote.source === "GHN"
+                        ? t("paymentShippingGhn")
+                        : t("paymentShippingFlat")}
                   </span>
                 </dt>
                 <dd className="figure">{money.currency(quote.shippingFee)}</dd>
               </div>
+              {quote.shippingDiscount > 0 ? (
+                <div className="flex items-baseline justify-between gap-4 py-2.5">
+                  <dt className="text-dim">
+                    {t("promoDiscount")}
+                    <span className="label-sm text-dim block">
+                      {quote.promoCode}{" "}
+                      <button
+                        type="button"
+                        className="text-signal-text underline-offset-4 hover:underline"
+                        onClick={() => voucher("")}
+                        disabled={isPending}
+                      >
+                        {t("promoRemove")}
+                      </button>
+                    </span>
+                  </dt>
+                  <dd className="figure text-success" data-testid="payment-discount">
+                    −{money.currency(quote.shippingDiscount)}
+                  </dd>
+                </div>
+              ) : null}
+              {quote.sellerDiscount > 0 ? (
+                <div className="flex items-baseline justify-between gap-4 py-2.5">
+                  <dt className="text-dim">
+                    {t("couponDiscount")}
+                    <span className="label-sm text-dim block">
+                      {quote.sellerCoupon}{" "}
+                      <button
+                        type="button"
+                        className="text-signal-text underline-offset-4 hover:underline"
+                        onClick={() => sellerCoupon("")}
+                        disabled={isPending}
+                      >
+                        {t("promoRemove")}
+                      </button>
+                    </span>
+                  </dt>
+                  <dd className="figure text-success" data-testid="payment-coupon">
+                    −{money.currency(quote.sellerDiscount)}
+                  </dd>
+                </div>
+              ) : null}
               <div className="flex items-baseline justify-between gap-4 py-2.5">
                 <dt className="font-medium">{t("paymentTotal")}</dt>
                 <dd className="figure text-lg" data-testid="payment-total">
                   {money.currency(quote.total)}
                 </dd>
               </div>
+              <div className="flex justify-end">
+                <ForeignPrice amount={quote.total} />
+              </div>
             </dl>
+          ) : null}
+          {quote && quote.shippingFee > 0 && quote.shippingDiscount === 0 ? (
+            <form
+              className="flex items-center gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (code.trim()) voucher(code.trim());
+              }}
+            >
+              <Input
+                aria-label={t("promoCode")}
+                placeholder={t("promoCode")}
+                value={code}
+                onChange={(event) => setCode(event.target.value.toUpperCase())}
+                maxLength={32}
+                className="h-9"
+              />
+              <Button type="submit" variant="outline" size="sm" disabled={isPending || !code.trim()}>
+                {t("promoApply")}
+              </Button>
+            </form>
+          ) : null}
+          {quote && quote.sellerDiscount === 0 ? (
+            <form
+              className="flex items-center gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (couponCode.trim()) sellerCoupon(couponCode.trim());
+              }}
+            >
+              <Input
+                aria-label={t("couponCode")}
+                placeholder={t("couponCode")}
+                value={couponCode}
+                onChange={(event) => setCouponCode(event.target.value.toUpperCase())}
+                maxLength={32}
+                className="h-9"
+              />
+              <Button type="submit" variant="outline" size="sm" disabled={isPending || !couponCode.trim()}>
+                {t("promoApply")}
+              </Button>
+            </form>
           ) : null}
           <div className="flex flex-wrap justify-end gap-2">
             <Button variant="outline" onClick={changeAddress} disabled={isPending}>

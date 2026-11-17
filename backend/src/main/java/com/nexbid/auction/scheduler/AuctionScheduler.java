@@ -24,6 +24,12 @@ class AuctionScheduler {
     private static final Logger log = LoggerFactory.getLogger(AuctionScheduler.class);
 
     private final AuctionService auctions;
+    private com.nexbid.auction.LotBatch lots;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setLots(com.nexbid.auction.LotBatch lots) {
+        this.lots = lots;
+    }
     private final int batchSize;
 
     AuctionScheduler(AuctionService auctions, @Value("${nexbid.scheduler.batch-size}") int batchSize) {
@@ -48,6 +54,10 @@ class AuctionScheduler {
         int ended = auctions.endDueAuctions(now, batchSize);
         int started = auctions.startDueAuctions(now, batchSize);
         int lapsed = auctions.lapseReserveDecisions(now, batchSize);
+        int submitted = lots.submitDue(now, batchSize);
+        if (submitted > 0) {
+            log.info("Sent {} timed draft(s) for approval", submitted);
+        }
 
         if (ended > 0) {
             log.info("Closed {} auction(s)", ended);

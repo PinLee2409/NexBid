@@ -26,6 +26,30 @@ export const ERROR_CODES = [
   "INVALID_CREDENTIALS",
   "ACCOUNT_BLOCKED",
   "ADMIN_NOT_BLOCKABLE",
+  "STAFF_ROLES_INVALID",
+  "DEPOSIT_REQUIRED",
+  "DEPOSIT_NOT_NEEDED",
+  "DEPOSIT_ALREADY_HELD",
+  "DEPOSIT_NOT_FOUND",
+  "DEPOSIT_NOT_DUE",
+  "OFFER_UNAVAILABLE",
+  "OFFER_INVALID",
+  "OFFER_LIMIT",
+  "RELIST_NOT_ALLOWED",
+  "VACATION_INVALID",
+  "SELLER_ON_VACATION",
+  "TEMPLATE_NOT_FOUND",
+  "TEMPLATE_INVALID",
+  "COUPON_INVALID",
+  "COUPON_NOT_FOUND",
+  "QUICK_REPLY_LIMIT",
+  "QUICK_REPLY_NOT_FOUND",
+  "MEDIA_NOT_FOUND",
+  "SEALED_BID_EXISTS",
+  "SEALED_LOT",
+  "RETRACTION_NOT_ALLOWED",
+  "RETRACTION_TOO_LATE",
+  "RETRACTION_LIMIT",
   "REFRESH_TOKEN_INVALID",
   "LOGIN_RATE_LIMITED",
   "ALREADY_SELLER",
@@ -95,6 +119,13 @@ export const ERROR_CODES = [
   "GOOGLE_SIGN_IN_OFF",
   "GOOGLE_SIGN_IN_FAILED",
   "IMPORT_INVALID",
+  "PUSH_SUBSCRIPTION_INVALID",
+  "PROMO_INVALID",
+  "PROMO_EXISTS",
+  "PASSWORD_RESET_INVALID",
+  "PASSWORD_INCORRECT",
+  "PASSWORD_UNCHANGED",
+  "VIDEO_INVALID",
   "QUESTION_NOT_FOUND",
   "QUESTION_NOT_ALLOWED",
   "QUESTION_LIMIT",
@@ -137,7 +168,7 @@ export interface Page<T> {
 /*                                    User                                    */
 /* -------------------------------------------------------------------------- */
 
-export type UserRole = "BUYER" | "SELLER" | "ADMIN";
+export type UserRole = "BUYER" | "SELLER" | "ADMIN" | "MODERATOR" | "FINANCE" | "SUPPORT";
 
 export type UserStatus = "ACTIVE" | "BLOCKED";
 
@@ -200,6 +231,10 @@ export interface SellerReview {
   /** 1–5 stars. */
   rating: number;
   comment: string | null;
+  /** EN: Optional stars per aspect. / VI: Số sao tuỳ chọn cho từng khía cạnh. */
+  packaging?: number | null;
+  accuracy?: number | null;
+  speed?: number | null;
   reviewer: string;
   lotName: string | null;
   createdAt: IsoDateString;
@@ -211,6 +246,8 @@ export interface SellerReputation {
   average: number | null;
   reviewCount: number;
   sales: number;
+  /** EN: Average stars per aspect; null where nobody rated it. / VI: Sao trung bình mỗi khía cạnh; null nếu chưa ai chấm. */
+  aspects: { packaging: number | null; accuracy: number | null; speed: number | null };
   reviews: SellerReview[];
 }
 
@@ -262,6 +299,12 @@ export interface Parcel {
   heightCm: number;
 }
 
+/** EN: One piece of a set sold as one lot. / VI: Một món trong một bộ bán chung một lô. */
+export interface BundleItem {
+  name: string;
+  quantity: number;
+}
+
 export interface Product {
   id: Id;
   sellerId: Id;
@@ -272,6 +315,12 @@ export interface Product {
   status: ProductStatus;
   /** EN: Packed size for shipping quotes; null when not given. / VI: Kích thước kiện để báo phí ship; null khi chưa khai. */
   parcel?: Parcel | null;
+  /** EN: The pieces of a set; empty for a single item. / VI: Các món của một bộ; rỗng với món đơn lẻ. */
+  items?: BundleItem[];
+  /** EN: A short video, or null. / VI: Một video ngắn, hoặc null. */
+  videoUrl?: string | null;
+  /** EN: The photos are frames of a 360° turn. / VI: Các ảnh là khung hình của một vòng xoay 360°. */
+  spinView?: boolean;
   images: ProductImage[];
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
@@ -339,6 +388,12 @@ export interface Auction {
   /** EN: Offered until the first bid. / VI: Có hiệu lực tới lượt trả giá đầu tiên. */
   buyNowPrice: number | null;
   boughtNow: boolean;
+  /** EN: The seller pays the parcel. / VI: Người bán trả tiền gửi kiện. */
+  freeShipping: boolean;
+  /** EN: One hidden bid per person, the highest wins at the close. / VI: Mỗi người một lượt giá ẩn, giá cao nhất thắng khi đóng. */
+  sealed: boolean;
+  /** EN: A draft timed to go for approval. / VI: Bản nháp hẹn giờ gửi duyệt. */
+  submitAt?: IsoDateString | null;
   /** EN: Set once the lot closed below its reserve. / VI: Có giá trị khi lô đã đóng dưới giá sàn. */
   reserveDecision: ReserveDecision | null;
   reserveDecisionUntil: IsoDateString | null;
@@ -485,6 +540,15 @@ export type AuctionEvent =
       serverTime: IsoDateString;
     }
   | {
+      /** EN: Someone took their bids back; the figures the lot now stands at. / VI: Có người rút lượt; các con số lô đang đứng. */
+      type: "BID_RETRACTED";
+      auctionId: Id;
+      currentPrice: number;
+      totalBids: number;
+      reserveMet: boolean | null;
+      serverTime: IsoDateString;
+    }
+  | {
       type: "VIEWERS_CHANGED";
       auctionId: Id;
       viewerCount: number;
@@ -543,7 +607,13 @@ export type NotificationType =
   | "LOT_REMOVED"
   | "REPORT_RESOLVED"
   | "SELLER_VERIFIED"
-  | "NEW_MESSAGE";
+  | "NEW_MESSAGE"
+  | "SHIPMENT_CANCELLED"
+  | "ORDER_ADDRESS_CHANGED"
+  | "OFFER_RECEIVED"
+  | "OFFER_ANSWERED"
+  | "LOT_RELISTED"
+  | "MEDIA_REMOVED";
 
 export interface AppNotification {
   id: Id;
@@ -576,9 +646,16 @@ export interface Payment {
   updatedAt: IsoDateString;
   /** EN: Null until quoted at checkout. / VI: Null tới khi báo phí lúc thanh toán. */
   shippingFee: number | null;
-  shippingSource: "GHN" | "FLAT" | null;
-  /** EN: Goods plus shipping: what VNPay charges. / VI: Tiền hàng cộng phí ship: số VNPay thu. */
+  shippingSource: "GHN" | "FLAT" | "SELLER" | "COMBINED" | null;
+  /** EN: Goods plus shipping less any voucher: what VNPay charges. / VI: Tiền hàng cộng phí ship trừ voucher: số VNPay thu. */
   total: number;
+  shippingDiscount?: number;
+  promoCode?: string | null;
+  /** EN: Taken off the goods by the seller's own code. / VI: Phần mã riêng của người bán trừ vào tiền hàng. */
+  sellerDiscount?: number;
+  sellerCoupon?: string | null;
+  /** EN: The lot whose parcel this one travels in. / VI: Lô mà kiện của nó chở luôn lô này. */
+  shipsWithAuctionId?: string | null;
 }
 
 /** Order status (spec §5.3). */
@@ -692,7 +769,13 @@ export type AuditAction =
   | "ORDER_MESSAGES_READ"
   | "SHILL_PAIR_CLEARED"
   | "TWO_FACTOR_ENABLED"
-  | "TWO_FACTOR_DISABLED";
+  | "TWO_FACTOR_DISABLED"
+  | "STAFF_ROLES_CHANGED"
+  | "AUCTION_RELISTED"
+  | "LOT_OFFER_ACCEPTED"
+  | "DEPOSIT_FORFEITED"
+  | "DEPOSIT_REFUNDED"
+  | "MEDIA_REMOVED";
 
 export interface AuditLog {
   id: Id;

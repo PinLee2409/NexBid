@@ -116,6 +116,11 @@ public class GhnShipping {
         return client.book(booking);
     }
 
+    GhnClient.Cancelled cancel(String orderCode) {
+        requireEnabled();
+        return client.cancel(orderCode);
+    }
+
     /** EN: Where the seller prints GHN's label. / VI: Nơi người bán in phiếu GHN. */
     public String labelUrl(String orderCode) {
         requireEnabled();

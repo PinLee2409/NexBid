@@ -32,19 +32,21 @@ test("the buyer and the seller talk about their order", async ({ page, openConte
 
   await draft.fill("Hello, could you pack it carefully?");
   await page.getByRole("button", { name: "Send" }).click();
-  await expect(page.getByText("Hello, could you pack it carefully?")).toBeVisible();
+  // EN: Inside the thread; the inbox beside it previews the same text. / VI: Trong khung trò chuyện; hộp thư bên cạnh cũng xem trước cùng nội dung.
+  const thread = page.locator('section[aria-labelledby="thread-heading"]');
+  await expect(thread.getByText("Hello, could you pack it carefully?")).toBeVisible();
 
   const seller = await openContext();
   await signIn(seller, data.users.seller);
   const inbox = await seller.newPage();
   await inbox.goto("/messages");
   await inbox.getByRole("link", { name: new RegExp(lot.name) }).click();
-  await expect(inbox.getByText("Hello, could you pack it carefully?")).toBeVisible();
+  await expect(inbox.locator('section[aria-labelledby="thread-heading"]').getByText("Hello, could you pack it carefully?")).toBeVisible();
   await inbox.getByLabel("Your message").fill("Of course, double boxed.");
   await inbox.getByRole("button", { name: "Send" }).click();
 
   // EN: The reply arrives on the buyer's open thread without a reload. / VI: Câu trả lời tới cuộc trò chuyện đang mở của người mua mà không cần tải lại.
-  await expect(page.getByText("Of course, double boxed.")).toBeVisible();
+  await expect(thread.getByText("Of course, double boxed.")).toBeVisible();
 });
 
 /**

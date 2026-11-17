@@ -75,7 +75,8 @@ class TwoFactorApiTest {
                         "otpauth://totp/NexBid%3Atwo.step%40nexbid.com?secret=")))
                 .andReturn().getResponse().getContentAsString();
         String secret = objectMapper.readTree(setup).get("data").get("secret").asString();
-        assertThat(jdbc.queryForObject("SELECT secret FROM user_totp", String.class)).doesNotContain(secret);
+        assertThat(jdbc.queryForObject("SELECT t.secret FROM user_totp t JOIN users u ON u.id = t.user_id WHERE u.email = ?",
+                String.class, EMAIL)).doesNotContain(secret);
 
         long now = Totp.stepAt(Instant.now());
         mockMvc.perform(post("/api/users/me/2fa/enable").header("Authorization", bearer)
@@ -125,8 +126,56 @@ class TwoFactorApiTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"code\":\"" + second + "\"}"))
                 .andExpect(jsonPath("$.data.enabled").value(false));
         assertThat(login().get("accessToken").asString()).isNotBlank();
-        assertThat(jdbc.queryForList("SELECT action FROM audit_logs WHERE action LIKE 'TWO_FACTOR_%' ORDER BY created_at",
-                String.class)).containsExactly("TWO_FACTOR_ENABLED", "TWO_FACTOR_DISABLED");
+        assertThat(jdbc.queryForList("""
+                SELECT a.action FROM audit_logs a JOIN users u ON u.id = a.user_id
+                WHERE a.action LIKE 'TWO_FACTOR_%' AND u.email = ? ORDER BY a.position
+                """, String.class, EMAIL)).containsExactly("TWO_FACTOR_ENABLED", "TWO_FACTOR_DISABLED");
+    }
+
+    /**
+     * EN: Whoever reached the code step has the password, so spreading guesses over many addresses must not help: ten
+     *     wrong codes for one account stop the code step from anywhere.
+     * VI: Ai tới bước nhập mã thì đã có mật khẩu, nên chia lượt đoán ra nhiều địa chỉ không giúp được gì: mười mã sai cho
+     *     một tài khoản là bước nhập mã dừng lại ở mọi nơi.
+     */
+    @Test
+    void wrongCodesFromManyAddressesStopTheCodeStep() throws Exception {
+        String email = "spread.guess@nexbid.com";
+        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"fullName\":\"Spread Guess\",\"email\":\"" + email + "\",\"password\":\"supersecret\"}"));
+        String bearer = "Bearer " + objectMapper.readTree(mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"" + email + "\",\"password\":\"supersecret\"}"))
+                .andReturn().getResponse().getContentAsString()).get("data").get("accessToken").asString();
+        String secret = objectMapper.readTree(mockMvc.perform(post("/api/users/me/2fa/setup").header("Authorization", bearer))
+                .andReturn().getResponse().getContentAsString()).get("data").get("secret").asString();
+        long now = Totp.stepAt(Instant.now());
+        mockMvc.perform(post("/api/users/me/2fa/enable").header("Authorization", bearer)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"code\":\"" + Totp.code(secret, now) + "\"}"))
+                .andExpect(status().isOk());
+        String challenge = objectMapper.readTree(mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"" + email + "\",\"password\":\"supersecret\"}"))
+                .andReturn().getResponse().getContentAsString()).get("data").get("twoFactorChallenge").asString();
+
+        String wrong = Totp.code(secret, now + 50);
+        for (int i = 1; i <= 10; i++) {
+            String address = "10.20.0." + i;
+            mockMvc.perform(post("/api/auth/login/2fa").with(request -> {
+                        request.setRemoteAddr(address);
+                        return request;
+                    }).contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"challenge\":\"" + challenge + "\",\"code\":\"" + wrong + "\"}"))
+                    .andExpect(jsonPath("$.code").value("TWO_FACTOR_CODE_INVALID"));
+        }
+        // EN: Even the right code from a fresh address waits now. / VI: Kể cả mã đúng từ địa chỉ mới cũng phải chờ.
+        mockMvc.perform(post("/api/auth/login/2fa").with(request -> {
+                    request.setRemoteAddr("10.20.1.1");
+                    return request;
+                }).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"challenge\":\"" + challenge + "\",\"code\":\"" + Totp.code(secret, now + 1) + "\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("LOGIN_RATE_LIMITED"));
     }
 
     @Test

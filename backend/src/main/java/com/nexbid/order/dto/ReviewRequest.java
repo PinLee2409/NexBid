@@ -13,6 +13,19 @@ public record ReviewRequest(
         @Max(value = 5, message = "The rating must be 1 to 5 stars")
         Integer rating,
 
+        // EN: Optional stars for packing, accuracy and speed. / VI: Sao tuỳ chọn cho đóng gói, đúng mô tả và tốc độ.
+        @jakarta.validation.constraints.Min(value = 1, message = "Each aspect is 1 to 5 stars")
+        @jakarta.validation.constraints.Max(value = 5, message = "Each aspect is 1 to 5 stars")
+        Integer packaging,
+
+        @jakarta.validation.constraints.Min(value = 1, message = "Each aspect is 1 to 5 stars")
+        @jakarta.validation.constraints.Max(value = 5, message = "Each aspect is 1 to 5 stars")
+        Integer accuracy,
+
+        @jakarta.validation.constraints.Min(value = 1, message = "Each aspect is 1 to 5 stars")
+        @jakarta.validation.constraints.Max(value = 5, message = "Each aspect is 1 to 5 stars")
+        Integer speed,
+
         @Size(max = 500, message = "The comment must be at most 500 characters")
         String comment) {
 }

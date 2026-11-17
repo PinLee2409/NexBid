@@ -1,4 +1,5 @@
 import { NotificationToasts } from "@/components/common/notification-toasts";
+import { CompareTray } from "@/components/nexbid/compare-tray";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { getLiveCount } from "@/services/auction-service";
@@ -18,6 +19,7 @@ export default async function MarketplaceLayout({ children }: LayoutProps<"/">) 
       </main>
       <SiteFooter />
       <NotificationToasts />
+      <CompareTray />
     </>
   );
 }

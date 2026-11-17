@@ -52,6 +52,8 @@ public class SecurityConfig {
             // EN: Every countdown on the site measures against this, so it must answer before sign-in.
             // VI: Mọi đồng hồ đếm ngược trên site đo theo mốc này, nên nó phải trả lời từ trước khi đăng nhập.
             "/api/server-time",
+            // EN: Reference exchange rates for showing prices in other currencies. / VI: Tỷ giá tham khảo để hiện giá bằng tiền khác.
+            "/api/fx",
             // EN: Browsing is public — someone deciding whether to join must see what is on offer.
             // VI: Duyệt hàng là công khai — người đang cân nhắc tham gia phải xem được có gì.
             "/api/categories", "/api/categories/**",
@@ -66,6 +68,11 @@ public class SecurityConfig {
             // VI: Mô tả API và Swagger UI. Chúng liệt kê các endpoint, thứ mà frontend vốn đã để lộ.
             "/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**"
     };
+
+    private static final String ADMIN = RoleName.ADMIN.name();
+    private static final String MODERATOR = RoleName.MODERATOR.name();
+    private static final String FINANCE = RoleName.FINANCE.name();
+    private static final String SUPPORT = RoleName.SUPPORT.name();
 
     @Bean
     public SecurityFilterChain securityFilterChain(
@@ -85,15 +92,21 @@ public class SecurityConfig {
                         //     tiền ra mua, theo dõi hay đặt auto bid thì không.
                         .requestMatchers(HttpMethod.POST, "/api/auctions/*/bids").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/auctions/*/buy-now").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/auctions/*/offers").authenticated()
+                        .requestMatchers("/api/auctions/*/offers/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/auctions/*/deposit/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/auctions/*/questions").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/auctions/*/reports").authenticated()
                         .requestMatchers("/api/auctions/*/watch").authenticated()
                         .requestMatchers("/api/auctions/*/auto-bid").authenticated()
+                        .requestMatchers("/api/auctions/*/bids/retraction", "/api/auctions/*/bids/retract").authenticated()
                         // EN: A seller's reviews are shown on public lot pages. / VI: Đánh giá người bán hiện trên trang lô công khai.
                         .requestMatchers(HttpMethod.GET, "/api/sellers/*/reviews").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/sellers/*/profile").permitAll()
                         // EN: VNPay's server and the buyer returning from VNPay carry no token; the signature is the check.
                         // VI: Server của VNPay và người mua quay về từ VNPay không mang token; chữ ký mới là thứ được kiểm.
-                        .requestMatchers(HttpMethod.GET, "/api/payments/vnpay/ipn", "/api/payments/vnpay/return")
+                        .requestMatchers(HttpMethod.GET, "/api/payments/vnpay/ipn", "/api/payments/vnpay/return",
+                                "/api/payments/deposits/vnpay/return")
                         .permitAll()
                         // EN: An email's unsubscribe link works without signing in; its token is signed.
                         // VI: Link huỷ đăng ký trong email dùng được không cần đăng nhập; token của nó có chữ ký.
@@ -107,6 +120,23 @@ public class SecurityConfig {
                         //     this is the line that actually stops someone typing the URL.
                         // VI: Frontend cũng ẩn các menu này, nhưng đó chỉ là trang trí —
                         //     đây mới là chỗ thật sự chặn người gõ thẳng URL.
+                        // EN: Staff roles each open their own part of the console; ADMIN opens all of it. The most
+                        //     specific paths come first, and anything not listed stays ADMIN only.
+                        // VI: Mỗi vai trò nhân viên mở phần riêng của trang quản trị; ADMIN mở tất cả. Đường dẫn cụ
+                        //     thể nhất đứng trước, và mọi thứ không có trong danh sách chỉ dành cho ADMIN.
+                        .requestMatchers("/api/admin/analytics/**")
+                        .hasAnyRole(ADMIN, MODERATOR, FINANCE, SUPPORT)
+                        .requestMatchers("/api/admin/auctions/**", "/api/admin/categories/**", "/api/admin/reports/**",
+                                "/api/admin/shill-suspects/**", "/api/admin/seller-applications/**",
+                                "/api/admin/media/**", "/api/admin/bid-retractions/**", "/api/admin/bid-retractions")
+                        .hasAnyRole(ADMIN, MODERATOR)
+                        .requestMatchers("/api/admin/finance/**", "/api/admin/payouts/**", "/api/admin/stray-charges/**",
+                                "/api/admin/promo-codes/**", "/api/admin/deposits/**")
+                        .hasAnyRole(ADMIN, FINANCE)
+                        .requestMatchers("/api/admin/orders/**", "/api/admin/disputes/**")
+                        .hasAnyRole(ADMIN, SUPPORT, FINANCE)
+                        .requestMatchers("/api/admin/users/**", "/api/admin/emails/**")
+                        .hasAnyRole(ADMIN, SUPPORT)
                         .requestMatchers("/api/admin/**").hasRole(RoleName.ADMIN.name())
                         .requestMatchers("/api/seller/**").hasRole(RoleName.SELLER.name())
                         .anyRequest().authenticated())

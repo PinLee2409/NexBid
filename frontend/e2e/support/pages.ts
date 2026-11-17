@@ -15,7 +15,9 @@ export const ROLES: Role[] = ["visitor", "buyer", "seller", "admin"];
  * VI: Mọi trang, nhóm theo người được mở. Tạo trước một lô đang mở để trang chủ và trang lô có nội dung thật.
  */
 export async function pagesFor(role: Role): Promise<string[]> {
-  const lot = await newLot("Page check lot", true);
+  // EN: One long unbroken word and a big price, the two things that once pushed a phone's page wider.
+  // VI: Một từ dài không ngắt và một mức giá lớn, hai thứ từng đẩy trang trên điện thoại rộng ra.
+  const lot = await newLot("Pagechecklotwithaverylongunbrokennameforphones", true, { buyNowPrice: 9_990_000_000 });
   switch (role) {
     case "visitor":
       return ["/", "/auctions", `/auctions/${lot.id}`, "/how-it-works", "/legal/terms", "/login", "/register"];

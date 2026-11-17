@@ -31,10 +31,12 @@ public class AuthController {
 
     private final AuthService authService;
     private final RefreshCookies cookies;
+    private final PasswordResets passwordResets;
 
-    public AuthController(AuthService authService, RefreshCookies cookies) {
+    public AuthController(AuthService authService, RefreshCookies cookies, PasswordResets passwordResets) {
         this.authService = authService;
         this.cookies = cookies;
+        this.passwordResets = passwordResets;
     }
 
     @PostMapping("/register")
@@ -75,6 +77,29 @@ public class AuthController {
             HttpServletResponse response) {
         return signedIn(authService.google(request.credential(), request.rememberMe() == null || request.rememberMe()),
                 response);
+    }
+
+    public record ForgotRequest(@jakarta.validation.constraints.NotBlank
+            @jakarta.validation.constraints.Size(max = 254) String email) {
+    }
+
+    /** EN: Always the same answer, whether or not the email has an account. / VI: Luôn trả lời giống nhau, dù email có tài khoản hay không. */
+    @PostMapping("/password/forgot")
+    public ApiResponse<Void> forgot(@Valid @RequestBody ForgotRequest request, HttpServletRequest http) {
+        passwordResets.request(request.email(), http.getRemoteAddr(), java.time.Instant.now());
+        return ApiResponse.ok("If that email has an account, a reset link is on its way");
+    }
+
+    public record ResetRequest(@jakarta.validation.constraints.NotBlank
+            @jakarta.validation.constraints.Size(max = 100) String token,
+            @jakarta.validation.constraints.NotBlank
+            @jakarta.validation.constraints.Size(min = 8, max = 72) String password) {
+    }
+
+    @PostMapping("/password/reset")
+    public ApiResponse<Void> reset(@Valid @RequestBody ResetRequest request) {
+        passwordResets.reset(request.token(), request.password(), java.time.Instant.now());
+        return ApiResponse.ok("Password changed; sign in with it");
     }
 
     /** EN: Which other ways to sign in are set up. / VI: Những cách đăng nhập khác đã được cài đặt. */

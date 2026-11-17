@@ -55,6 +55,26 @@ public final class AuctionSpecifications {
                 AuctionStatus.COMPLETED);
     }
 
+    /**
+     * EN: "Ending soon" as a buyer means it: open lots by closing time, then lots about to open, then the finished ones.
+     *     A plain sort on the closing time put finished lots first, since their time is already past. Applies no filter;
+     *     the order is left off the count query.
+     * VI: "Sắp kết thúc" đúng nghĩa với người mua: lô đang mở theo giờ đóng, rồi lô sắp mở, rồi lô đã xong. Sắp thuần theo
+     *     giờ đóng đẩy lô đã xong lên đầu, vì giờ của chúng đã qua. Không lọc gì; thứ tự không áp vào truy vấn đếm.
+     */
+    public static Specification<Auction> openFirstEndingSoon() {
+        return (root, query, cb) -> {
+            if (query != null && !Long.class.equals(query.getResultType()) && !long.class.equals(query.getResultType())) {
+                var rank = cb.selectCase()
+                        .when(cb.equal(root.get("status"), AuctionStatus.ACTIVE), 0)
+                        .when(cb.equal(root.get("status"), AuctionStatus.SCHEDULED), 1)
+                        .otherwise(2);
+                query.orderBy(cb.asc(rank), cb.asc(root.get("endTime")), cb.asc(root.get("id")));
+            }
+            return null;
+        };
+    }
+
     public static Specification<Auction> statusIn(Collection<AuctionStatus> statuses) {
         if (statuses == null || statuses.isEmpty()) {
             return null;

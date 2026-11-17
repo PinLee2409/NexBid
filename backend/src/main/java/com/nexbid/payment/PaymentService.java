@@ -50,6 +50,18 @@ public class PaymentService {
     private final AddressBook addresses;
     private final ObjectProvider<ShippingQuoter> quoters;
     private final BigDecimal flatShippingFee;
+    private PromoCodes promos;
+    private SellerCoupons coupons;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setCoupons(SellerCoupons coupons) {
+        this.coupons = coupons;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setPromos(PromoCodes promos) {
+        this.promos = promos;
+    }
 
     PaymentService(
             PaymentRepository payments,
@@ -103,15 +115,93 @@ public class PaymentService {
         Payment payment = payments.findByIdForUpdate(paymentId).orElseThrow(() -> notFound(paymentId));
 
         String key = addressKey(address);
-        if (!payment.isQuotedFor(key)) {
+        UUID leader = payment.isQuotedFor(key) ? null : combinableWith(payment, key);
+        if (leader != null) {
+            payment.shipWith(leader, key);
+            payments.saveAndFlush(payment);
+        } else if (!payment.isQuotedFor(key) && auctions.freeShipping(payment.getAuctionId())) {
+            payment.quoteShipping(BigDecimal.ZERO, ShippingQuote.SELLER, key);
+            payments.saveAndFlush(payment);
+        } else if (!payment.isQuotedFor(key)) {
             Optional<BigDecimal> carrier = Optional.ofNullable(quoters.getIfAvailable())
                     .flatMap(quoter -> quoter.quote(payment.getAuctionId(), userId, payment.getAmount()));
             payment.quoteShipping(carrier.orElse(flatShippingFee),
                     carrier.isPresent() ? ShippingQuote.GHN : ShippingQuote.FLAT, key);
             payments.saveAndFlush(payment);
         }
+        return quoteOf(payment);
+    }
+
+    private ShippingQuote quoteOf(Payment payment) {
+        UUID withLot = payment.getCombinedWith() == null ? null
+                : payments.findById(payment.getCombinedWith()).map(Payment::getAuctionId).orElse(null);
         return new ShippingQuote(payment.getAmount(), payment.getShippingFee(), payment.getShippingSource(),
-                payment.getTotal());
+                payment.getTotal(), payment.getShippingDiscount(), payment.getPromoCode(),
+                payment.getSellerDiscount(), payment.getSellerCoupon(), withLot);
+    }
+
+    /**
+     * EN: Another win from the same seller this buyer has already paid, going to the same address and not yet sent:
+     *     this one rides in that parcel, so its shipping is free. Only a paid one, so the shipping it carries is money
+     *     already taken; the seller sees both orders marked to go together.
+     * VI: Một lô thắng khác của cùng người bán mà người mua này đã trả, giao tới cùng địa chỉ và chưa gửi: lô này đi
+     *     chung kiện đó, nên miễn phí ship. Chỉ khoản đã trả, để phí ship nó mang là tiền đã thu; người bán thấy hai đơn
+     *     được đánh dấu gửi chung.
+     */
+    private UUID combinableWith(Payment payment, String addressKey) {
+        UUID sellerId = auctions.sellerOf(payment.getAuctionId());
+        return jdbc.query("""
+                SELECT p.id FROM payments p
+                JOIN auctions a ON a.id = p.auction_id
+                JOIN orders o ON o.payment_id = p.id
+                WHERE p.user_id = ? AND a.seller_id = ? AND p.id <> ? AND p.status = 'SUCCESS'
+                  AND p.shipping_address_key = ? AND p.shipping_source IN ('GHN', 'FLAT')
+                  AND o.status = 'PAID' AND o.tracking_number IS NULL
+                ORDER BY p.updated_at LIMIT 1
+                """, (rs, n) -> rs.getObject(1, UUID.class), payment.getUserId(), sellerId, payment.getId(), addressKey)
+                .stream().findFirst().orElse(null);
+    }
+
+    /**
+     * EN: Applies (or with a blank code removes) one of the seller's own codes to an open payment.
+     * VI: Áp (hoặc gỡ khi mã để trống) một mã riêng của người bán cho một khoản đang mở.
+     */
+    @Transactional
+    public ShippingQuote applySellerCoupon(UUID userId, UUID paymentId, String code) {
+        quoteShipping(userId, paymentId);
+        Payment payment = payments.findByIdForUpdate(paymentId).orElseThrow(() -> notFound(paymentId));
+        if (code == null || code.isBlank()) {
+            payment.applySellerCoupon(null, BigDecimal.ZERO);
+        } else {
+            SellerCoupons.Valid valid = coupons.check(code, auctions.sellerOf(payment.getAuctionId()), userId,
+                    payment.getAmount(), Instant.now());
+            payment.applySellerCoupon(valid.code(), valid.discount());
+        }
+        payments.saveAndFlush(payment);
+        return quoteOf(payment);
+    }
+
+    /**
+     * EN: Applies a shipping voucher to an open payment, or removes it with a blank code. Checked again nowhere: a code
+     *     that ran out between now and the payment still honours what the buyer was shown.
+     * VI: Áp voucher phí ship cho một khoản đang mở, hoặc gỡ khi mã để trống. Không kiểm lại ở đâu nữa: mã hết lượt giữa
+     *     lúc này và lúc thanh toán vẫn giữ đúng số người mua đã thấy.
+     */
+    @Transactional
+    public ShippingQuote applyPromo(UUID userId, UUID paymentId, String code) {
+        quoteShipping(userId, paymentId);
+        Payment payment = payments.findByIdForUpdate(paymentId).orElseThrow(() -> notFound(paymentId));
+        if (code == null || code.isBlank()) {
+            payment.applyPromo(null, BigDecimal.ZERO);
+        } else {
+            PromoCodes.Valid valid = promos.check(code, userId, Instant.now());
+            if (payment.getShippingFee().signum() == 0) {
+                throw new BusinessException(ErrorCode.PROMO_INVALID, "There is no shipping to take a voucher off");
+            }
+            payment.applyPromo(valid.code(), valid.amount());
+        }
+        payments.saveAndFlush(payment);
+        return quoteOf(payment);
     }
 
     /** EN: Changes whenever the parcel's destination does. / VI: Đổi mỗi khi nơi nhận kiện hàng đổi. */
@@ -263,7 +353,18 @@ public class PaymentService {
         // EN: An attempt started before the buyer changed address charged the shipping quoted then; that is what was paid.
         // VI: Lần thử bắt đầu trước khi người mua đổi địa chỉ đã thu phí ship báo lúc đó; đó là số đã thực trả.
         if (success && charged.compareTo(payment.getTotal()) != 0) {
-            payment.quoteShipping(charged.subtract(payment.getAmount()), payment.getShippingSource(), null);
+            // EN: That attempt was started without the voucher now on the payment, so the voucher is not spent.
+            // VI: Lần thử đó bắt đầu khi chưa có voucher đang gắn trên khoản, nên voucher không bị dùng.
+            payment.applyPromo(null, BigDecimal.ZERO);
+            payment.applySellerCoupon(null, BigDecimal.ZERO);
+            payment.quoteShipping(charged.subtract(payment.getAmount()).max(BigDecimal.ZERO), payment.getShippingSource(),
+                    null);
+        }
+        if (success && payment.getPromoCode() != null) {
+            promos.redeem(payment.getPromoCode(), payment.getUserId(), payment.getId(), payment.getShippingDiscount(), now);
+        }
+        if (success && payment.getSellerCoupon() != null) {
+            coupons.redeem(payment.getSellerCoupon());
         }
         payments.saveAndFlush(payment);
 
@@ -272,7 +373,7 @@ public class PaymentService {
         }
         events.publishEvent(new PaymentEvents.Succeeded(
                 payment.getId(), payment.getAuctionId(), payment.getUserId(), payment.getAmount(), now,
-                payment.getShippingFee()));
+                payment.getShippingFee(), payment.getSellerDiscount()));
         return Settled.PAID;
     }
 
@@ -312,7 +413,7 @@ public class PaymentService {
      * EN: An open payment past its deadline reads as EXPIRED straight away, even before the job has run.
      * VI: Khoản còn mở mà đã quá hạn thì đọc ra EXPIRED ngay, kể cả khi job chưa kịp chạy.
      */
-    private static PaymentView view(Payment payment, AuctionSummaryView lot, Instant now) {
+    private PaymentView view(Payment payment, AuctionSummaryView lot, Instant now) {
         PaymentStatus status = payment.getStatus().isOpen() && payment.isOverdue(now)
                 ? PaymentStatus.EXPIRED
                 : payment.getStatus();
@@ -329,7 +430,13 @@ public class PaymentService {
                         payment.getUpdatedAt(),
                         payment.getShippingSource() == null ? null : payment.getShippingFee(),
                         payment.getShippingSource(),
-                        payment.getTotal()),
+                        payment.getTotal(),
+                        payment.getShippingDiscount(),
+                        payment.getPromoCode(),
+                        payment.getSellerDiscount(),
+                        payment.getSellerCoupon(),
+                        payment.getCombinedWith() == null ? null
+                                : payments.findById(payment.getCombinedWith()).map(Payment::getAuctionId).orElse(null)),
                 lot);
     }
 

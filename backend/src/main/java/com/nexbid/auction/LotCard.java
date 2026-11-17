@@ -20,7 +20,11 @@ record LotCard(
         CategoryView category,
         List<ProductImageView> images,
         UUID sellerId,
-        String sellerName) {
+        String sellerName,
+        // EN: Null in cards cached before sets existed. / VI: Null trong thẻ đã cache từ trước khi có bộ.
+        List<com.nexbid.product.BundleItem> items,
+        String videoUrl,
+        Boolean spinView) {
 
     /** EN: The first image in display order, as the catalogue shows it. / VI: Ảnh đầu tiên theo thứ tự hiển thị, như danh mục hiện. */
     String coverImageUrl() {

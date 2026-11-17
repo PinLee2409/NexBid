@@ -7,5 +7,5 @@ import java.util.UUID;
 public record AuctionAuditEvent(
         Action action, UUID auctionId, UUID actorId, AuctionStatus before, AuctionStatus after) {
 
-    public enum Action { CREATED, APPROVED, REJECTED, REMOVED }
+    public enum Action { CREATED, APPROVED, REJECTED, REMOVED, RELISTED }
 }

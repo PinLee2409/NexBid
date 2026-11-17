@@ -130,7 +130,7 @@ export function AuctionListItem({
       ) : null}
 
       {actions ? (
-        <span className="relative z-20 flex shrink-0 flex-wrap items-center gap-2">
+        <span className="relative z-20 flex max-w-full shrink-0 flex-wrap items-center gap-2">
           {actions}
         </span>
       ) : null}

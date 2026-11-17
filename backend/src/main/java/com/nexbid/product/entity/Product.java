@@ -71,6 +71,39 @@ public class Product {
     @Column(name = "height_cm")
     private Integer heightCm;
 
+    // EN: The pieces of a set, as JSON; null for a single item. / VI: Các món của một bộ, dạng JSON; null với món đơn lẻ.
+    @Column(name = "bundle_items", columnDefinition = "text")
+    private String bundleItems;
+
+    @Column(name = "video_url", length = 300)
+    private String videoUrl;
+
+    // EN: The photos, in order, are frames of a full turn. / VI: Các ảnh, theo thứ tự, là khung hình của một vòng xoay.
+    @Column(name = "spin_view", nullable = false)
+    private boolean spinView;
+
+    public String getVideoUrl() {
+        return videoUrl;
+    }
+
+    // EN: Null while an admin has not looked at the current video. / VI: Null khi admin chưa xem video hiện tại.
+    @jakarta.persistence.Column(name = "video_reviewed_at")
+    private java.time.Instant videoReviewedAt;
+
+    public void setVideoUrl(String videoUrl) {
+        // EN: A new video waits for review again. / VI: Video mới lại chờ duyệt.
+        this.videoReviewedAt = null;
+        this.videoUrl = videoUrl;
+    }
+
+    public boolean isSpinView() {
+        return spinView;
+    }
+
+    public void setSpinView(boolean spinView) {
+        this.spinView = spinView;
+    }
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -113,6 +146,20 @@ public class Product {
     }
 
     /** EN: The packed size, or null when the seller gave none. / VI: Kích thước kiện, hoặc null khi người bán chưa khai. */
+    private static final tools.jackson.databind.ObjectMapper JSON = tools.jackson.databind.json.JsonMapper.builder().build();
+
+    public java.util.List<com.nexbid.product.BundleItem> getItems() {
+        if (bundleItems == null || bundleItems.isBlank()) {
+            return java.util.List.of();
+        }
+        return java.util.List.of(JSON.readValue(bundleItems, com.nexbid.product.BundleItem[].class));
+    }
+
+    public void setItems(java.util.List<com.nexbid.product.BundleItem> items) {
+        this.bundleItems = items == null || items.isEmpty() ? null : JSON.writeValueAsString(items.stream()
+                .map(item -> new com.nexbid.product.BundleItem(item.name().trim(), item.quantity())).toList());
+    }
+
     public Parcel getParcel() {
         return weightGrams == null ? null : new Parcel(weightGrams, lengthCm, widthCm, heightCm);
     }

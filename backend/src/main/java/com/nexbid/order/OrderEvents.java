@@ -14,6 +14,14 @@ public final class OrderEvents {
     }
 
     /** EN: The seller shipped it: PAID → PROCESSING. / VI: Người bán đã gửi hàng: PAID → PROCESSING. */
+    /** EN: A GHN booking cancelled before pickup; the order is PAID again. / VI: Đơn GHN đã huỷ trước khi lấy hàng; đơn lại là PAID. */
+    public record ShipmentCancelled(UUID orderId, UUID actorId, UUID buyerId, UUID auctionId, String trackingNumber) {
+    }
+
+    /** EN: The buyer pointed a paid order at their current address. / VI: Người mua đổi địa chỉ nhận của đơn đã trả sang địa chỉ hiện tại. */
+    public record AddressChanged(UUID orderId, UUID buyerId, UUID sellerId, UUID auctionId) {
+    }
+
     public record Shipped(UUID orderId, UUID actorId, UUID buyerId, UUID auctionId, String carrier, String trackingNumber) {
     }
 
@@ -31,7 +39,12 @@ public final class OrderEvents {
      * VI: Giao dịch đã chốt và sàn nợ người bán khoản tiền. {@code automatic}: không ai xác nhận, đã hết thời gian chờ.
      */
     public record Completed(UUID orderId, UUID auctionId, UUID sellerId, UUID buyerId, BigDecimal amount,
-            boolean automatic, Instant at, BigDecimal shippingFee) {
+            boolean automatic, Instant at, BigDecimal shippingFee, BigDecimal sellerDiscount) {
+
+        public Completed(UUID orderId, UUID auctionId, UUID sellerId, UUID buyerId, BigDecimal amount,
+                boolean automatic, Instant at, BigDecimal shippingFee) {
+            this(orderId, auctionId, sellerId, buyerId, amount, automatic, at, shippingFee, BigDecimal.ZERO);
+        }
     }
 
     /** EN: The buyer reported a problem with an order. / VI: Người mua báo có vấn đề với một đơn. */

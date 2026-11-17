@@ -15,6 +15,30 @@ public enum ErrorCode {
     ACCOUNT_BLOCKED(HttpStatus.FORBIDDEN),
     // EN: Admins cannot block an admin — not another one, not themselves. / VI: Admin không khoá được admin — kể cả chính mình.
     ADMIN_NOT_BLOCKABLE(HttpStatus.CONFLICT),
+    STAFF_ROLES_INVALID(HttpStatus.BAD_REQUEST),
+    DEPOSIT_REQUIRED(HttpStatus.PAYMENT_REQUIRED),
+    DEPOSIT_NOT_NEEDED(HttpStatus.CONFLICT),
+    DEPOSIT_ALREADY_HELD(HttpStatus.CONFLICT),
+    DEPOSIT_NOT_FOUND(HttpStatus.NOT_FOUND),
+    DEPOSIT_NOT_DUE(HttpStatus.CONFLICT),
+    OFFER_UNAVAILABLE(HttpStatus.CONFLICT),
+    OFFER_INVALID(HttpStatus.BAD_REQUEST),
+    OFFER_LIMIT(HttpStatus.CONFLICT),
+    RELIST_NOT_ALLOWED(HttpStatus.CONFLICT),
+    VACATION_INVALID(HttpStatus.BAD_REQUEST),
+    SELLER_ON_VACATION(HttpStatus.CONFLICT),
+    TEMPLATE_NOT_FOUND(HttpStatus.NOT_FOUND),
+    TEMPLATE_INVALID(HttpStatus.BAD_REQUEST),
+    COUPON_INVALID(HttpStatus.BAD_REQUEST),
+    COUPON_NOT_FOUND(HttpStatus.NOT_FOUND),
+    QUICK_REPLY_LIMIT(HttpStatus.CONFLICT),
+    QUICK_REPLY_NOT_FOUND(HttpStatus.NOT_FOUND),
+    MEDIA_NOT_FOUND(HttpStatus.NOT_FOUND),
+    SEALED_BID_EXISTS(HttpStatus.CONFLICT),
+    SEALED_LOT(HttpStatus.CONFLICT),
+    RETRACTION_NOT_ALLOWED(HttpStatus.CONFLICT),
+    RETRACTION_TOO_LATE(HttpStatus.CONFLICT),
+    RETRACTION_LIMIT(HttpStatus.CONFLICT),
     // EN: Missing, expired, signed out, or replayed after it was replaced. / VI: Thiếu, hết hạn, đã đăng xuất, hoặc bị dùng lại sau khi đã được thay.
     REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED),
     // EN: Too many wrong passwords; Retry-After says when to try again. / VI: Sai mật khẩu quá nhiều lần; Retry-After cho biết khi nào thử lại.
@@ -142,6 +166,13 @@ public enum ErrorCode {
     // EN: A CSV of lots that cannot be read at all (rows with problems are reported one by one instead).
     // VI: File CSV lô không đọc được (dòng có lỗi thì được báo từng dòng).
     IMPORT_INVALID(HttpStatus.BAD_REQUEST),
+    PUSH_SUBSCRIPTION_INVALID(HttpStatus.BAD_REQUEST),
+    PROMO_INVALID(HttpStatus.UNPROCESSABLE_ENTITY),
+    PROMO_EXISTS(HttpStatus.CONFLICT),
+    PASSWORD_RESET_INVALID(HttpStatus.UNPROCESSABLE_ENTITY),
+    PASSWORD_INCORRECT(HttpStatus.UNPROCESSABLE_ENTITY),
+    PASSWORD_UNCHANGED(HttpStatus.UNPROCESSABLE_ENTITY),
+    VIDEO_INVALID(HttpStatus.BAD_REQUEST),
     // EN: Questions on a lot: none such, closed lot or own lot, too many waiting, or already answered.
     // VI: Hỏi đáp trên lô: không có câu hỏi, lô đã đóng hoặc lô của chính mình, quá nhiều câu đang chờ, hoặc đã trả lời.
     QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND),

@@ -23,5 +23,12 @@ public record RegisterRequest(
         // VI: Tối thiểu 8 ký tự theo guide. Không đặt trần dưới giới hạn 72 byte của BCrypt.
         @NotBlank(message = "Password is required")
         @Size(min = 8, message = "Password must be at least 8 characters")
-        String password) {
+        String password,
+
+        // EN: The page's language, "vi" or "en", for the emails; optional. / VI: Ngôn ngữ của trang, "vi" hoặc "en", cho email; không bắt buộc.
+        String language) {
+
+    public RegisterRequest(String fullName, String email, String password) {
+        this(fullName, email, password, null);
+    }
 }

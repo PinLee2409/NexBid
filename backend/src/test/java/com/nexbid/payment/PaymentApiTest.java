@@ -258,6 +258,88 @@ class PaymentApiTest {
         quote(won).andExpect(jsonPath("$.code").value("PAYMENT_ALREADY_PAID"));
     }
 
+    /**
+     * EN: Free shipping: the buyer pays only the goods, and the order remembers the seller pays the parcel.
+     * VI: Miễn phí vận chuyển: người mua chỉ trả tiền hàng, và đơn ghi nhớ người bán trả tiền gửi kiện.
+     */
+    @Test
+    void freeShippingChargesOnlyTheGoods() throws Exception {
+        Won won = wonLot("freeship");
+        jdbc.update("UPDATE auctions SET free_shipping = TRUE WHERE id = ?::uuid", won.auctionId());
+        VnpayTestSupport.saveAddress(mockMvc, won.winner());
+        quote(won).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.shippingFee").value(0))
+                .andExpect(jsonPath("$.data.source").value("SELLER"))
+                .andExpect(jsonPath("$.data.total").value(10500000));
+        pay(won.winner(), won.paymentId(), "SUCCESS").andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT seller_pays_shipping FROM orders WHERE payment_id = ?::uuid",
+                Boolean.class, won.paymentId())).isTrue();
+    }
+
+    /**
+     * EN: A shipping voucher comes off the shipping only, once per buyer, and counts as used when the payment succeeds.
+     * VI: Voucher phí ship chỉ trừ vào phí ship, mỗi người mua một lần, và tính là đã dùng khi thanh toán thành công.
+     */
+    @Test
+    void aShippingVoucherComesOffTheShippingUntilItIsUsedUp() throws Exception {
+        String admin = tokenFor("promo.admin@nexbid.com", "Promo Admin", RoleName.ADMIN);
+        String create = """
+                {"code":"ship-30k","amount":30000,"maxUses":1,"note":"Launch"}""";
+        mockMvc.perform(post("/api/admin/promo-codes").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content(create))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.code").value("SHIP-30K"));
+        mockMvc.perform(post("/api/admin/promo-codes").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content(create))
+                .andExpect(jsonPath("$.code").value("PROMO_EXISTS"));
+        mockMvc.perform(post("/api/admin/promo-codes").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"code":"BIG","amount":1000000,"maxUses":5}"""))
+                .andExpect(jsonPath("$.code").value("PROMO_INVALID"));
+
+        Won won = wonLot("voucher");
+        VnpayTestSupport.saveAddress(mockMvc, won.winner());
+        quote(won).andExpect(jsonPath("$.data.total").value(10550000));
+        String promo = "/api/payments/" + won.paymentId() + "/promo";
+        mockMvc.perform(post(promo).header("Authorization", "Bearer " + won.winner())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"code\":\"NOPE\"}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("PROMO_INVALID"));
+        mockMvc.perform(post(promo).header("Authorization", "Bearer " + won.seller())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"code\":\"SHIP-30K\"}"))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post(promo).header("Authorization", "Bearer " + won.winner())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"code\":\" ship-30k \"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.shippingFee").value(50000))
+                .andExpect(jsonPath("$.data.shippingDiscount").value(30000))
+                .andExpect(jsonPath("$.data.promoCode").value("SHIP-30K"))
+                .andExpect(jsonPath("$.data.total").value(10520000));
+        String url = checkoutUrl(won);
+        assertThat(VnpayTestSupport.fieldsOf(url).get("vnp_Amount")).isEqualTo("1052000000");
+        mockMvc.perform(VnpayTestSupport.withParams(get("/api/payments/vnpay/return"),
+                VnpayTestSupport.reply(url, VnpayTestSupport.PAID))).andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT discount FROM promo_redemptions WHERE payment_id = ?::uuid",
+                BigDecimal.class, won.paymentId())).isEqualByComparingTo("30000");
+        // EN: The seller still gets the full shipping. / VI: Người bán vẫn nhận đủ phí ship.
+        assertThat(jdbc.queryForObject("SELECT shipping_fee FROM orders WHERE payment_id = ?::uuid", BigDecimal.class,
+                won.paymentId())).isEqualByComparingTo("50000");
+
+        Won next = wonLot("voucher2");
+        VnpayTestSupport.saveAddress(mockMvc, next.winner());
+        mockMvc.perform(post("/api/payments/" + next.paymentId() + "/promo")
+                        .header("Authorization", "Bearer " + next.winner())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"code\":\"SHIP-30K\"}"))
+                .andExpect(jsonPath("$.message").value("This voucher has been used up"));
+        mockMvc.perform(get("/api/admin/promo-codes").header("Authorization", "Bearer " + admin))
+                .andExpect(jsonPath("$.data[?(@.code == 'SHIP-30K')].used").value(1));
+        mockMvc.perform(post("/api/admin/promo-codes/ship-30k/active").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"active\":false}"))
+                .andExpect(jsonPath("$.data.active").value(false));
+        mockMvc.perform(get("/api/admin/promo-codes").header("Authorization", "Bearer " + won.winner()))
+                .andExpect(status().isForbidden());
+    }
+
     private String stored(String paymentId) {
         return jdbc.queryForObject("SELECT status FROM payments WHERE id = ?::uuid", String.class, paymentId);
     }

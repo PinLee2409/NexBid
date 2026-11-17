@@ -93,7 +93,8 @@ public class Mailer {
         String token = tokens.tokenFor(userId);
         String pageLink = siteUrl() + "/unsubscribe?token=" + token + "&list=digest";
         String oneClick = siteUrl() + UnsubscribeController.PATH + "?token=" + token + "&list=digest";
-        store(account.get(), MailKind.LOT_DIGEST, null, templates.renderDigest(lots, total, pageLink), Instant.now(),
+        store(account.get(), MailKind.LOT_DIGEST, null,
+                templates.in(preferences.emailLanguageOf(userId)).renderDigest(lots, total, pageLink), Instant.now(),
                 oneClick);
         return true;
     }
@@ -105,7 +106,8 @@ public class Mailer {
         String token = kind == MailKind.OUTBID ? tokens.tokenFor(account.id()) : null;
         String pageLink = token == null ? null : siteUrl() + "/unsubscribe?token=" + token;
         String oneClick = token == null ? null : siteUrl() + UnsubscribeController.PATH + "?token=" + token;
-        MailTemplates.Rendered mail = templates.render(kind, name, MailTemplates.escaped(facts), pageLink);
+        MailTemplates.Rendered mail = templates.in(preferences.emailLanguageOf(account.id()))
+                .render(kind, name, MailTemplates.escaped(facts), pageLink);
         store(account, kind, facts.auctionId(), mail, now, oneClick);
     }
 

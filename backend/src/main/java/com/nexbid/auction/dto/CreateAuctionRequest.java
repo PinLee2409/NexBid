@@ -55,5 +55,45 @@ public record CreateAuctionRequest(
 
         // EN: Optional. Offered until the first bid. / VI: Không bắt buộc. Có hiệu lực tới lượt trả giá đầu tiên.
         @DecimalMin(value = "0", inclusive = false, message = "Buy-now price must be greater than zero")
-        BigDecimal buyNowPrice) {
+        BigDecimal buyNowPrice,
+
+        // EN: Optional; the seller pays the parcel. / VI: Không bắt buộc; người bán trả tiền gửi kiện.
+        Boolean freeShipping,
+
+        // EN: Optional: relist automatically up to this many times when it closes unsold. / VI: Không bắt buộc: tự đăng lại tối đa bấy nhiêu lần khi đóng mà không bán được.
+        @Min(value = 0, message = "Relisting must be between 0 and 5 times")
+        @Max(value = 5, message = "Relisting must be between 0 and 5 times")
+        Integer autoRelist,
+
+        // EN: Optional: how much lower each relist starts, in percent. / VI: Không bắt buộc: mỗi lần đăng lại khởi điểm thấp hơn bao nhiêu phần trăm.
+        @Min(value = 0, message = "The price drop must be between 0 and 50%")
+        @Max(value = 50, message = "The price drop must be between 0 and 50%")
+        Integer relistDropPercent,
+
+        // EN: Optional: a sealed-bid lot. / VI: Không bắt buộc: lô đấu giá kín.
+        Boolean sealed) {
+
+    public CreateAuctionRequest(UUID productId, BigDecimal startingPrice, BigDecimal minimumIncrement,
+            Instant startTime, Instant endTime, Boolean antiSnipingEnabled, Integer antiSnipingWindowSeconds,
+            Integer extensionSeconds, BigDecimal reservePrice, BigDecimal buyNowPrice, Boolean freeShipping,
+            Integer autoRelist, Integer relistDropPercent) {
+        this(productId, startingPrice, minimumIncrement, startTime, endTime, antiSnipingEnabled,
+                antiSnipingWindowSeconds, extensionSeconds, reservePrice, buyNowPrice, freeShipping, autoRelist,
+                relistDropPercent, null);
+    }
+
+    public CreateAuctionRequest(UUID productId, BigDecimal startingPrice, BigDecimal minimumIncrement,
+            Instant startTime, Instant endTime, Boolean antiSnipingEnabled, Integer antiSnipingWindowSeconds,
+            Integer extensionSeconds, BigDecimal reservePrice, BigDecimal buyNowPrice, Boolean freeShipping) {
+        this(productId, startingPrice, minimumIncrement, startTime, endTime, antiSnipingEnabled,
+                antiSnipingWindowSeconds, extensionSeconds, reservePrice, buyNowPrice, freeShipping, null, null, null);
+    }
+
+
+    public CreateAuctionRequest(UUID productId, BigDecimal startingPrice, BigDecimal minimumIncrement,
+            Instant startTime, Instant endTime, Boolean antiSnipingEnabled, Integer antiSnipingWindowSeconds,
+            Integer extensionSeconds, BigDecimal reservePrice, BigDecimal buyNowPrice) {
+        this(productId, startingPrice, minimumIncrement, startTime, endTime, antiSnipingEnabled,
+                antiSnipingWindowSeconds, extensionSeconds, reservePrice, buyNowPrice, null);
+    }
 }

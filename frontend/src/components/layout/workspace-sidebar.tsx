@@ -15,7 +15,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ADMIN_NAV, SELLER_NAV, type AccountNavItem } from "@/constants/site";
+import { ADMIN_NAV, SELLER_NAV, canSeeAdminItem, type AccountNavItem } from "@/constants/site";
+import { useSession } from "@/services/session-service";
 import { cn } from "@/lib/utils";
 
 interface WorkspaceSidebarProps {
@@ -33,7 +34,9 @@ interface WorkspaceSidebarProps {
 export function WorkspaceSidebar({ variant, title }: WorkspaceSidebarProps) {
   // Nav data is imported here rather than passed in: Lucide icons are
   // functions and cannot cross the server-to-client boundary.
-  const items: AccountNavItem[] = variant === "seller" ? SELLER_NAV : ADMIN_NAV;
+  const { user } = useSession();
+  const items: AccountNavItem[] =
+    variant === "seller" ? SELLER_NAV : ADMIN_NAV.filter((item) => canSeeAdminItem(user?.roles ?? [], item));
 
   const t = useTranslations("nav");
   const pathname = usePathname();

@@ -234,6 +234,67 @@ class AccountNotices {
                         .withTracking(event.carrier(), event.trackingNumber()));
     }
 
+    @EventListener
+    void onShipmentCancelled(OrderEvents.ShipmentCancelled event) {
+        notifications.notify(event.buyerId(), NotificationType.SHIPMENT_CANCELLED, "Shipment cancelled",
+                clip(auctions.lotTitleOf(event.auctionId()) + ": the seller cancelled GHN order "
+                        + event.trackingNumber() + "; your order waits to be shipped again."),
+                event.auctionId(), java.time.Instant.now());
+    }
+
+    @EventListener
+    void onAddressChanged(OrderEvents.AddressChanged event) {
+        notifications.notify(event.sellerId(), NotificationType.ORDER_ADDRESS_CHANGED, "Delivery address changed",
+                clip(auctions.lotTitleOf(event.auctionId()) + ": the buyer changed where to deliver. Check it before shipping."),
+                event.auctionId(), java.time.Instant.now());
+    }
+
+    /** EN: The seller hears which photo or video was taken down, and why. / VI: Người bán được báo ảnh hay video nào bị gỡ, và vì sao. */
+    @EventListener
+    void onMediaRemoved(com.nexbid.product.MediaReviews.Removed event) {
+        String what = "VIDEO".equals(event.kind()) ? "the video" : "a photo";
+        notifications.notify(event.sellerId(), NotificationType.MEDIA_REMOVED, "Media taken down",
+                clip(event.productName() + ": NexBid removed " + what + "."
+                        + (event.reason() == null ? "" : " Reason: " + event.reason())), null, event.at());
+    }
+
+    /** EN: The seller hears each offer. / VI: Người bán được báo mỗi đề nghị. */
+    @EventListener
+    void onOffer(com.nexbid.bid.LotOfferEvents.Made event) {
+        notifications.notify(event.sellerId(), NotificationType.OFFER_RECEIVED, "New offer",
+                clip(auctions.lotTitleOf(event.auctionId()) + ": a buyer offers "
+                        + event.amount().toBigInteger() + " VND. Accept, decline or counter within two days."),
+                event.auctionId(), event.at());
+    }
+
+    /** EN: The other side hears the answer. / VI: Bên còn lại được báo câu trả lời. */
+    @EventListener
+    void onOfferAnswered(com.nexbid.bid.LotOfferEvents.Answered event) {
+        String title = auctions.lotTitleOf(event.auctionId());
+        String price = event.price().toBigInteger() + " VND";
+        switch (event.outcome()) {
+            case "ACCEPTED" -> {
+                notifications.notify(event.buyerId(), NotificationType.OFFER_ANSWERED, "Offer accepted",
+                        clip(title + ": sold to you for " + price + ". Pay to complete the purchase."),
+                        event.auctionId(), event.at());
+                notifications.notify(event.sellerId(), NotificationType.OFFER_ANSWERED, "Lot sold by offer",
+                        clip(title + ": sold for " + price + ". The buyer has been asked to pay."),
+                        event.auctionId(), event.at());
+            }
+            case "DECLINED" -> notifications.notify(event.buyerId(), NotificationType.OFFER_ANSWERED,
+                    "Offer declined", clip(title + ": the seller declined your offer of " + price + "."),
+                    event.auctionId(), event.at());
+            case "COUNTERED" -> notifications.notify(event.buyerId(), NotificationType.OFFER_ANSWERED,
+                    "The seller countered", clip(title + ": the seller would sell for " + price
+                            + ". Accept or decline within two days."), event.auctionId(), event.at());
+            case "COUNTER_DECLINED" -> notifications.notify(event.sellerId(), NotificationType.OFFER_ANSWERED,
+                    "Counter declined", clip(title + ": the buyer declined your counter."), event.auctionId(),
+                    event.at());
+            default -> {
+            }
+        }
+    }
+
     /** EN: The seller hears each question while the lot is open. / VI: Người bán được báo mỗi câu hỏi khi lô còn mở. */
     @EventListener
     void onQuestion(QuestionEvents.Asked event) {

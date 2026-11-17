@@ -89,11 +89,25 @@ public interface AuctionRepository
             """)
     boolean holdsProduct(@Param("productId") UUID productId);
 
+    /**
+     * EN: The status of a sealed lot, empty for any other. A scalar, not the entity: asked before the bidding lock, it
+     *     must not leave a stale copy of the lot in the persistence context for the locked read to return.
+     * VI: Trạng thái của một lô kín, rỗng với lô khác. Trả về giá trị đơn chứ không phải entity: được hỏi trước khoá trả
+     *     giá, nó không được để lại một bản sao cũ của lô trong persistence context cho lần đọc có khoá trả về.
+     */
+    @Query("SELECT a.status FROM Auction a WHERE a.id = :id AND a.sealed = true")
+    Optional<AuctionStatus> findSealedStatus(@Param("id") UUID id);
+
     List<Auction> findByWinnerIdAndStatusInOrderByEndTimeDesc(UUID winnerId, Collection<AuctionStatus> statuses);
 
     @Query("SELECT a.id FROM Auction a WHERE a.status = com.nexbid.auction.AuctionStatus.SCHEDULED "
             + "AND a.startTime > :from AND a.startTime <= :to")
     List<UUID> findIdsOpeningBetween(@Param("from") Instant from, @Param("to") Instant to);
+
+    @Query("SELECT a.id FROM Auction a WHERE a.status = com.nexbid.auction.AuctionStatus.SCHEDULED "
+            + "AND a.startTime >= :from AND a.startTime < :to ORDER BY a.startTime, a.lotNumber")
+    List<UUID> findScheduledOpeningIn(@Param("from") Instant from, @Param("to") Instant to,
+            org.springframework.data.domain.Pageable page);
 
     @Query("SELECT a.id FROM Auction a WHERE a.status = com.nexbid.auction.AuctionStatus.ACTIVE "
             + "AND a.endTime > :from AND a.endTime <= :to")

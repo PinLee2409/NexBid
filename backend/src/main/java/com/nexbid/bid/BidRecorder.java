@@ -60,6 +60,11 @@ class BidRecorder {
         return save(accepted, buyerId, accepted.currentPrice(), new LeadTracker());
     }
 
+    /** EN: A sealed bid, at the amount the bidder chose rather than the lot's price. / VI: Một lượt giá kín, theo số người trả chọn chứ không phải giá của lô. */
+    PlacedBidView recordSealed(AuctionService.AcceptedBid accepted, UUID bidderId, BigDecimal amount) {
+        return save(accepted, bidderId, amount, new LeadTracker());
+    }
+
     private PlacedBidView save(
             AuctionService.AcceptedBid accepted, UUID bidderId, BigDecimal amount, LeadTracker leads) {
 

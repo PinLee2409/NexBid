@@ -103,6 +103,41 @@ class LoginAttempts {
         run(RECORD, email, address, UUID.randomUUID().toString());
     }
 
+    /**
+     * EN: Wrong two-step codes for one account, from anywhere. Whoever reaches the code step already has the password,
+     *     so spreading guesses over many addresses must not help; the price is that the owner may wait a while too.
+     * VI: Mã hai bước sai của một tài khoản, từ bất kỳ đâu. Ai tới được bước nhập mã thì đã có mật khẩu, nên chia lượt
+     *     đoán ra nhiều địa chỉ không được giúp gì; cái giá là chủ tài khoản cũng có thể phải chờ một lúc.
+     */
+    void checkCodes(UUID userId) {
+        Long waitMillis = runKey(WAIT, codeKey(userId), Integer.toString(accountLimit * 2));
+        if (waitMillis != null && waitMillis > 0) {
+            throw new RateLimitedException(ErrorCode.LOGIN_RATE_LIMITED, "Too many wrong codes; try again later",
+                    Duration.ofMillis(waitMillis));
+        }
+    }
+
+    void recordCodeFailure(UUID userId) {
+        runKey(RECORD, codeKey(userId), UUID.randomUUID().toString());
+    }
+
+    static String codeKey(UUID userId) {
+        return "rate:login:code:" + userId;
+    }
+
+    private Long runKey(RedisScript<Long> script, String key, String extra) {
+        if (Instant.now().isBefore(quietUntil)) {
+            return 0L;
+        }
+        try {
+            return redis.execute(script, List.of(key), Long.toString(window.toMillis()), extra);
+        } catch (RuntimeException ex) {
+            quietUntil = Instant.now().plus(retryAfter);
+            log.warn("Redis unavailable, code limit not enforced for {}: {}", retryAfter, ex.getMessage());
+            return 0L;
+        }
+    }
+
     /** EN: A correct password forgives the typos before it. / VI: Mật khẩu đúng thì bỏ qua các lần gõ nhầm trước đó. */
     void clear(String email, String address) {
         try {

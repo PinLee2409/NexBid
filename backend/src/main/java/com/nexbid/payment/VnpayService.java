@@ -34,7 +34,7 @@ public class VnpayService {
 
     /** EN: VNPay reads and writes its timestamps in Vietnam time. / VI: VNPay đọc và ghi thời gian theo giờ Việt Nam. */
     private static final ZoneId VIETNAM = ZoneId.of("Asia/Ho_Chi_Minh");
-    private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(VIETNAM);
+    static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(VIETNAM);
 
     /** EN: vnp_ResponseCode for a payment that went through. / VI: vnp_ResponseCode cho giao dịch thành công. */
     static final String APPROVED = "00";
@@ -44,10 +44,12 @@ public class VnpayService {
     private final VnpayProperties properties;
     private final VnpaySigner signer;
     private final StrayCharges strays;
+    private final Deposits deposits;
 
     VnpayService(PaymentService payments, PaymentTransactionRepository transactions, VnpayProperties properties,
-            StrayCharges strays) {
+            StrayCharges strays, Deposits deposits) {
         this.strays = strays;
+        this.deposits = deposits;
         this.payments = payments;
         this.transactions = transactions;
         this.properties = properties;
@@ -131,6 +133,11 @@ public class VnpayService {
         }
 
         String txnRef = fields.get("vnp_TxnRef");
+        // EN: Deposits share the merchant account and the IPN address; their references start with D.
+        // VI: Tiền cọc dùng chung tài khoản merchant và địa chỉ IPN; mã giao dịch của chúng bắt đầu bằng D.
+        if (txnRef != null && txnRef.startsWith(Deposits.PREFIX)) {
+            return deposits.confirm(fields);
+        }
         PaymentTransaction attempt = txnRef == null ? null : transactions.findByTxnRefForUpdate(txnRef).orElse(null);
         if (attempt == null) {
             return new Confirmation(Outcome.NOT_FOUND, null, false, null);
@@ -177,7 +184,7 @@ public class VnpayService {
     }
 
     /** EN: Unique, short, ASCII: time plus randomness. / VI: Duy nhất, ngắn, ASCII: thời gian kèm phần ngẫu nhiên. */
-    private static String newTxnRef(Instant now) {
+    static String newTxnRef(Instant now) {
         byte[] random = new byte[5];
         ThreadLocalRandom.current().nextBytes(random);
         return STAMP.format(now) + HexFormat.of().formatHex(random).toUpperCase();

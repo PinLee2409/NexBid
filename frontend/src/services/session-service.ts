@@ -101,6 +101,8 @@ export interface Credentials {
 
 export interface SignUpInput extends Credentials {
   fullName: string;
+  /** EN: The page's language, for the emails. / VI: Ngôn ngữ của trang, dùng cho email. */
+  language?: string;
 }
 
 /** EN: A failure carries the error itself; the form puts it in the reader's language. / VI: Lỗi mang theo chính nó; form tự diễn đạt theo ngôn ngữ người đọc. */
@@ -171,11 +173,11 @@ export async function getGoogleClientId(): Promise<string | null> {
 }
 
 /** `POST /api/auth/register`, then signs straight in. */
-export async function signUp({ fullName, email, password }: SignUpInput): Promise<AuthResult> {
+export async function signUp({ fullName, email, password, language }: SignUpInput): Promise<AuthResult> {
   try {
     await api<ApiUser>("/api/auth/register", {
       method: "POST",
-      body: { fullName: fullName.trim(), email: email.trim(), password },
+      body: { fullName: fullName.trim(), email: email.trim(), password, language },
     });
   } catch (error) {
     return failure(error);

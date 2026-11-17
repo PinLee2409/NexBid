@@ -22,7 +22,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { PRODUCT_CONDITIONS } from "@/constants/auction";
 import { useApiErrorMessage, useCategoryLabels, useEnumLabels } from "@/hooks/use-labels";
 import { createProduct, updateProduct } from "@/services/seller-service";
-import type { Category, Parcel, Product, ProductCondition } from "@/types";
+import type { BundleItem, Category, Parcel, Product, ProductCondition } from "@/types";
+import { ProductMediaSettings } from "@/components/seller/product-media-settings";
+import { TemplateBar } from "@/components/seller/template-bar";
 
 type ParcelKey = keyof Parcel;
 /** EN: GHN's limits: 30 kg, 150 cm a side. / VI: Giới hạn của GHN: 30 kg, mỗi cạnh 150 cm. */
@@ -90,6 +92,9 @@ export function ProductForm({ categories, product }: ProductFormProps) {
     heightCm: product?.parcel ? String(product.parcel.heightCm) : "",
   }));
 
+  const [items, setItems] = useState<{ name: string; quantity: string }[]>(() =>
+    (product?.items ?? []).map((item) => ({ name: item.name, quantity: String(item.quantity) })),
+  );
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isPending, startTransition] = useTransition();
   const errorMessage = useApiErrorMessage();
@@ -119,6 +124,9 @@ export function ProductForm({ categories, product }: ProductFormProps) {
         condition,
         imageUrls: images,
         parcel: parcelOf(parcel) ?? null,
+        items: items
+          .filter((item) => item.name.trim())
+          .map((item): BundleItem => ({ name: item.name.trim(), quantity: Math.max(1, Number(item.quantity) || 1) })),
       };
 
       let saved;
@@ -139,6 +147,32 @@ export function ProductForm({ categories, product }: ProductFormProps) {
   }
 
   return (
+    <>
+    {!product ? (
+      <TemplateBar
+        current={{
+          name: "",
+          description,
+          categoryId: categoryId || null,
+          condition,
+          parcel: parcelOf(parcel) ?? null,
+        }}
+        onApply={(template) => {
+          setDescription(template.description);
+          if (template.categoryId) setCategoryId(template.categoryId);
+          if (template.condition) setCondition(template.condition);
+          if (template.parcel) {
+            setParcel({
+              weightGrams: String(template.parcel.weightGrams),
+              lengthCm: String(template.parcel.lengthCm),
+              widthCm: String(template.parcel.widthCm),
+              heightCm: String(template.parcel.heightCm),
+            });
+          }
+          setErrors({});
+        }}
+      />
+    ) : null}
     <form onSubmit={handleSubmit} noValidate className="mt-8 max-w-2xl space-y-6">
       <FormField label={t("productName")} error={errors.name} required>
         {(field) => (
@@ -270,7 +304,7 @@ export function ProductForm({ categories, product }: ProductFormProps) {
                   aria-invalid={errors.parcel ? true : undefined}
                   placeholder={String(DEFAULT_PARCEL[key])}
                   onChange={(event) => {
-                    const digits = event.target.value.replace(/D/g, "").slice(0, String(max).length);
+                    const digits = event.target.value.replace(/\D/g, "").slice(0, String(max).length);
                     setParcel((current) => ({ ...current, [key]: digits }));
                     setErrors((current) => ({ ...current, parcel: undefined }));
                   }}
@@ -283,6 +317,66 @@ export function ProductForm({ categories, product }: ProductFormProps) {
           <p role="alert" className="text-danger-text mt-2 text-xs">
             {errors.parcel}
           </p>
+        ) : null}
+      </fieldset>
+
+      {product ? (
+        <ProductMediaSettings
+          productId={product.id}
+          videoUrl={product.videoUrl ?? null}
+          spinView={product.spinView ?? false}
+        />
+      ) : (
+        <p className="border-line text-dim border-t pt-6 text-xs">{t("mediaAfterSave")}</p>
+      )}
+
+      <fieldset className="border-line border-t pt-6" data-testid="bundle-items">
+        <legend className="label-sm text-dim pr-3">{t("itemsTitle")}</legend>
+        <p className="text-muted-foreground mt-1 text-xs leading-relaxed">{t("itemsHint")}</p>
+        <ul className="mt-4 space-y-2">
+          {items.map((item, index) => (
+            <li key={index} className="flex items-center gap-2">
+              <Input
+                aria-label={t("itemName")}
+                placeholder={t("itemName")}
+                value={item.name}
+                maxLength={120}
+                onChange={(event) =>
+                  setItems((current) => current.map((row, i) => (i === index ? { ...row, name: event.target.value } : row)))
+                }
+              />
+              <Input
+                aria-label={t("itemQuantity")}
+                inputMode="numeric"
+                className="w-20"
+                value={item.quantity}
+                onChange={(event) => {
+                  const digits = event.target.value.replace(/\D/g, "").slice(0, 3);
+                  setItems((current) => current.map((row, i) => (i === index ? { ...row, quantity: digits } : row)));
+                }}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={t("itemRemove")}
+                onClick={() => setItems((current) => current.filter((_, i) => i !== index))}
+              >
+                ×
+              </Button>
+            </li>
+          ))}
+        </ul>
+        {items.length < 30 ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            onClick={() => setItems((current) => [...current, { name: "", quantity: "1" }])}
+          >
+            {t("itemAdd")}
+          </Button>
         ) : null}
       </fieldset>
 
@@ -301,5 +395,6 @@ export function ProductForm({ categories, product }: ProductFormProps) {
         </Button>
       </div>
     </form>
+    </>
   );
 }

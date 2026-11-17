@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
 
+import { CurrencySwitcher } from "@/components/layout/currency-switcher";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { Logo } from "@/components/layout/logo";
 import { ThemeSwitcher } from "@/components/layout/theme-switcher";
@@ -19,7 +20,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ADMIN_NAV, BUYER_NAV, SELLER_NAV } from "@/constants/site";
+import { ADMIN_NAV, BUYER_NAV, SELLER_NAV, STAFF_ROLES, canSeeAdminItem } from "@/constants/site";
 import { cn } from "@/lib/utils";
 import { useUnreadNotificationCount } from "@/services/notification-service";
 import { hasRole, signOut, useSession } from "@/services/session-service";
@@ -38,6 +39,7 @@ function subscribeToScroll(onChange: () => void) {
 const PRIMARY_NAV = [
   { key: "live", href: "/auctions?status=ACTIVE", live: true },
   { key: "discover", href: "/auctions", live: false },
+  { key: "calendar", href: "/calendar", live: false },
   { key: "sell", href: "/seller/products/create", live: false },
 ] as const;
 
@@ -180,7 +182,8 @@ export function SiteHeader({ liveCount = 0 }: SiteHeaderProps) {
                   liveCount={liveCount}
                   signedIn={Boolean(user)}
                   isSeller={isSeller}
-                  isAdmin={hasRole(user, "ADMIN")}
+                  isAdmin={STAFF_ROLES.some((role) => hasRole(user, role))}
+                  roles={user?.roles ?? []}
                 />
               </SheetContent>
             </Sheet>
@@ -277,11 +280,13 @@ function MobileMenu({
   signedIn,
   isSeller,
   isAdmin,
+  roles,
 }: {
   liveCount: number;
   signedIn: boolean;
   isSeller: boolean;
   isAdmin: boolean;
+  roles: string[];
 }) {
   const t = useTranslations("nav");
   const tc = useTranslations("common");
@@ -321,11 +326,17 @@ function MobileMenu({
 
         <MobileGroup title={t("yourAccount")} items={BUYER_NAV} />
         {isSeller ? <MobileGroup title={t("sellerArea")} items={SELLER_NAV} /> : null}
-        {isAdmin ? <MobileGroup title={t("adminArea")} items={ADMIN_NAV} /> : null}
+        {isAdmin ? (
+          <MobileGroup
+            title={t("adminArea")}
+            items={ADMIN_NAV.filter((item) => canSeeAdminItem(roles, item))}
+          />
+        ) : null}
 
         <div className="border-line mt-2 border-t px-5 py-4">
           <p className="label-sm text-dim pb-2">{tc("language")}</p>
           <LocaleSwitcher variant="full" className="-ml-2" />
+          <CurrencySwitcher className="-ml-2" />
         </div>
 
         <div className="border-line border-b px-5 py-4">

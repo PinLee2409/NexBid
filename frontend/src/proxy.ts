@@ -29,6 +29,8 @@ function policy(nonce: string): string {
     "font-src 'self'",
     `connect-src 'self' ${new URL(SOCKET_URL).origin} ${GOOGLE_SIGN_IN}`,
     `frame-src ${GOOGLE_SIGN_IN}`,
+    // EN: The service worker that shows push notices. / VI: Service worker hiện thông báo đẩy.
+    "worker-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

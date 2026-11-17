@@ -5,6 +5,7 @@ import type {
   Auction,
   AuctionSummary,
   Category,
+  BundleItem,
   Parcel,
   Product,
   ProductCondition,
@@ -83,6 +84,8 @@ export interface ProductInput {
   imageUrls: string[];
   /** EN: Packed size, or null to leave it out. / VI: Kích thước kiện, hoặc null để bỏ trống. */
   parcel: Parcel | null;
+  /** EN: The pieces of a set; empty for a single item. / VI: Các món của một bộ; rỗng với món đơn lẻ. */
+  items: BundleItem[];
 }
 
 /**
@@ -91,6 +94,11 @@ export interface ProductInput {
  */
 export async function bookGhn(orderId: string): Promise<OrderEntry> {
   return toEntry(await api<ApiOrder>(`/api/seller/orders/${orderId}/ghn`, { method: "POST" }));
+}
+
+/** `POST /api/seller/orders/{id}/ghn/cancel` — cancels NexBid's GHN booking before pickup; the order is paid again. */
+export async function cancelGhn(orderId: string): Promise<OrderEntry> {
+  return toEntry(await api<ApiOrder>(`/api/seller/orders/${orderId}/ghn/cancel`, { method: "POST" }));
 }
 
 /** `GET /api/seller/orders/{id}/ghn-label` — a link to GHN's printable label. */
@@ -145,6 +153,7 @@ export async function createProduct(input: ProductInput): Promise<Product> {
       condition: input.condition,
       publishNow: true,
       parcel: input.parcel,
+      items: input.items,
     },
   });
   await syncImages(product.id, input.imageUrls, []);
@@ -162,6 +171,7 @@ export async function updateProduct(productId: string, input: ProductInput): Pro
       categoryId: input.categoryId,
       condition: input.condition,
       parcel: input.parcel,
+      items: input.items,
     },
   });
   await syncImages(productId, input.imageUrls, existing);
@@ -226,6 +236,14 @@ export interface AuctionInput {
   reservePrice?: number;
   /** EN: Optional; until the first bid. / VI: Không bắt buộc; tới lượt trả giá đầu tiên. */
   buyNowPrice?: number;
+  /** EN: The seller pays the parcel. / VI: Người bán trả tiền gửi kiện. */
+  freeShipping?: boolean;
+  /** EN: One hidden bid per person. / VI: Mỗi người một lượt giá ẩn. */
+  sealed?: boolean;
+  /** EN: Relist by itself this many times when unsold. / VI: Tự đăng lại bấy nhiêu lần khi không bán được. */
+  autoRelist?: number;
+  /** EN: Each relist starts this much lower, in percent. / VI: Mỗi lần đăng lại khởi điểm thấp hơn bấy nhiêu phần trăm. */
+  relistDropPercent?: number;
 }
 
 /** `POST /api/seller/auctions`, and `…/submit` straight after when asked. */
@@ -246,10 +264,57 @@ export async function createAuction(
       extensionSeconds: input.antiSnipingEnabled ? input.extensionSeconds : undefined,
       reservePrice: input.reservePrice,
       buyNowPrice: input.buyNowPrice,
+      freeShipping: input.freeShipping ?? false,
     },
   });
   if (!submitForApproval) return toAuction(created);
   return toAuction(await api<ApiAuction>(`/api/seller/auctions/${created.id}/submit`, { method: "POST" }));
+}
+
+/** `PUT /api/seller/products/{id}/video` — one short MP4 or WebM video, replacing any earlier one. */
+export async function uploadProductVideo(productId: string, file: File): Promise<{ videoUrl: string | null }> {
+  const form = new FormData();
+  form.append("file", file);
+  const product = await api<ApiProduct>(`/api/seller/products/${productId}/video`, { method: "PUT", form });
+  return { videoUrl: product.videoUrl ?? null };
+}
+
+/** `DELETE /api/seller/products/{id}/video` */
+export async function removeProductVideo(productId: string): Promise<void> {
+  await api(`/api/seller/products/${productId}/video`, { method: "DELETE" });
+}
+
+/** `PUT /api/seller/products/{id}/spin` — the photos, in order, are frames of a 360° turn. */
+export async function setProductSpin(productId: string, enabled: boolean): Promise<void> {
+  await api(`/api/seller/products/${productId}/spin`, { method: "PUT", body: { enabled } });
+}
+
+/** EN: What similar lots sold for, and a starting price to suggest; nulls when there were too few sales. / VI: Giá bán của các lô tương tự và giá khởi điểm gợi ý; null khi có quá ít giao dịch. */
+export interface PriceHint {
+  basis: "SIMILAR" | "CATEGORY" | null;
+  sales: number;
+  low: number | null;
+  median: number | null;
+  high: number | null;
+  suggestedStart: number | null;
+}
+
+/** `GET /api/seller/auctions/price-hint` */
+export async function getPriceHint(productId: string): Promise<PriceHint> {
+  const hint = await api<PriceHint>("/api/seller/auctions/price-hint", { query: { productId } });
+  const num = (value: number | null) => (value === null || value === undefined ? null : Number(value));
+  return { ...hint, low: num(hint.low), median: num(hint.median), high: num(hint.high), suggestedStart: num(hint.suggestedStart) };
+}
+
+/** `POST /api/seller/auctions/batch` — the same times for many drafts, and approval now, at a set time, or not yet. */
+export async function scheduleDrafts(input: {
+  auctionIds: string[];
+  startTime: string | null;
+  endTime: string | null;
+  submit: boolean;
+  submitAt: string | null;
+}): Promise<{ auctionId: string; done: boolean; error: string | null }[]> {
+  return api("/api/seller/auctions/batch", { method: "POST", body: input });
 }
 
 /** `POST /api/seller/auctions/{id}/submit` */

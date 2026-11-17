@@ -21,10 +21,12 @@ import { Switch } from "@/components/ui/switch";
 import { AUCTION_CONFIG } from "@/constants/auction";
 import { CURRENCY, fromDateAndTimeParts } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useGroupedDigits } from "@/hooks/use-grouped-digits";
 import { useApiErrorMessage } from "@/hooks/use-labels";
 import { createAuction } from "@/services/seller-service";
 import type { ProductWithMeta } from "@/services/seller-service";
 import { useMoney } from "@/hooks/use-money";
+import { PriceHint } from "@/components/seller/price-hint";
 
 /** EN: A lot to list again, its settings copied; the dates start fresh. / VI: Lô đăng lại, sao chép cài đặt; ngày giờ đặt mới. */
 export interface RelistFrom {
@@ -33,6 +35,7 @@ export interface RelistFrom {
   minimumIncrement: number;
   reservePrice: number | null;
   buyNowPrice: number | null;
+  freeShipping?: boolean;
   antiSniping: { enabled: boolean; windowSeconds: number; extensionSeconds: number };
 }
 
@@ -95,6 +98,10 @@ export function AuctionForm({ products, initialProductId, relist }: AuctionFormP
   const [endDate, setEndDate] = useState(schedule.endDate);
   const [endTime, setEndTime] = useState(schedule.endTime);
   const [antiSniping, setAntiSniping] = useState(relist?.antiSniping.enabled ?? true);
+  const [sealed, setSealed] = useState(false);
+  const [freeShipping, setFreeShipping] = useState(relist?.freeShipping ?? false);
+  const [autoRelist, setAutoRelist] = useState("0");
+  const [relistDrop, setRelistDrop] = useState("10");
   const [snipeWindow, setSnipeWindow] = useState(
     String(relist?.antiSniping.windowSeconds ?? AUCTION_CONFIG.defaultAntiSnipingWindowSeconds),
   );
@@ -151,11 +158,15 @@ export function AuctionForm({ products, initialProductId, relist }: AuctionFormP
             minimumIncrement: Number(minimumIncrement),
             startTime: startIso,
             endTime: endIso,
-            antiSnipingEnabled: antiSniping,
+            antiSnipingEnabled: antiSniping && !sealed,
             antiSnipingWindowSeconds: Number(snipeWindow),
             extensionSeconds: Number(extension),
             reservePrice: reservePrice ? Number(reservePrice) : undefined,
-            buyNowPrice: buyNowPrice ? Number(buyNowPrice) : undefined,
+            buyNowPrice: buyNowPrice && !sealed ? Number(buyNowPrice) : undefined,
+            freeShipping,
+            sealed,
+            autoRelist: Number(autoRelist),
+            relistDropPercent: Number(autoRelist) > 0 ? Number(relistDrop) : 0,
           },
           submitForApproval,
         );
@@ -262,6 +273,13 @@ export function AuctionForm({ products, initialProductId, relist }: AuctionFormP
                 />
               )}
             </FormField>
+            <PriceHint
+              productId={productId}
+              onUse={(price) => {
+                setStartingPrice(String(price));
+                setErrors((c) => ({ ...c, startingPrice: undefined }));
+              }}
+            />
 
             <FormField
               label={t("incrementLabel")}
@@ -305,6 +323,65 @@ export function AuctionForm({ products, initialProductId, relist }: AuctionFormP
                 />
               )}
             </FormField>
+          </div>
+
+          <div className="border-line mt-6 flex items-start justify-between gap-6 border-t pt-6">
+            <div>
+              <Label htmlFor="free-shipping" className="label">
+                {t("freeShippingLabel")}
+              </Label>
+              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">{t("freeShippingHint")}</p>
+            </div>
+            <Switch id="free-shipping" checked={freeShipping} onCheckedChange={setFreeShipping} />
+          </div>
+
+          <div className="border-line mt-6 flex items-start justify-between gap-6 border-t pt-6" data-testid="sealed-option">
+            <div>
+              <Label htmlFor="sealed-bid" className="label">
+                {t("sealedLabel")}
+              </Label>
+              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">{t("sealedHint")}</p>
+            </div>
+            <Switch id="sealed-bid" checked={sealed} onCheckedChange={setSealed} />
+          </div>
+
+          <div className="border-line mt-6 border-t pt-6" data-testid="auto-relist">
+            <p className="label">{t("autoRelistLabel")}</p>
+            <p className="text-muted-foreground mt-1 text-xs leading-relaxed">{t("autoRelistHint")}</p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <FormField label={t("autoRelistTimes")}>
+                {(field) => (
+                  <Select value={autoRelist} onValueChange={setAutoRelist}>
+                    <SelectTrigger id={field.id} className="h-11 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["0", "1", "2", "3", "4", "5"].map((times) => (
+                        <SelectItem key={times} value={times}>
+                          {times === "0" ? t("autoRelistOff") : t("autoRelistCount", { count: Number(times) })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </FormField>
+              <FormField label={t("autoRelistDrop")}>
+                {(field) => (
+                  <Select value={relistDrop} onValueChange={setRelistDrop} disabled={autoRelist === "0"}>
+                    <SelectTrigger id={field.id} className="h-11 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["0", "5", "10", "15", "20", "30"].map((percent) => (
+                        <SelectItem key={percent} value={percent}>
+                          {t("autoRelistPercent", { percent: Number(percent) })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </FormField>
+            </div>
           </div>
         </FormSection>
 
@@ -453,6 +530,10 @@ export function AuctionForm({ products, initialProductId, relist }: AuctionFormP
                 label={t("summaryBuyNow")}
                 value={buyNowPrice ? money.currency(Number(buyNowPrice)) : t("summaryNone")}
               />
+              <SummaryRow
+                label={t("summaryShipping")}
+                value={freeShipping ? t("summaryShippingFree") : t("summaryShippingBuyer")}
+              />
               {startIso ? (
                 <SummaryRow
                   label={t("summaryOpens")}
@@ -553,6 +634,7 @@ function MoneyInput({
   value: string;
   onValueChange: (value: string) => void;
 } & React.ComponentProps<typeof Input>) {
+  const grouped = useGroupedDigits(value, onValueChange);
   return (
     <div className="relative">
       <span
@@ -564,8 +646,8 @@ function MoneyInput({
       <Input
         {...field}
         inputMode="numeric"
-        value={value}
-        onChange={(event) => onValueChange(event.target.value.replace(/[^\d]/g, ""))}
+        value={grouped.value}
+        onChange={grouped.onChange}
         className={cn("figure pl-8", field.className)}
       />
     </div>

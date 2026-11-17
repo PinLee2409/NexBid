@@ -45,6 +45,21 @@ final class MagicBytes {
         return null;
     }
 
+    /**
+     * EN: ".mp4" for an ISO media file that is not an image (AVIF and HEIF share the box), ".webm" for EBML; else null.
+     * VI: ".mp4" cho file ISO media không phải ảnh (AVIF và HEIF dùng chung kiểu box), ".webm" cho EBML; còn lại null.
+     */
+    static String videoExtensionOf(byte[] header) {
+        if (header.length >= 4 && matches(header, 0, 0x1A, 0x45, 0xDF, 0xA3)) {
+            return ".webm";
+        }
+        if (header.length >= 12 && matches(header, 4, 'f', 't', 'y', 'p')) {
+            String brand = new String(header, 8, 4, java.nio.charset.StandardCharsets.US_ASCII);
+            return java.util.Set.of("avif", "avis", "heic", "heix", "mif1", "msf1").contains(brand) ? null : ".mp4";
+        }
+        return null;
+    }
+
     private static boolean matches(byte[] header, int offset, int... expected) {
         if (header.length < offset + expected.length) {
             return false;

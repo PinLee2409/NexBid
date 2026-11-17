@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 
+import { OtpQr } from "@/components/account/otp-qr";
 import { FormField } from "@/components/common/form-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,7 +95,11 @@ export function TwoFactorSettings() {
             <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed">
               <li>{t("twoFactorStepApp")}</li>
               <li>
-                {t("twoFactorStepKey")}{" "}
+                {t("twoFactorStepScan")}
+                <div className="mt-2">
+                  <OtpQr uri={step.otpauthUri} label={t("twoFactorQrLabel")} />
+                </div>
+                <span className="mt-3 block">{t("twoFactorStepKey")}</span>{" "}
                 <code className="bg-muted mt-1 block px-2 py-1.5 font-mono text-sm tracking-wider break-all" data-testid="two-factor-secret">
                   {step.secret.replace(/(.{4})/g, "$1 ").trim()}
                 </code>

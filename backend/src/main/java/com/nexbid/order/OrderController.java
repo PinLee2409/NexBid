@@ -47,6 +47,12 @@ public class OrderController {
     }
 
     /** EN: The buyer confirms the goods arrived. / VI: Người mua xác nhận đã nhận hàng. */
+    /** EN: Sends a paid order to the address now in the profile. / VI: Chuyển đơn đã trả sang địa chỉ hiện có trong hồ sơ. */
+    @PostMapping("/{id}/address")
+    public ApiResponse<OrderView> useCurrentAddress(@AuthenticationPrincipal CurrentUser me, @PathVariable UUID id) {
+        return ApiResponse.of(orders.useCurrentAddress(me.id(), id), "Address updated");
+    }
+
     @PostMapping("/{id}/received")
     public ApiResponse<OrderView> received(@AuthenticationPrincipal CurrentUser me, @PathVariable UUID id) {
         return ApiResponse.of(orders.confirmReceipt(me.id(), id), "Order received");
@@ -57,7 +63,8 @@ public class OrderController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ReviewView> review(
             @AuthenticationPrincipal CurrentUser me, @PathVariable UUID id, @Valid @RequestBody ReviewRequest request) {
-        return ApiResponse.of(reviews.review(me.id(), id, request.rating(), request.comment()), "Review posted");
+        return ApiResponse.of(reviews.review(me.id(), id, request.rating(), request.comment(),
+                request.packaging(), request.accuracy(), request.speed()), "Review posted");
     }
 
     /** EN: The buyer reports a problem; an admin decides. / VI: Người mua báo có vấn đề; admin quyết định. */

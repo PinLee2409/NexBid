@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormatter, useTranslations } from "next-intl";
-import { MessagesSquare } from "lucide-react";
+import { FileText, MessagesSquare } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -34,12 +34,15 @@ export function OrderRow({
   action,
   extra,
   messages = false,
+  receipt,
 }: {
   entry: OrderEntry;
   action?: ReactNode;
   extra?: ReactNode;
   /** EN: Show the link to this order's conversation. / VI: Hiện link tới cuộc trò chuyện của đơn này. */
   messages?: boolean;
+  /** EN: Link to the printable receipt, as the buyer's or the seller's. / VI: Link tới biên nhận in được, của người mua hoặc người bán. */
+  receipt?: "buyer" | "seller";
 }) {
   const money = useMoney();
   const t = useTranslations("account");
@@ -135,6 +138,15 @@ export function OrderRow({
           >
             <MessagesSquare className="size-3.5" aria-hidden="true" />
             {t("orderMessages")}
+          </Link>
+        ) : null}
+        {receipt && (entry.payment?.status === "SUCCESS" || refunded) ? (
+          <Link
+            href={`/receipts/${entry.order.id}${receipt === "seller" ? "?as=seller" : ""}`}
+            className="text-signal-text mt-2 ml-4 inline-flex items-center gap-1.5 text-xs underline-offset-4 hover:underline"
+          >
+            <FileText className="size-3.5" aria-hidden="true" />
+            {t("receipt")}
           </Link>
         ) : null}
       </div>

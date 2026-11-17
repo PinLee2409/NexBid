@@ -5,6 +5,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
 
 import { MotionProvider } from "@/components/common/motion-provider";
+import { ServiceWorker } from "@/components/common/service-worker";
 import { TimeZoneSync } from "@/components/common/time-zone-sync";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -80,6 +81,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <NextIntlClientProvider>
             <TimeZoneSync />
             <MotionProvider>{children}</MotionProvider>
+            <ServiceWorker />
             <Toaster
               position="bottom-right"
               toastOptions={{

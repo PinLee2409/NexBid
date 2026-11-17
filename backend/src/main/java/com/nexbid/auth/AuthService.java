@@ -108,6 +108,10 @@ public class AuthService {
                     // VI: Ai cũng bắt đầu là người mua; quyền bán cấp sau (guide §6).
                     RoleName.BUYER);
 
+            // EN: Before the welcome email, so it is already in the chosen language. / VI: Trước email chào mừng, để nó đã đúng ngôn ngữ đã chọn.
+            if ("vi".equals(request.language()) || "en".equals(request.language())) {
+                jdbc.update("UPDATE users SET email_language = ? WHERE id = ?", request.language(), account.id());
+            }
             mailer.send(account.id(), MailKind.WELCOME, MailFacts.none());
             return RegisterResponse.from(account);
 
@@ -178,8 +182,10 @@ public class AuthService {
             throw new BusinessException(ErrorCode.ACCOUNT_BLOCKED, "This account has been blocked");
         }
         attempts.checkAllowed(user.email(), clientAddress);
+        attempts.checkCodes(user.id());
         if (!twoFactor.verify(user.id(), code, Instant.now())) {
             attempts.recordFailure(user.email(), clientAddress);
+            attempts.recordCodeFailure(user.id());
             throw new BusinessException(ErrorCode.TWO_FACTOR_CODE_INVALID, "That code does not match");
         }
         attempts.clear(user.email(), clientAddress);
@@ -203,9 +209,11 @@ public class AuthService {
         GoogleSignIn.Identity identity = google.verify(credential);
         UUID linked = jdbc.query("SELECT user_id FROM user_identities WHERE provider = 'GOOGLE' AND subject = ?",
                 rs -> rs.next() ? rs.getObject(1, UUID.class) : null, identity.subject());
+        java.util.concurrent.atomic.AtomicBoolean createdNow = new java.util.concurrent.atomic.AtomicBoolean();
         UserCredentials user = linked != null
                 ? users.findCredentialsById(linked).orElseThrow()
                 : users.findCredentialsByEmail(identity.email()).orElseGet(() -> {
+                    createdNow.set(true);
                     UserAccount created = users.create(identity.name(), identity.email(),
                             passwordEncoder.encode(UUID.randomUUID().toString()), RoleName.BUYER);
                     mailer.send(created.id(), MailKind.WELCOME, MailFacts.none());
@@ -218,6 +226,16 @@ public class AuthService {
                     INSERT INTO user_identities (provider, subject, user_id, created_at) VALUES ('GOOGLE', ?, ?, ?)
                     ON CONFLICT DO NOTHING
                     """, identity.subject(), user.id(), Instant.now().atOffset(ZoneOffset.UTC));
+            if (!createdNow.get()) {
+                // EN: NexBid never checked that whoever registered this email owned it; Google just proved this person
+                //     does. Someone who registered it first must not keep a way in, so the old password and every
+                //     session end; from now on this account signs in with Google.
+                // VI: NexBid chưa từng kiểm người đăng ký email này có sở hữu nó không; Google vừa chứng minh người này
+                //     sở hữu. Ai đăng ký trước bằng email đó không được giữ đường vào, nên mật khẩu cũ và mọi phiên đều
+                //     chấm dứt; từ giờ tài khoản này đăng nhập bằng Google.
+                users.replacePassword(user.id(), passwordEncoder.encode(UUID.randomUUID().toString()));
+                refreshTokens.endAll(user.id());
+            }
         }
         if (user.status() == com.nexbid.user.UserStatus.BLOCKED) {
             throw new BusinessException(ErrorCode.ACCOUNT_BLOCKED, "This account has been blocked");

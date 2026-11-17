@@ -75,6 +75,18 @@ public class GhnBookings {
         return new Booked(booked.orderCode(), booked.fee());
     }
 
+    /**
+     * EN: Cancels a booking GHN has not picked up yet; refused with GHN's reason otherwise.
+     * VI: Huỷ một đơn GHN chưa lấy hàng; nếu không thì bị từ chối kèm lý do của GHN.
+     */
+    public void cancel(String orderCode) {
+        GhnClient.Cancelled cancelled = ghn.cancel(orderCode);
+        if (!cancelled.done()) {
+            throw new BusinessException(ErrorCode.GHN_REFUSED, "GHN would not cancel " + orderCode
+                    + (cancelled.message().isBlank() ? "" : ": " + cancelled.message()));
+        }
+    }
+
     /** EN: Where the seller prints GHN's label. / VI: Nơi người bán in phiếu GHN. */
     public String labelUrl(String orderCode) {
         return ghn.labelUrl(orderCode);

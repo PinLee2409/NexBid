@@ -125,6 +125,13 @@ class GoogleSignInApiTest {
                 .andExpect(jsonPath("$.data.user.id").value(patId));
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE email = 'pat@nexbid.com'", Integer.class))
                 .isOne();
+        // EN: Whoever registered that email first keeps no way in: the old password stops working.
+        // VI: Ai đăng ký email đó trước không còn đường vào: mật khẩu cũ hết dùng được.
+        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"pat@nexbid.com\",\"password\":\"supersecret\"}"))
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+        // EN: Coming back with Google later changes nothing more. / VI: Quay lại bằng Google sau đó không đổi gì thêm.
+        signIn(idToken(KEYS, "test-client", "g-200", "pat@nexbid.com", true)).andExpect(status().isOk());
 
         signIn(idToken(KEYS, "another-site", "g-300", "x@gmail.com", true))
                 .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("GOOGLE_SIGN_IN_FAILED"));

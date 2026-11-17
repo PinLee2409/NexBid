@@ -78,5 +78,17 @@ public enum NotificationType {
     /** EN: To the seller: an admin verified their account. / VI: Gửi người bán: admin đã xác minh tài khoản. */
     SELLER_VERIFIED,
     /** EN: A new message about an order. / VI: Tin nhắn mới về một đơn hàng. */
-    NEW_MESSAGE
+    NEW_MESSAGE,
+    /** EN: To the buyer: the seller cancelled the GHN pickup; the order waits to ship again. / VI: Gửi người mua: người bán huỷ đơn GHN; đơn chờ gửi lại. */
+    SHIPMENT_CANCELLED,
+    /** EN: To the seller: the buyer changed the delivery address of a paid order. / VI: Gửi người bán: người mua đổi địa chỉ nhận của đơn đã trả. */
+    ORDER_ADDRESS_CHANGED,
+    /** EN: A buyer made an offer on the seller's lot. / VI: Người mua gửi đề nghị trên lô của người bán. */
+    OFFER_RECEIVED,
+    /** EN: An offer was accepted, declined or countered. / VI: Đề nghị được nhận, bị từ chối hoặc được trả giá lại. */
+    OFFER_ANSWERED,
+    /** EN: A watched lot came back cheaper. / VI: Lô đang theo dõi được đăng lại rẻ hơn. */
+    LOT_RELISTED,
+    /** EN: An admin took down a photo or video. / VI: Admin gỡ một ảnh hoặc video. */
+    MEDIA_REMOVED
 }

@@ -21,7 +21,7 @@ test("a bid reaches the other bidder's page without a reload", async ({ openCont
 
   // EN: Alex bids the minimum; the confirmation step is part of the flow.
   // VI: Alex trả mức tối thiểu; bước xác nhận là một phần của luồng.
-  const amount = Number(await alexPanel.locator("#terminal-bid").inputValue());
+  const amount = Number((await alexPanel.locator("#terminal-bid").inputValue()).replace(/\D/g, ""));
   await alexPanel.getByRole("button", { name: "Place bid" }).click();
   await alex.getByRole("button", { name: "Confirm bid" }).click();
   await expect(alexPanel).toContainText("You are currently the highest bidder");

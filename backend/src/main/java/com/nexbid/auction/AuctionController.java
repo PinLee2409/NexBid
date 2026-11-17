@@ -73,6 +73,18 @@ public class AuctionController {
         return ApiResponse.of(auctions.publicSummariesOf(ids.stream().distinct().limit(12).toList()));
     }
 
+    /**
+     * EN: Lots opening between two days (Vietnam dates, both included), for the auction calendar.
+     * VI: Các lô mở giữa hai ngày (ngày giờ Việt Nam, tính cả hai đầu), cho lịch đấu giá.
+     */
+    @GetMapping("/calendar")
+    public ApiResponse<List<AuctionSummaryView>> calendar(@RequestParam java.time.LocalDate from,
+            @RequestParam java.time.LocalDate to) {
+        java.time.ZoneId vietnam = java.time.ZoneId.of("Asia/Ho_Chi_Minh");
+        return ApiResponse.of(auctions.calendar(from.atStartOfDay(vietnam).toInstant(),
+                to.plusDays(1).atStartOfDay(vietnam).toInstant()));
+    }
+
     /** EN: Open lots like this one, for the foot of its page. / VI: Các lô đang mở giống lô này, cho cuối trang của nó. */
     @GetMapping("/{id}/similar")
     public ApiResponse<List<AuctionSummaryView>> similar(@PathVariable UUID id) {
